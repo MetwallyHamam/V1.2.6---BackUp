@@ -1,0 +1,20 @@
+i noticed when create ticket from assistant the ticket creation form 
+not closed after ticket creation , i need to add a new button in the 
+ticket creation form , create and new for reset the ticket creation
+ to create another ticket , and create button will create and close
+  the ticket form 
+also i need to more organizing the context fast action so it
+ will be a three sections ,
+  1- Common actions will have copy to new ticket 
+2-@ mention
+3- Open whatsapp
+4- Open ticket
+5- re assign
+6-Add Flag
+other actions will be in parent hover so when hover on it it show a sub list of actions 
+View history and open ticket doing thje same action , 
+so correct the view history so it can show the status changes tracking
+
+my goal is make the important action in the common action section and the other in hover parent it works like New in the right click action of windows
+
+The requested resource was not found.

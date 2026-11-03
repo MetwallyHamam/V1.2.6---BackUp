@@ -1,0 +1,1 @@
+"""Lightweight operational home module."""

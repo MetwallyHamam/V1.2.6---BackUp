@@ -1,0 +1,416 @@
+id	code	name
+1	MILLENSYS	MILLENSYS
+2	10	UHIA - Ismaalia
+3	102	Dar Al Ashaa -  Smouha
+4	103	Dar Al Ashaa- Tramsy
+5	104	Dar Al Ashaa- Borg El-khair
+6	105	Dar Al Ashaa- Agamy
+7	106	Dar Al Ashaa Master
+8	107	Badr University Hospital
+9	108	Dr. Ken C
+10	109	South Africa
+11	110	Black Mountain Mine
+12	111	Capital Hospital
+13	112	I-MEDIC
+14	117	KSA-BTECH
+15	118	Assema Scan
+16	119	Rozzik Scan
+17	129	Alfa Scan
+18	13	Nova Scan - Nova Lab
+19	147	Tiba Scan Biba
+20	15	GDR (Teleradiology Project)
+21	150	Ahmed Farid
+22	154	Dar Al-Ashe3a  Bagour
+23	155	Dar Al-Ashe3a  Ashmoon
+24	157	Dar Al Ashe3a Tala (Monofia)
+25	159	Gamma Scan Wasta
+26	16	Balsam Group (Al Khagy Hosp.)
+27	161	Gamma Scan
+28	165	El-Eman Scan
+29	169	Rakhawy Scan
+30	17	CRC (???? ??????????? ??????)
+31	170	Mawada Scan
+32	173	Shorouk scan
+33	18	Al Houda Medcial Center
+34	185	Dar ElTeb
+35	189	Al Tayseer
+36	19	Makkah Park
+37	190	Egypt Air Hospital
+38	191	Giza Scan
+39	192	Makkah Scan
+40	193	Yellow Med-teleradiology
+41	194	El Masria & Horia
+42	195	ELahram Scan
+43	196	Masara Scan
+44	197	Demiana Hospital
+45	198	Great Tomas
+46	199	Wel Care
+47	20	EMG (???? ????? ???????)
+48	200	Tabarak Hospital
+49	202	Dr. yahia clinic
+50	205	Dar Sohag Vision Tools
+51	209	Al Masa
+52	21	Afaq
+53	210	Master Scan
+54	212	Sky Scan
+55	213	Al Salam international Hospital
+56	214	Pleura Scan
+57	216	Egy Heart
+58	217	Reaya Scan
+59	218	Al Safwa
+60	219	Masr Al Mahaba
+61	22	Neom (Siemens)
+62	222	Aswan Evanglican Mission
+63	223	Nafadi R. Center
+64	225	Macca Center
+65	226	Rab3a Center
+66	227	Al Zohery Hospital
+67	228	Al Atheer Medical Center
+68	229	Beirut_Hospital
+69	23	Dr. Tedlaoui
+70	230	Mostafa Mahmoud ( El Safa )
+71	231	Trabuls -Libya-
+72	232	Harley_Street
+73	234	Ekhtyar Afdal -Libya-
+74	235	El-Hamd Center
+75	236	Sohag El-Howeg Scan
+76	238	Al-safwa Sohag
+77	239	Procare
+78	24	Ottman
+79	240	Aldurrah Hospital shebeen
+80	241	Aman Hospital
+81	242	Italy Hospital
+82	243	Amr Zayed
+83	244	Matrya Hospital
+84	245	Al MatareyaScan
+85	246	Radar Aswan
+86	247	Wadi L Nile Awsem
+87	249	FirstScan
+88	25	Cardio Canal
+89	250	Osama Dawood
+90	252	Byet El-Ash3a
+91	254	Hamdy El-Sayed
+92	255	Care Scan
+93	256	Zaytoon
+94	257	Al-Rahma
+95	258	Al-Borg Scan
+96	259	Fakous MRI
+97	26	Ibn Hayan
+98	260	Haifu
+99	261	Generation
+100	262	Misr International
+101	264	RIDC
+102	265	Assema Hospital
+103	267	Fardous Scan
+104	268	Boshy Scan
+105	269	Qalaa Scan
+106	27	Manaret al teb
+107	270	City Scan
+108	271	Qena Scan
+109	272	Hermal Scan
+110	273	Al Hayat Scan
+111	275	Aman Bani Suif
+112	276	Hossania sharkia
+113	277	Air Force Medical Center
+114	279	Petrol Medical Center -Makram-
+115	28	Al Razi
+116	280	Liver Institute
+117	281	First Scan Mitghamr
+118	282	BMC British
+119	283	Mansheyet El Bakry Hospital
+120	284	Asia Hospital
+121	285	Alraqy University Hospital
+122	286	Al Aliaa Hospital
+123	287	Police Hospital
+124	288	Banha hospital
+125	289	Al- safa Luxor
+126	29	Bekhaazi -Imp-
+127	290	Dar Elhekma sohag
+128	292	Al-Amal R. Center
+129	293	Rashid Hospital
+130	294	Al Ain al_Garya
+131	295	Beltagy Scan
+132	296	Salem_X
+133	297	Arab Contractors Hospital
+134	299	Sohag Uni. Hosp.
+135	30	Nile Scan
+136	300	Asuyt Uni. Hosp.
+137	301	Esna Hosptal
+138	302	Zagazig Hospital
+139	303	Al Moalmen Hospital-Cathview
+140	304	Ain Shams Univerisity hospital
+141	305	Mansoura University
+142	306	RoyalCath Center
+143	308	MRC
+144	309	Kawkab Hospital
+145	31	Medical technology
+146	310	Sant Mary Hospital
+147	312	Mounira Hospital
+148	313	Sadr Abaseya
+149	314	Matrouh Hospital
+150	316	Amjad El-Maddah -Syria-
+151	317	Tiba Scan  Bany sweef
+152	318	Tiba Scan El-Fashn
+153	319	TIba Scan Samosta
+154	32	Shifa Al Orman
+155	320	Smouha scan
+156	322	Omega Scan
+157	324	Al Sadiq Hospital
+158	325	siemens
+159	326	Philips
+160	327	Al Salam Hospital -Endo-
+161	328	DAF
+162	329	Nairobi Hospital
+163	33	Sohag General
+164	330	UHIA Support
+165	331	Al-Aml Hospital
+166	332	Dar Elfouad
+167	333	Hurghada Hospital
+168	334	AL Nozha Hospital
+169	335	Wadi Elnatroon
+170	336	TechMed -South Africa-
+171	337	South America -Brazil-
+172	338	BTHDC
+173	339	UHIA PortSaid
+174	34	Taiba Hospital
+175	340	UHIA Esmalia
+176	341	UHIA Suez
+177	342	UHIA Luxor
+178	343	UHIA Aswan
+179	344	UHIA South Sinai
+180	345	Kobry El Qobba Hospital
+181	346	Egypt scan
+182	347	Tiba Alwasta
+183	348	Total Health - USA -
+184	349	Hesham Jordan
+185	35	Bedayat Hospital and Lavida Hospital
+186	350	Cleopatra Hospital
+187	351	Moulay Ismail Hospital
+188	352	Reliance Hospital
+189	353	Dr Belimen
+190	354	Louran Hospital
+191	355	El Helal Hospital
+192	356	sporting hospital
+193	357	Cairo Scan
+194	358	Iraq
+195	36	Andalusia Hospital
+196	360	Algeria Millensys Support
+197	361	Al-horya scan
+198	363	New Cairo hospital
+199	364	Al-Minshawi General Hospital
+200	365	Nasser Institute hospital
+201	367	Dream Hospital
+202	368	LTD
+203	369	Coptic Hospital
+204	37	Mary Morcos Medical Center
+205	370	El-Barq Scan
+206	371	Ain-Shams hospital university
+207	373	Al-Nada scan
+208	374	Kinia Support Team
+209	375	Alex Scan Maiami
+210	377	Mary Markos Hospital
+211	378	Hospious
+212	379	Alfa Lab - Al Shefa Clinic
+213	38	Al masria scan
+214	380	Nariman Hospital
+215	381	Al Talaba Hospital
+216	382	Al Ameriya General Hospital
+217	383	Gamal Hamada Hospital
+218	384	Republic General Hospital
+219	385	Ras El Tin General Hospital
+220	386	Kafr El Zayat General Hospital
+221	387	Damanhour Chest Diseases Hospital
+222	388	Pediatrics -Children Medicin-
+223	389	Dar Elashaa Alex.
+224	39	Alshifa
+225	390	Andalosia Alex.
+226	391	Lady Scan
+227	392	Dr. Ali Abd Elkreem
+228	393	Shark El-Madina Hospital
+229	394	Mustafa Elnagar Specialized Hospital for Heart Diseases and Surgeries
+230	395	Alex University
+231	396	Om Elkora ( Tanta )
+232	397	Heart and Chest Hospital
+233	398	Smouha International Hospital
+234	399	Alexandria Hospital for Kidney and Urology
+235	40	Algomhoria Scan
+236	400	El-Madina Scan
+237	401	Armed Forces Alex. Hospitals
+238	402	Ibrahim Obaid
+239	403	Asnan Scan
+240	404	Nile Cardiac Center
+241	405	Egypt Hearts Center
+242	406	Al-Hadra University Hospital ( Nariman )
+243	407	Gamal Abdel Nasser Hospital
+244	408	Damanhour Teaching Hospital
+245	409	Heliopolis Hospital
+246	41	Capital Scan
+247	410	Capital Hospital 'Dokki'
+248	411	Icon Dynamics -Greece
+249	412	Progress Center for Medical Imaging -Libya-
+250	413	Union scan
+251	415	Electromedica
+252	417	Customers
+253	419	Egypt Headquarters
+254	42	Tanta Scan
+255	428	Seha Scan
+256	431	Time -Syria-
+257	434	centre hospitalier universitaire Yalgado Ouedraogo -Burkina Faso-
+258	436	El Salam PortSaid -MiPrint-
+259	437	New Capital Governmental Hospital
+260	438	Elite -Lebanon -
+261	439	Dr Bouguelaa
+262	44	Smart Scan
+263	440	Tiba Hospital
+264	441	Dr Othmani
+265	443	HER
+266	444	Alex
+267	445	Amex -Austria
+268	446	Bentria
+269	447	Dr Nour
+270	448	Cim Aures
+271	450	Mutuelle
+272	451	Tkout
+273	452	Dr Khelif
+274	453	Dr Ouali
+275	454	CDM Rouane
+276	455	Dr Amrane
+277	456	Clinique Moula
+278	457	Clinique Eldjazair
+279	458	Dr.Emad Clinic
+280	459	NSH
+281	46	Mustafa Mahmoud
+282	462	Gold Clinic
+283	463	Misr Oroba Clinic
+284	464	Dar souhag Al Ashaa
+285	465	Fayoum university hospital
+286	466	Gama Scan - Yaman -
+287	467	URO Scan
+288	469	RayLab
+289	47	Egy Scan
+290	470	Sakhaa hospital -imp-
+291	471	Biodun Pariola
+292	472	Active Care
+293	473	Dar Elorouba Hospital
+294	474	El Shrouk Damietta
+295	475	El-Bohy Scan -Imp-
+296	476	El-Nour Scan
+297	477	AL-Dowaly Specilized Hospital -Yaman-
+298	478	Dr Abdelsalam
+299	479	Al-ahly medical center
+300	48	Al Safa
+301	480	Petrol Medical Center
+302	481	Petrol Medical Center -Tayaran-
+303	482	Military DJIB Hospital -Djibouti-
+304	483	Tripoli - Lebanon
+305	484	Hajja Scan Center - Yaman
+306	485	El Sedeeq Clinic
+307	486	Mansoura Specialized Hospital
+308	487	El-Tahawy scan
+309	488	Minya hospital
+310	489	Al-youm El wahd hospital
+311	49	Alhaya Scan
+312	490	Alsayidat Aleadhra ( Zaytoon ) Hospital
+313	491	Quantum Medical - Syria
+314	492	CDIM - Mauritanie
+315	493	South America - Venezuela
+316	494	TechMed-Mauritania
+317	495	International Support Sites
+318	496	Yaman's customer
+319	497	Mauritanie's customer
+320	498	Easy Telerad ( Dr Anangwe)
+321	499	RUNH (Neama Hospital)
+322	50	Alayman Scan
+323	500	OutSpan Hospital
+324	501	Children Hospital
+325	502	Nile Badrawy Hospital
+326	503	Al Nour Hospital
+327	504	Dr Aouabdia
+328	505	Al Alameen Hospital
+329	506	potential client
+330	507	IT
+331	508	Biomedical Equipment Corp | USA
+332	510	Arab Organization for industry Hospital
+333	511	El Sheikh Zayed Spec. Hospital
+334	512	El Shorouk Domiate
+335	513	Al Bohy Scan
+336	514	Al Barq Scan
+337	516	Sakhaa Hospital
+338	518	Dr. Mtango Clinic -USA-
+339	52	TMT
+340	521	South America Support Team
+341	522	Al Nasr hospital
+342	523	Ain El garia Hospital
+343	524	Agimed | Argentina
+344	525	El Kindy
+345	526	Menoufia University Hospital
+346	527	Talal jordon
+347	528	HSR
+348	529	Advanced Lybia
+349	53	Sono Scan
+350	532	Techno Scan
+351	533	Bourqina Faso
+352	534	Fouad Centre
+353	535	PMC Suez
+354	536	El Kheir & El Baraka
+355	537	Mohamed abo Hafeda
+356	538	Bekhazzi
+357	539	Saint Louis
+358	54	Sigma Scan
+359	540	Saint Therese
+360	541	Fayoum Oncology Center - Fayoum
+361	542	Mesrata
+362	543	Dar Elhekma (Nasr city)
+363	544	New Heart
+364	548	Al-Germaniyya Hospital  (Aswan)
+365	549	Tarablus
+366	55	Seha Scan
+367	550	Agfa -Lebnon-
+368	551	Khalil
+369	552	Hopitech - Lebanon
+370	553	Nada shikh Zayed Hospital
+371	554	Suez Canal University Hospital
+372	56	Resonance Imaging Diagnostic Center IRDC
+373	57	RadCare
+374	58	Public Hosp. Boumordes
+375	59	Prime Clinic
+376	60	PMC
+377	61	PIC
+378	62	Nasr city Hosp.(Rab3a)
+379	63	MTI
+380	64	Mid-Tab
+381	65	Mega Scan
+382	66	MarMorcos
+383	67	LAB MED
+384	68	IRC
+385	69	HIO (15 Hospital)
+386	7	UHIA
+387	70	Joztaf tito  -Hermel-
+388	71	GOTHI
+389	72	Freedom Center
+390	73	FOC
+391	74	El Ghandoor Hospital
+392	75	Dr.Zerhouni
+393	76	Dr. Faroon
+394	77	Dr.Bougadia
+395	78	Dr .El-Razy
+396	79	CRC - TRC
+397	8	UHIA - ??????
+398	80	CareMid
+399	81	PPC
+400	82	Al-Shorouk Radiology Center
+401	83	Al-Rowad Hospital
+402	84	Alex Scan
+403	85	Alex pediatric center
+404	86	ACU
+405	87	ABC & El-Nada
+406	88	Zohairy hospital
+407	89	private in Egypt
+408	9	UHIA - ???? ?????
+409	90	UHIA - ???????
+410	95	PT-Modern
+411	96	Ibn-Seraj
+412	98	UHIA - ??????
+413	99	UHIA - ????
+414	CLI-000414	Millensys UAT
+415	CLI-000415	MILLENSYS

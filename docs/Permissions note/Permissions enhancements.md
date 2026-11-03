@@ -1,0 +1,3 @@
+1.0- https://millensysonline.net/SupportHub/contracts
+1.1 - this page just need contract.view as this permission granted to delvier project users the proplem is this permission granted to user can open Contract Workspace and can modify the contract , open contract workspace see contract , this permission when granted to the other profile breaked the role so the project delviering user can modify the contracts and its wrong
+i need a separate permssion to handle this situation so the project deleiver can use  its funtions without see the master data and modify on it 

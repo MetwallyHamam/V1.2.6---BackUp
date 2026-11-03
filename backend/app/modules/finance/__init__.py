@@ -1,0 +1,1 @@
+"""Manager-controlled ticket finance."""

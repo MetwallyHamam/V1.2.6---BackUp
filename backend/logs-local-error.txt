@@ -1,0 +1,16 @@
+INFO:     Started server process [17876]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:65319 - "WebSocket /api/v1/notifications/ws?ticket=y-woa7UZya8IT3nOJwgZ6p3R66_pO9LvDr-I2GUQS1c" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:64447 - "WebSocket /api/v1/notifications/ws?ticket=BRI4gaqEzB3wPUEQ2LSkewGZKi25MoFY-RAIoaHJBJI" [accepted]
+INFO:     connection open
+{"timestamp": "2026-08-03T11:33:37.410535+00:00", "level": "ERROR", "logger": "asyncio", "message": "Exception in callback _ProactorBasePipeTransport._call_connection_lost()\nhandle: <Handle _ProactorBasePipeTransport._call_connection_lost()>"}
+INFO:     127.0.0.1:58325 - "WebSocket /api/v1/notifications/ws?ticket=PoSzn-B33Y0K-f1zPkLLZqGQSSDVCDjTs0pxOm0jZME" [accepted]
+INFO:     connection open
+INFO:     127.0.0.1:59814 - "WebSocket /api/v1/notifications/ws?ticket=uaWEu3CkyBJHwZfNxWjbZk6ggRyFGAmfsGeuy9-W4uc" [accepted]
+INFO:     connection open
+{"timestamp": "2026-08-03T11:39:46.567139+00:00", "level": "ERROR", "logger": "asyncio", "message": "Exception in callback _ProactorBasePipeTransport._call_connection_lost()\nhandle: <Handle _ProactorBasePipeTransport._call_connection_lost()>"}
+INFO:     127.0.0.1:51202 - "WebSocket /api/v1/notifications/ws?ticket=PrCg8lCy0xiVUQzrxU_2PfGqblrdfaYE3ip4pqzPah4" [accepted]
+INFO:     connection open

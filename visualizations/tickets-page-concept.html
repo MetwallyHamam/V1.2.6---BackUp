@@ -1,0 +1,124 @@
+<div id="tickets-redesign" aria-label="Proposed Support Hub tickets workspace">
+  <style>
+    #tickets-redesign{--navy:#13263d;--teal:#00a6a6;--danger:#d83b4d;--warn:#df8a16;--ok:#208b63;--bg:light-dark(#f4f7fa,#101722);--panel:light-dark(#ffffff,#182231);--panel2:light-dark(#f8fafc,#202c3c);--text:light-dark(#162235,#edf3f8);--muted:light-dark(#64748b,#9caabd);--line:light-dark(#e2e8f0,#304055);--shadow:0 12px 36px light-dark(rgba(26,42,64,.10),rgba(0,0,0,.28));font-family:Inter,"Segoe UI",sans-serif;color:var(--text)}
+    #tickets-redesign *{box-sizing:border-box}
+    #tickets-redesign .app{background:var(--bg);border:1px solid var(--line);border-radius:18px;overflow:hidden;box-shadow:var(--shadow)}
+    #tickets-redesign .top{display:flex;align-items:center;gap:14px;padding:14px 18px;background:var(--navy);color:#fff}
+    #tickets-redesign .brand{display:flex;align-items:center;gap:9px;font-weight:500;white-space:nowrap}
+    #tickets-redesign .brand-mark{display:grid;place-items:center;width:30px;height:30px;border-radius:9px;background:var(--teal)}
+    #tickets-redesign .global-search{display:flex;align-items:center;gap:8px;max-width:520px;flex:1;margin-inline:auto;padding:9px 12px;border-radius:10px;background:rgba(255,255,255,.12);color:rgba(255,255,255,.78)}
+    #tickets-redesign .global-search input{width:100%;border:0;background:transparent;color:#fff;outline:0;font:inherit}
+    #tickets-redesign .user{width:32px;height:32px;display:grid;place-items:center;border-radius:50%;background:#fff;color:var(--navy);font-weight:500}
+    #tickets-redesign .page{padding:18px}
+    #tickets-redesign .page-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:14px}
+    #tickets-redesign h1{font-size:24px;line-height:1.2;margin:0 0 4px;font-weight:500}
+    #tickets-redesign .sub{color:var(--muted);font-size:13px}
+    #tickets-redesign button{font:inherit}
+    #tickets-redesign .primary,#tickets-redesign .ghost,#tickets-redesign .icon-btn,#tickets-redesign .tab,#tickets-redesign .chip,#tickets-redesign .seg{border:0;cursor:pointer}
+    #tickets-redesign .primary{display:flex;align-items:center;gap:7px;background:var(--navy);color:#fff;border-radius:10px;padding:10px 14px;font-weight:500}
+    #tickets-redesign .tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);overflow:auto}
+    #tickets-redesign .tab{position:relative;padding:11px 13px;background:transparent;color:var(--muted);white-space:nowrap}
+    #tickets-redesign .tab.active{color:var(--text);font-weight:500}
+    #tickets-redesign .tab.active:after{content:"";position:absolute;left:12px;right:12px;bottom:-1px;height:3px;border-radius:3px 3px 0 0;background:var(--teal)}
+    #tickets-redesign .count{margin-inline-start:6px;padding:2px 6px;border-radius:999px;background:var(--panel2);font-size:11px}
+    #tickets-redesign .command{display:flex;align-items:center;gap:8px;padding:12px 0;flex-wrap:wrap}
+    #tickets-redesign .search{display:flex;align-items:center;gap:7px;flex:1;min-width:240px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 11px}
+    #tickets-redesign .search input{border:0;outline:0;background:transparent;color:var(--text);width:100%;font:inherit}
+    #tickets-redesign .ghost,#tickets-redesign .icon-btn{display:flex;align-items:center;gap:6px;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:9px 11px}
+    #tickets-redesign .icon-btn{padding:9px}
+    #tickets-redesign .quick{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:12px}
+    #tickets-redesign .chip{padding:7px 10px;border-radius:999px;background:var(--panel2);color:var(--muted)}
+    #tickets-redesign .chip.active{background:color-mix(in srgb,var(--teal) 15%,var(--panel));color:light-dark(#007a7a,#62dddd)}
+    #tickets-redesign .chip.alert{color:var(--danger);background:color-mix(in srgb,var(--danger) 10%,var(--panel))}
+    #tickets-redesign .workspace{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:12px}
+    #tickets-redesign .list,#tickets-redesign .preview{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+    #tickets-redesign .list-head{display:flex;align-items:center;justify-content:space-between;padding:11px 13px;border-bottom:1px solid var(--line)}
+    #tickets-redesign .result{font-size:13px;color:var(--muted)}
+    #tickets-redesign .segments{display:flex;padding:3px;background:var(--panel2);border-radius:9px}
+    #tickets-redesign .seg{padding:6px 8px;border-radius:7px;background:transparent;color:var(--muted)}
+    #tickets-redesign .seg.active{background:var(--panel);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.08)}
+    #tickets-redesign table{width:100%;border-collapse:collapse;font-size:13px}
+    #tickets-redesign th{padding:9px 10px;text-align:left;color:var(--muted);font-weight:500;background:var(--panel2);border-bottom:1px solid var(--line)}
+    #tickets-redesign td{padding:11px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+    #tickets-redesign tr[data-ticket]{cursor:pointer}
+    #tickets-redesign tr[data-ticket]:hover,#tickets-redesign tr.selected{background:color-mix(in srgb,var(--teal) 7%,var(--panel))}
+    #tickets-redesign .ticket-id{font-weight:500;color:light-dark(#28577f,#86bcea);white-space:nowrap}
+    #tickets-redesign .subject{font-weight:500;max-width:310px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    #tickets-redesign .meta{margin-top:3px;color:var(--muted);font-size:11px}
+    #tickets-redesign .priority{display:inline-flex;align-items:center;gap:5px;font-weight:500}
+    #tickets-redesign .priority:before{content:"";width:7px;height:7px;border-radius:50%;background:var(--warn)}
+    #tickets-redesign .priority.p1:before{background:var(--danger)}
+    #tickets-redesign .sla{display:flex;flex-direction:column;gap:5px;min-width:105px}
+    #tickets-redesign .sla-line{height:4px;background:var(--panel2);border-radius:4px;overflow:hidden}
+    #tickets-redesign .sla-line span{display:block;height:100%;background:var(--ok)}
+    #tickets-redesign .sla.risk .sla-line span{background:var(--danger)}
+    #tickets-redesign .sla small{color:var(--muted)}
+    #tickets-redesign .preview{padding:16px}
+    #tickets-redesign .preview-top{display:flex;justify-content:space-between;gap:10px}
+    #tickets-redesign .status{display:inline-flex;padding:5px 8px;border-radius:999px;background:color-mix(in srgb,var(--warn) 13%,var(--panel));color:var(--warn);font-size:11px;font-weight:500}
+    #tickets-redesign .preview h2{font-size:18px;line-height:1.35;margin:14px 0 5px;font-weight:500}
+    #tickets-redesign .ticket-no{color:var(--muted);font-size:12px}
+    #tickets-redesign .facts{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:18px 0}
+    #tickets-redesign .label{font-size:11px;color:var(--muted);margin-bottom:3px}
+    #tickets-redesign .value{font-size:13px;font-weight:500}
+    #tickets-redesign .divider{height:1px;background:var(--line);margin:14px 0}
+    #tickets-redesign .section-title{font-size:12px;font-weight:500;margin-bottom:8px}
+    #tickets-redesign .description{font-size:13px;line-height:1.55;color:var(--muted)}
+    #tickets-redesign .actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:15px}
+    #tickets-redesign .actions button{justify-content:center}
+    #tickets-redesign svg{width:16px;height:16px}
+    @media(max-width:820px){#tickets-redesign .workspace{grid-template-columns:1fr}#tickets-redesign .preview{display:none}#tickets-redesign .hide-md{display:none}}
+    @media(max-width:560px){#tickets-redesign .page{padding:12px}#tickets-redesign .top{padding:11px 12px}#tickets-redesign .brand span{display:none}#tickets-redesign .page-head{align-items:center}#tickets-redesign .hide-sm{display:none}#tickets-redesign .command{align-items:stretch}#tickets-redesign .search{min-width:100%}}
+  </style>
+  <div class="app">
+    <header class="top">
+      <div class="brand"><span class="brand-mark"><i data-lucide="life-buoy" aria-hidden="true"></i></span><span>Support Hub</span></div>
+      <label class="global-search"><i data-lucide="command" aria-hidden="true"></i><input aria-label="Global search" placeholder="Search anything…  Ctrl K"></label>
+      <i data-lucide="bell" aria-hidden="true"></i><span class="user">MH</span>
+    </header>
+    <main class="page">
+      <div class="page-head">
+        <div><h1>Tickets</h1><div class="sub">Your operational queue, prioritized by urgency and SLA risk</div></div>
+        <button class="primary" type="button"><i data-lucide="plus" aria-hidden="true"></i>New ticket</button>
+      </div>
+      <nav class="tabs" aria-label="Ticket queues">
+        <button class="tab active" type="button">Today <span class="count">42</span></button>
+        <button class="tab" type="button">Pre-tickets <span class="count">7</span></button>
+        <button class="tab" type="button">Escalations <span class="count">3</span></button>
+        <button class="tab" type="button">Handovers <span class="count">5</span></button>
+        <button class="tab" type="button">Approvals <span class="count">2</span></button>
+      </nav>
+      <div class="command">
+        <label class="search"><i data-lucide="search" aria-hidden="true"></i><input aria-label="Search tickets" placeholder="Search ticket, client, subject…"></label>
+        <button class="ghost" type="button"><i data-lucide="calendar-days" aria-hidden="true"></i>Today</button>
+        <button class="ghost" type="button"><i data-lucide="sliders-horizontal" aria-hidden="true"></i>Filters <span class="count">2</span></button>
+        <button class="icon-btn" type="button" aria-label="More options"><i data-lucide="ellipsis" aria-hidden="true"></i></button>
+      </div>
+      <div class="quick" aria-label="Quick views">
+        <button class="chip active" type="button">My queue · 12</button><button class="chip" type="button">Unassigned · 8</button><button class="chip" type="button">My team · 24</button><button class="chip" type="button">Due soon · 6</button><button class="chip alert" type="button">SLA breached · 2</button>
+      </div>
+      <div class="workspace">
+        <section class="list" aria-label="Ticket results">
+          <div class="list-head"><span class="result">42 tickets · Updated just now</span><div class="segments"><button class="seg active" type="button" aria-label="Table view"><i data-lucide="list" aria-hidden="true"></i></button><button class="seg" type="button" aria-label="Board view"><i data-lucide="columns-3" aria-hidden="true"></i></button></div></div>
+          <div style="overflow-x:auto"><table><thead><tr><th>Ticket</th><th>Client</th><th>Priority</th><th class="hide-sm">Owner</th><th>SLA</th></tr></thead><tbody>
+            <tr data-ticket="1" class="selected"><td><div class="ticket-id">INC-2026-1842</div><div class="subject">Cases not reaching the main PACS</div><div class="meta">Updated 4 min ago</div></td><td>Dar Al Fouad</td><td><span class="priority p1">P1</span></td><td class="hide-sm">Ahmed N.</td><td><div class="sla risk"><small>18 min left</small><div class="sla-line"><span style="width:88%"></span></div></div></td></tr>
+            <tr data-ticket="2"><td><div class="ticket-id">INC-2026-1839</div><div class="subject">Modality worklist missing CT orders</div><div class="meta">Updated 11 min ago</div></td><td>Cairo Scan</td><td><span class="priority">P2</span></td><td class="hide-sm">Mona A.</td><td><div class="sla"><small>1h 24m left</small><div class="sla-line"><span style="width:54%"></span></div></div></td></tr>
+            <tr data-ticket="3"><td><div class="ticket-id">SR-2026-0921</div><div class="subject">Create new RIS reporting user</div><div class="meta">Updated 26 min ago</div></td><td>Roxy</td><td><span class="priority">P3</span></td><td class="hide-sm">Unassigned</td><td><div class="sla"><small>4h 10m left</small><div class="sla-line"><span style="width:27%"></span></div></div></td></tr>
+            <tr data-ticket="4"><td><div class="ticket-id">INC-2026-1831</div><div class="subject">HL7 ORM interface queue delayed</div><div class="meta">Updated 39 min ago</div></td><td>Al Salam</td><td><span class="priority p1">P1</span></td><td class="hide-sm">Omar K.</td><td><div class="sla risk"><small>Breached 12m</small><div class="sla-line"><span style="width:100%"></span></div></div></td></tr>
+          </tbody></table></div>
+        </section>
+        <aside class="preview" aria-live="polite">
+          <div class="preview-top"><span class="status">In progress</span><button class="icon-btn" type="button" aria-label="Close preview"><i data-lucide="x" aria-hidden="true"></i></button></div>
+          <h2>Cases not reaching the main PACS</h2><div class="ticket-no">INC-2026-1842 · WhatsApp</div>
+          <div class="facts"><div><div class="label">Client</div><div class="value">Dar Al Fouad</div></div><div><div class="label">Product</div><div class="value">MiClinic RIS</div></div><div><div class="label">Assigned to</div><div class="value">Ahmed Nabil</div></div><div><div class="label">Priority</div><div class="value" style="color:var(--danger)">P1 · Critical</div></div></div>
+          <div class="divider"></div><div class="section-title">Latest description</div><div class="description">Cases from Dar Al Fouad and Roxy are not reaching the main PACS. Please investigate the cause and restore delivery.</div>
+          <div class="divider"></div><div class="section-title">Next best action</div><div class="description">Verify the routing queue and confirm connectivity to the main archive.</div>
+          <div class="actions"><button class="primary" type="button">Open ticket</button><button class="ghost" type="button">Assign</button></div>
+        </aside>
+      </div>
+    </main>
+  </div>
+  <script>
+    (()=>{const root=document.getElementById('tickets-redesign');const state={density:'comfortable',preview:true,accent:'#00a6a6'};const rows=[...root.querySelectorAll('tr[data-ticket]')];rows.forEach(row=>row.addEventListener('click',()=>{rows.forEach(item=>item.classList.remove('selected'));row.classList.add('selected')}));root.querySelectorAll('.chip').forEach(chip=>chip.addEventListener('click',()=>chip.classList.toggle('active')));root.querySelectorAll('.seg').forEach(seg=>seg.addEventListener('click',()=>{root.querySelectorAll('.seg').forEach(item=>item.classList.remove('active'));seg.classList.add('active')}));function render(){root.style.setProperty('--teal',state.accent);root.querySelector('.preview').style.display=state.preview?'block':'none';root.querySelectorAll('td').forEach(td=>td.style.padding=state.density==='compact'?'8px 10px':'11px 10px')}render();if(globalThis.Tweak){const tweak=new Tweak({container:root,onChange:render});tweak.addSelect(state,'density',{label:'Row density',options:['comfortable','compact'],reference:'tickets.density'});tweak.addToggle(state,'preview',{label:'Preview panel',reference:'tickets.preview'});tweak.addColorPicker(state,'accent',{label:'Accent',reference:'--teal'})}})();
+  </script>
+</div>

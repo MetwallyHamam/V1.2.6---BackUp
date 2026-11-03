@@ -1,0 +1,2 @@
+currently i have a greate feature appears in operations workspace page when using mobile 
+its appear a fast action clickable cyrcle with + its so smart , i need to make similar it in the dashboard page so it can have some fast action ca

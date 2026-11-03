@@ -1,0 +1,18 @@
+tickets page :
+1- when click on ticket navigation tab once its return todays tickets 
+, when click again its returned all time filter - FIXED
+2- pending tickets , pending client appears in in progress lane - Fixed 
+3- Add Problem relationship can allow multiple ticket link - Done
+4- Root cause and permanent-fix summaries are required before
+ closing a Problem. - Done
+5- ITOP sheet ticket importing. done
+6- live tabs corrections done
+7- Added My Workspace for each logged-in employee, including server-saved
+   favorites, ticket saved views, Support Now personal tabs, pinned tickets,
+   and recently visited pages. Users can select My Workspace as their default
+   landing page. The approved Top Management dashboard is unchanged.
+8- My Workspace now provides a permission-aware seven-day personal schedule,
+   current and upcoming shifts, assigned client visits, assigned internal
+   operations, Support Now workload counts, and pending ticket approvals.
+   Users can show or hide operational widgets, and the selection follows them
+   across devices.

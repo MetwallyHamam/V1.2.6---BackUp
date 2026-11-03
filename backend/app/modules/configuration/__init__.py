@@ -1,0 +1,1 @@
+"""Future configuration module placeholder."""

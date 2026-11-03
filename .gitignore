@@ -1,0 +1,60 @@
+.env
+*.db
+*.pyc
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+backend/.venv/
+frontend/node_modules/
+frontend/dist/
+frontend/*.tsbuildinfo
+frontend/vite.config.js
+frontend/vite.config.d.ts
+coverage.xml
+backups/
+backend/storage/
+backend/.test-tmp/
+backend/.test-tmp-*/
+backend/.pytest_tmp*/
+backend/.report-preview.*
+node_modules
+
+# Local runtime state and generated logs
+*.log
+*.err.log
+.local-*
+.packaged-*
+.email-template-preview.html
+logs/
+storage/
+tmp/
+output/
+outputs/
+
+# Test, QA, rehearsal, and packaging artifacts
+.pytest-*/
+.uat-*/
+.release-*/
+.qa-*/
+.scheduler-*/
+.server-time-*/
+.standalone-*/
+.support-workspace-*
+.ticket-filter-*/
+rehearsal-evidence/
+rehearsal-sql-data/
+
+# Deployment/release binaries and local backups
+releases/
+Server Backup/
+backend/dist/
+frontend/dist/
+local-ai/venv/
+supporthub_local_ai_python/.venv/
+
+# Editor and operating-system metadata
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

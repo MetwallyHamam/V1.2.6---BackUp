@@ -1,0 +1,16 @@
+import { Alert, Box, Button, MenuItem, Paper, Stack, TextField, Typography } from '@mui/material'
+import { useMutation, useQuery } from '@tanstack/react-query'
+import { FormEvent } from 'react'
+import { useParams } from 'react-router-dom'
+import { api, apiErrorMessage } from '../api/client'
+
+type Context={client_name:string;branch_name?:string;product_name?:string;requester_name?:string;requester_email?:string;requester_phone?:string;external_reference?:string}
+type Result={pre_ticket_number:string;status:string;transaction_token:string;return_url?:string}
+
+export function ExternalPreTicketPage(){
+  const {token}=useParams()
+  const context=useQuery({queryKey:['external-pre-ticket',token],enabled:!!token,queryFn:async()=>(await api.get<Context>(`/integrations/public/forms/${token}`)).data,retry:false})
+  const submit=useMutation({mutationFn:async(payload:Record<string,string>)=>(await api.post<Result>(`/integrations/public/forms/${token}`,payload)).data})
+  function onSubmit(event:FormEvent<HTMLFormElement>){event.preventDefault();const data=new FormData(event.currentTarget);submit.mutate(Object.fromEntries([...data.entries()].map(([key,value])=>[key,String(value).trim()]))) }
+  return <Box sx={{maxWidth:760,mx:'auto',p:{xs:2,md:4}}}><Stack spacing={2}><Typography variant="h4" fontWeight={800}>Create a support request</Typography>{context.isLoading&&<Typography>Loading secure form…</Typography>}{context.isError&&<Alert severity="error">This secure form link is invalid, expired, or already used.</Alert>}{submit.isError&&<Alert severity="error">{apiErrorMessage(submit.error)}</Alert>}{submit.data?<Paper sx={{p:3}}><Alert severity="success">Request {submit.data.pre_ticket_number} was received successfully.</Alert><Typography mt={2}>Status: {submit.data.status}</Typography><Typography variant="body2" sx={{wordBreak:'break-all'}}>Transaction reference: {submit.data.transaction_token}</Typography>{submit.data.return_url&&<Button sx={{mt:2}} href={submit.data.return_url}>Return to external system</Button>}</Paper>:context.data&&<Paper component="form" onSubmit={onSubmit} sx={{p:3}}><Stack spacing={2}><Alert severity="info">Client: {context.data.client_name}{context.data.branch_name?` · ${context.data.branch_name}`:''}{context.data.product_name?` · ${context.data.product_name}`:''}</Alert><TextField name="requester_name" label="Your name" defaultValue={context.data.requester_name??''}/><TextField name="requester_email" type="email" label="Email" defaultValue={context.data.requester_email??''}/><TextField name="requester_phone" label="Phone number" defaultValue={context.data.requester_phone??''}/><TextField required name="subject" label="Subject" inputProps={{minLength:10,maxLength:300}}/><TextField required name="description" label="Describe the issue" multiline minRows={6} inputProps={{minLength:10,maxLength:20000}}/><TextField select name="priority" label="Priority" defaultValue="P3">{['P1','P2','P3','P4'].map(value=><MenuItem key={value} value={value}>{value}</MenuItem>)}</TextField><Button type="submit" variant="contained" disabled={submit.isPending}>{submit.isPending?'Submitting…':'Submit support request'}</Button></Stack></Paper>}</Stack></Box>
+}

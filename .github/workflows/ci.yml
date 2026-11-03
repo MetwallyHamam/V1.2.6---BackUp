@@ -1,0 +1,96 @@
+name: CI
+"on":
+  workflow_dispatch:
+  push:
+  pull_request:
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: python -m pip install -e ".[dev]"
+        working-directory: backend
+      - run: python -m ruff check app
+        working-directory: backend
+      - run: python -m mypy app
+        working-directory: backend
+      - run: python -m pytest
+        working-directory: backend
+      - name: Verify a single Alembic head
+        run: python -m alembic heads
+        working-directory: backend
+  sql-server-integration:
+    runs-on: ubuntu-latest
+    services:
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: Y
+          MSSQL_SA_PASSWORD: SupportHub_CI_2026!
+        ports:
+          - 1433:1433
+        options: >-
+          --health-cmd "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'SupportHub_CI_2026!' -C -Q 'SELECT 1'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      APP_ENV: test
+      SECRET_KEY: sql-server-ci-secret-key-with-more-than-thirty-two-characters
+      DATABASE_URL: mssql+pyodbc://sa:SupportHub_CI_2026%21@localhost:1433/supporthub_ci?driver=ODBC+Driver+18+for+SQL+Server&Encrypt=yes&TrustServerCertificate=yes&MARS_Connection=no
+      DEV_ADMIN_USERNAME: ci-admin
+      DEV_ADMIN_EMAIL: ci-admin@example.com
+      DEV_ADMIN_PASSWORD: SupportHub-CI-Password!2026
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - name: Install Microsoft ODBC Driver 18
+        run: |
+          curl -sSL -O https://packages.microsoft.com/config/ubuntu/24.04/packages-microsoft-prod.deb
+          sudo dpkg -i packages-microsoft-prod.deb
+          sudo apt-get update
+          sudo ACCEPT_EULA=Y apt-get install -y msodbcsql18 mssql-tools18 unixodbc-dev
+      - name: Install backend
+        run: python -m pip install -e ".[dev]"
+        working-directory: backend
+      - name: Create integration database
+        run: /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -C -Q "CREATE DATABASE supporthub_ci"
+        env:
+          MSSQL_SA_PASSWORD: SupportHub_CI_2026!
+      - name: Apply all migrations
+        run: python -m alembic upgrade head
+        working-directory: backend
+      - name: Seed controlled integration data
+        run: python -m app.modules.iam.seed
+        working-directory: backend
+      - name: Verify migrations and ODBC exports without MARS
+        run: python scripts/sqlserver_ci_smoke.py
+        working-directory: backend
+      - name: Create historical-upgrade database
+        run: /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -C -Q "CREATE DATABASE supporthub_upgrade_ci"
+        env:
+          MSSQL_SA_PASSWORD: SupportHub_CI_2026!
+      - name: Apply historical baseline then upgrade to head
+        run: |
+          python -m alembic upgrade 0038_operation_client
+          python -m alembic upgrade head
+          python -m app.modules.iam.seed
+          python scripts/sqlserver_ci_smoke.py
+        working-directory: backend
+        env:
+          DATABASE_URL: mssql+pyodbc://sa:SupportHub_CI_2026%21@localhost:1433/supporthub_upgrade_ci?driver=ODBC+Driver+18+for+SQL+Server&Encrypt=yes&TrustServerCertificate=yes&MARS_Connection=no
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "22", cache: npm, cache-dependency-path: frontend/package-lock.json }
+      - run: npm ci
+        working-directory: frontend
+      - run: npm test
+        working-directory: frontend
+      - run: npm run build
+        working-directory: frontend

@@ -1,0 +1,61 @@
+<div id="dept-hierarchy-concept" aria-label="Modern department hierarchy concept">
+  <style>
+    #dept-hierarchy-concept{--dh-bg:light-dark(#f4f7fb,#0b1220);--dh-panel:light-dark(#ffffff,#111b2d);--dh-panel2:light-dark(#f8fafc,#172337);--dh-text:light-dark(#172033,#f5f7fb);--dh-muted:light-dark(#667085,#a8b4c8);--dh-line:light-dark(#cbd5e1,#40516e);--dh-accent:light-dark(#3457d5,#7c9cff);--dh-accent-soft:light-dark(#eaf0ff,#1c2d58);--dh-green:light-dark(#16865a,#4cda9a);--dh-warn:light-dark(#a66410,#f2b65d);font-family:Inter,ui-sans-serif,system-ui,sans-serif;color:var(--dh-text);background:var(--dh-bg);border-radius:18px;padding:20px;overflow:hidden}
+    #dept-hierarchy-concept *{box-sizing:border-box}
+    #dept-hierarchy-concept .dh-head{display:flex;gap:16px;align-items:flex-start;justify-content:space-between;margin-bottom:18px}
+    #dept-hierarchy-concept h2,#dept-hierarchy-concept p{margin:0}
+    #dept-hierarchy-concept h2{font-size:22px;font-weight:500}
+    #dept-hierarchy-concept .sub{color:var(--dh-muted);font-size:13px;margin-top:5px}
+    #dept-hierarchy-concept .actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+    #dept-hierarchy-concept button{font:inherit;color:var(--dh-text);background:var(--dh-panel);border:1px solid var(--dh-line);border-radius:9px;padding:8px 11px;display:inline-flex;gap:7px;align-items:center}
+    #dept-hierarchy-concept button.active{background:var(--dh-accent);color:#fff;border-color:var(--dh-accent)}
+    #dept-hierarchy-concept .stage{background:var(--dh-panel2);border-radius:14px;padding:18px;min-height:430px;overflow:hidden}
+    #dept-hierarchy-concept .legend{display:flex;gap:16px;align-items:center;color:var(--dh-muted);font-size:12px;margin-bottom:18px;flex-wrap:wrap}
+    #dept-hierarchy-concept .dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:5px;background:var(--dh-green)}
+    #dept-hierarchy-concept .dot.vacant{background:var(--dh-warn)}
+    #dept-hierarchy-concept .tree{display:flex;flex-direction:column;align-items:center;min-width:680px}
+    #dept-hierarchy-concept .children{display:flex;gap:26px;position:relative;padding-top:34px;align-items:flex-start}
+    #dept-hierarchy-concept .children:before{content:"";position:absolute;top:17px;left:calc(16.66% - 1px);right:calc(16.66% - 1px);height:1px;background:var(--dh-line)}
+    #dept-hierarchy-concept .branch{display:flex;flex-direction:column;align-items:center;position:relative;gap:18px}
+    #dept-hierarchy-concept .branch:before{content:"";position:absolute;top:-17px;width:1px;height:17px;background:var(--dh-line)}
+    #dept-hierarchy-concept .root-wrap{position:relative;padding-bottom:17px}
+    #dept-hierarchy-concept .root-wrap:after{content:"";position:absolute;bottom:0;left:50%;width:1px;height:17px;background:var(--dh-line)}
+    #dept-hierarchy-concept .node{width:205px;background:var(--dh-panel);border:1px solid color-mix(in srgb,var(--dh-line) 70%,transparent);border-radius:13px;padding:13px;box-shadow:0 5px 18px color-mix(in srgb,var(--dh-text) 8%,transparent);transition:.18s ease;text-align:left}
+    #dept-hierarchy-concept .node:hover{transform:translateY(-2px);border-color:var(--dh-accent)}
+    #dept-hierarchy-concept .node.root{width:230px;background:var(--dh-accent-soft);border-color:color-mix(in srgb,var(--dh-accent) 40%,transparent)}
+    #dept-hierarchy-concept .node-top{display:flex;align-items:flex-start;gap:10px}
+    #dept-hierarchy-concept .mark{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:var(--dh-accent-soft);color:var(--dh-accent);flex:none}
+    #dept-hierarchy-concept .name{font-size:14px;font-weight:500;line-height:1.25}
+    #dept-hierarchy-concept .code{font-size:11px;color:var(--dh-muted);margin-top:2px}
+    #dept-hierarchy-concept .head{display:flex;gap:8px;align-items:center;margin-top:12px;padding-top:10px;border-top:1px solid color-mix(in srgb,var(--dh-line) 65%,transparent)}
+    #dept-hierarchy-concept .avatar{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--dh-accent);color:#fff;font-size:11px;flex:none}
+    #dept-hierarchy-concept .who{min-width:0;font-size:12px}.role{color:var(--dh-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    #dept-hierarchy-concept .metric{display:flex;gap:10px;margin-top:10px;color:var(--dh-muted);font-size:11px}
+    #dept-hierarchy-concept .vacancy{color:var(--dh-warn);font-size:12px;margin-top:12px;padding-top:10px;border-top:1px solid color-mix(in srgb,var(--dh-line) 65%,transparent)}
+    #dept-hierarchy-concept .team{font-size:12px;color:var(--dh-muted);background:var(--dh-panel);padding:7px 10px;border-radius:8px;border:1px solid color-mix(in srgb,var(--dh-line) 60%,transparent)}
+    @media(max-width:760px){#dept-hierarchy-concept{padding:14px}#dept-hierarchy-concept .dh-head{flex-direction:column}#dept-hierarchy-concept .actions{justify-content:flex-start}#dept-hierarchy-concept .stage{overflow-x:auto}}
+  </style>
+  <div class="dh-head">
+    <div><h2>Department structure</h2><p class="sub">Live organization view · As of 24 Sep 2026</p></div>
+    <div class="actions"><button class="active" type="button"><i data-lucide="git-fork" aria-hidden="true"></i>Chart</button><button type="button"><i data-lucide="list-tree" aria-hidden="true"></i>Compact</button><button type="button"><i data-lucide="search" aria-hidden="true"></i>Find department</button></div>
+  </div>
+  <div class="stage">
+    <div class="legend"><span><i class="dot"></i>Head assigned</span><span><i class="dot vacant"></i>Vacant leadership</span><span>Click a card to focus its branch</span></div>
+    <div class="tree">
+      <div class="root-wrap"><div class="node root"><div class="node-top"><span class="mark"><i data-lucide="building-2" aria-hidden="true"></i></span><div><div class="name">Operations</div><div class="code">OPS · 3 child departments</div></div></div><div class="head"><span class="avatar">AM</span><div class="who"><div>Ahmed Mansour</div><div class="role">Director of Operations</div></div></div><div class="metric"><span>42 people</span><span>6 teams</span></div></div></div>
+      <div class="children">
+        <div class="branch"><div class="node"><div class="node-top"><span class="mark"><i data-lucide="headphones" aria-hidden="true"></i></span><div><div class="name">Customer Support</div><div class="code">SUP · 2 sub-departments</div></div></div><div class="head"><span class="avatar">SN</span><div class="who"><div>Sara Nabil</div><div class="role">Support Manager</div></div></div><div class="metric"><span>21 people</span><span>3 teams</span></div></div><div class="team">L1 Support · 12</div><div class="team">L2 Support · 9</div></div>
+        <div class="branch"><div class="node"><div class="node-top"><span class="mark"><i data-lucide="wrench" aria-hidden="true"></i></span><div><div class="name">Field Services</div><div class="code">FLD · 1 sub-department</div></div></div><div class="vacancy">● Department head vacant</div><div class="metric"><span>13 people</span><span>2 teams</span></div></div><div class="team">On-site Engineers · 13</div></div>
+        <div class="branch"><div class="node"><div class="node-top"><span class="mark"><i data-lucide="shield-check" aria-hidden="true"></i></span><div><div class="name">Service Quality</div><div class="code">QA · No children</div></div></div><div class="head"><span class="avatar">OA</span><div class="who"><div>Omar Adel</div><div class="role">Quality Lead</div></div></div><div class="metric"><span>8 people</span><span>1 team</span></div></div></div>
+      </div>
+    </div>
+  </div>
+  <script>
+    const root=document.getElementById('dept-hierarchy-concept');
+    root.querySelectorAll('.actions button').forEach(button=>button.addEventListener('click',()=>{root.querySelectorAll('.actions button').forEach(item=>item.classList.remove('active'));button.classList.add('active')}));
+    const style={radius:13,compact:false};
+    function render(){root.querySelectorAll('.node').forEach(node=>{node.style.borderRadius=style.radius+'px';node.style.padding=style.compact?'9px':'13px'});root.querySelectorAll('.metric').forEach(item=>item.style.display=style.compact?'none':'flex')}
+    render();
+    if(globalThis.Tweak){const tweak=new Tweak({container:root,onChange:render});tweak.addSlider(style,'radius',{label:'Card corner radius',min:4,max:24,unit:'px'});tweak.addToggle(style,'compact',{label:'Compact cards'})}
+  </script>
+</div>

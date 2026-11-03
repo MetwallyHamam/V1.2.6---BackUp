@@ -1,0 +1,57 @@
+<div id="service-checklist-concept">
+  <style>
+    #service-checklist-concept{font-family:Inter,Segoe UI,sans-serif;color:light-dark(#172033,#eef3ff);background:light-dark(#f4f7fb,#101522);padding:18px;border-radius:14px}
+    #service-checklist-concept *{box-sizing:border-box}
+    #service-checklist-concept .top{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:16px}
+    #service-checklist-concept h2,#service-checklist-concept h3,#service-checklist-concept p{margin:0}
+    #service-checklist-concept .sub{color:light-dark(#667085,#a9b4ca);margin-top:4px}
+    #service-checklist-concept .actions{display:flex;gap:8px;flex-wrap:wrap}
+    #service-checklist-concept button{font:inherit;border:1px solid light-dark(#d6dce8,#344159);background:light-dark(#fff,#1a2232);color:inherit;border-radius:8px;padding:9px 13px}
+    #service-checklist-concept button.primary{background:light-dark(#1f5eff,#6e96ff);color:#fff;border-color:transparent}
+    #service-checklist-concept .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+    #service-checklist-concept .metric,#service-checklist-concept .panel{background:light-dark(#fff,#171e2d);border:1px solid light-dark(#e1e6ef,#2b3549);border-radius:10px}
+    #service-checklist-concept .metric{padding:12px}.metric b{display:block;font-size:22px;margin-top:4px}.metric span{color:light-dark(#667085,#a9b4ca)}
+    #service-checklist-concept .metric.attn b{color:light-dark(#b54708,#ffb05c)}
+    #service-checklist-concept .workspace{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(300px,.75fr);gap:14px}
+    #service-checklist-concept .panel{padding:14px}
+    #service-checklist-concept .filters{display:flex;gap:8px;margin:12px 0;flex-wrap:wrap}
+    #service-checklist-concept .chip{padding:6px 10px;border-radius:999px;background:light-dark(#eef2f8,#222c40);font-size:13px}
+    #service-checklist-concept .chip.active{background:light-dark(#172033,#eef3ff);color:light-dark(#fff,#172033)}
+    #service-checklist-concept .row{display:grid;grid-template-columns:1.4fr .9fr .75fr .65fr auto;gap:10px;align-items:center;padding:12px 0;border-top:1px solid light-dark(#edf0f5,#293247)}
+    #service-checklist-concept .row small{display:block;color:light-dark(#667085,#a9b4ca);margin-top:3px}
+    #service-checklist-concept .status{font-size:12px;font-weight:600}.status.due{color:light-dark(#b54708,#ffb05c)}.status.blocked{color:light-dark(#b42318,#ff7f75)}
+    #service-checklist-concept .bar{height:7px;background:light-dark(#e9edf4,#293348);border-radius:20px;overflow:hidden;margin-top:5px}.bar i{display:block;height:100%;background:light-dark(#1f5eff,#6e96ff)}
+    #service-checklist-concept .today{display:grid;gap:9px;margin-top:12px}.task{padding:11px;border-radius:8px;background:light-dark(#f6f8fc,#20293a)}.task strong{display:block}.task span{font-size:13px;color:light-dark(#667085,#a9b4ca)}
+    #service-checklist-concept .flow{display:flex;align-items:center;gap:6px;margin-top:14px;flex-wrap:wrap}.step{padding:7px 9px;background:light-dark(#eef2f8,#222c40);border-radius:7px;font-size:12px}.arrow{color:light-dark(#98a2b3,#71809d)}
+    @media(max-width:760px){#service-checklist-concept .metrics{grid-template-columns:repeat(2,1fr)}#service-checklist-concept .workspace{grid-template-columns:1fr}#service-checklist-concept .row{grid-template-columns:1fr 1fr}.top{align-items:flex-start!important;flex-direction:column}}
+  </style>
+  <div class="top">
+    <div><h2>Service Checklists</h2><p class="sub">Do the work first. Configure templates and schedules separately.</p></div>
+    <div class="actions"><button>Templates &amp; schedules</button><button class="primary">+ New checklist</button></div>
+  </div>
+  <div class="metrics">
+    <div class="metric"><span>Due today</span><b>6</b></div>
+    <div class="metric"><span>In progress</span><b>4</b></div>
+    <div class="metric attn"><span>Need attention</span><b>3</b></div>
+    <div class="metric"><span>Completed this month</span><b>42</b></div>
+  </div>
+  <div class="workspace">
+    <section class="panel">
+      <h3>Work queue</h3>
+      <div class="filters"><span class="chip active">Action needed</span><span class="chip">My work</span><span class="chip">Team</span><span class="chip">Completed</span></div>
+      <div class="row"><div><strong>Daily database health</strong><small>Al Noor Hospital · SCL-2026-0182</small></div><div><strong>Ahmed Samir</strong><small>Owner</small></div><div class="status due">Due in 45 min</div><div><strong>3 / 5</strong><div class="bar"><i style="width:60%"></i></div></div><button>Continue</button></div>
+      <div class="row"><div><strong>Monthly PACS review</strong><small>Central Imaging · SCL-2026-0179</small></div><div><strong>Mona Ali</strong><small>Owner</small></div><div class="status blocked">Waiting on client</div><div><strong>6 / 8</strong><div class="bar"><i style="width:75%"></i></div></div><button>Open</button></div>
+      <div class="row"><div><strong>Service availability check</strong><small>City Clinic · SCL-2026-0185</small></div><div><strong>Unassigned</strong><small>Needs owner</small></div><div class="status due">Overdue 2h</div><div><strong>0 / 4</strong><div class="bar"><i style="width:2%"></i></div></div><button>Assign</button></div>
+    </section>
+    <aside class="panel">
+      <h3>Monitor today</h3><p class="sub">Only exceptions and next actions.</p>
+      <div class="today">
+        <div class="task"><strong>1 overdue</strong><span>Assign City Clinic checklist</span></div>
+        <div class="task"><strong>1 blocked by client</strong><span>Follow up at 14:00</span></div>
+        <div class="task"><strong>1 evidence gap</strong><span>Database backup screenshot missing</span></div>
+      </div>
+      <div class="flow" aria-label="Simplified workflow"><span class="step">Planned</span><span class="arrow">→</span><span class="step">In progress</span><span class="arrow">→</span><span class="step">Done</span></div>
+      <p class="sub" style="margin-top:10px">Blocked and overdue are flags, not separate workflow stages.</p>
+    </aside>
+  </div>
+</div>
