@@ -1,0 +1,68 @@
+Review the current Millensys Support Hub repository before making changes.
+
+Read:
+
+* README.md
+* 01_IMPLEMENTATION_PLAN.md
+* 02_ARCHITECTURE.md
+* 03_DATABASE_DESIGN.md
+* 04_WORKFLOWS_AND_SLA.md
+* 05_UI_UX_SPECIFICATION.md
+* 06_SECURITY_BEST_PRACTICES.md
+* 07_TESTING_AND_DEVOPS.md
+* 08_CODEX_EXECUTION_PROMPTS.md
+* 09_INITIAL_SQL_SCHEMA.sql
+* 10_EXCEL_IMPORT_SPEC.md
+* 11_PRODUCT_BACKLOG.md
+* 12_USER_PROFILES_AND_PRIVILEGES.md
+
+Inspect the implementation created during Phase 0 and Phase 1.
+
+Before adding new functionality:
+
+1. Run backend tests.
+2. Run frontend tests.
+3. Run linting and type checks.
+4. Review authentication security.
+5. Review SQL Server compatibility.
+6. Review Alembic migrations.
+7. Review the permission system.
+8. Fix existing errors before continuing.
+9. Do not replace working architecture without a documented reason.
+10. Preserve backward compatibility.
+
+Then implement **Phase 2: Client CRM and Master Data**.
+
+Implement:
+
+* Client organizations
+* Client branches
+* Client contacts
+* Client statuses
+* Support teams
+* Products
+* Systems
+* Modules
+* Client system installations
+* Client environments
+* Server and database references
+* Contact communication preferences
+* Client ownership and assigned support team
+* Client portal user association
+* Client and branch scopes
+* Search, filters, sorting, pagination, and saved views
+* Audit logs
+* Excel master-data import with validation, preview, error reporting, and rollback safety
+
+Do not implement ticket workflows yet.
+
+At the end:
+
+* Run all tests.
+* Update database migrations.
+* Update seed data where needed.
+* Update API documentation.
+* Update the README.
+* Provide a summary of changed files.
+* List any incomplete items.
+* Stop after Phase 2.

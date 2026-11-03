@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Support Hub — Complete System Interactive Guide</title>
+<meta name="description" content="Interactive, self-contained guide to the complete Support Hub service-operations platform." />
+<style>
+:root{
+  --bg:#07111f;
+  --panel:#0d1a2b;
+  --panel-2:#11233a;
+  --text:#eef5ff;
+  --muted:#94a6bd;
+  --line:rgba(255,255,255,.09);
+  --accent:#49a8ff;
+  --accent-2:#77e0b5;
+  --warn:#ffcc66;
+  --danger:#ff7388;
+  --shadow:0 22px 60px rgba(0,0,0,.32);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;
+  font-family:Inter,Segoe UI,Arial,sans-serif;
+  background:
+    radial-gradient(circle at 20% 0%, rgba(73,168,255,.14), transparent 34%),
+    radial-gradient(circle at 90% 20%, rgba(119,224,181,.09), transparent 30%),
+    var(--bg);
+  color:var(--text);
+  line-height:1.55;
+}
+a{color:inherit;text-decoration:none}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer}
+.container{width:min(1180px,calc(100% - 32px));margin:auto}
+.nav{
+  position:sticky;top:0;z-index:30;
+  backdrop-filter:blur(18px);
+  background:rgba(7,17,31,.76);
+  border-bottom:1px solid var(--line);
+}
+.nav-inner{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:14px 0}
+.brand{display:flex;gap:12px;align-items:center;font-weight:800}
+.logo{
+  width:38px;height:38px;border-radius:12px;
+  display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--accent),var(--accent-2));
+  color:#04101f;font-weight:900;
+  box-shadow:0 8px 30px rgba(73,168,255,.25);
+}
+.nav-links{display:flex;gap:20px;align-items:center;color:var(--muted);font-size:14px}
+.nav-links a:hover{color:white}
+.btn{
+  border:1px solid var(--line);
+  background:rgba(255,255,255,.04);
+  color:white;border-radius:12px;padding:10px 14px;
+}
+.btn.primary{
+  border:0;background:linear-gradient(135deg,var(--accent),#7f87ff);
+  color:#04101f;font-weight:800;
+}
+.hero{padding:82px 0 54px}
+.hero-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:34px;align-items:center}
+.kicker{color:var(--accent-2);font-weight:800;text-transform:uppercase;letter-spacing:.15em;font-size:12px}
+h1{font-size:clamp(42px,6vw,78px);line-height:1.02;margin:14px 0 20px;letter-spacing:-.045em}
+.hero p{font-size:18px;color:var(--muted);max-width:760px}
+.hero-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:28px}
+.hero-card,.card,.prototype-shell,.stat,.timeline-item{
+  background:linear-gradient(180deg,rgba(17,35,58,.88),rgba(9,22,38,.95));
+  border:1px solid var(--line);
+  box-shadow:var(--shadow);
+}
+.hero-card{border-radius:26px;padding:20px;position:relative;overflow:hidden}
+.hero-card:before{
+  content:"";position:absolute;inset:-80px auto auto -80px;width:220px;height:220px;
+  border-radius:50%;background:rgba(73,168,255,.12);filter:blur(6px)
+}
+.window-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.dots{display:flex;gap:7px}.dot{width:9px;height:9px;border-radius:50%;background:#30435c}
+.badge{padding:6px 9px;border-radius:999px;background:rgba(119,224,181,.12);color:var(--accent-2);font-size:12px;font-weight:700}
+.mock-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.mock-tile{background:rgba(255,255,255,.035);border:1px solid var(--line);padding:14px;border-radius:15px}
+.mock-tile b{font-size:22px;display:block}.mock-tile span{color:var(--muted);font-size:12px}
+.ticket-list{display:grid;gap:9px;margin-top:12px}
+.ticket{
+  display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;
+  padding:12px;border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,.03)
+}
+.priority{width:9px;height:42px;border-radius:99px;background:var(--accent)}
+.priority.p1{background:var(--danger)} .priority.p2{background:var(--warn)}
+.ticket small{color:var(--muted)}
+.section{padding:68px 0}
+.section h2{font-size:34px;margin:7px 0 12px;letter-spacing:-.025em}
+.section-intro{color:var(--muted);max-width:780px;margin-bottom:28px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.stat{border-radius:18px;padding:18px}
+.stat b{font-size:28px;display:block}.stat span{color:var(--muted);font-size:13px}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.card{border-radius:20px;padding:20px}
+.card h3{margin:4px 0 8px}.card p{color:var(--muted);font-size:14px}
+.icon{
+  width:42px;height:42px;border-radius:12px;display:grid;place-items:center;
+  background:rgba(73,168,255,.11);border:1px solid rgba(73,168,255,.18)
+}
+.prototype-shell{border-radius:24px;overflow:hidden}
+.proto-top{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}
+.proto-layout{display:grid;grid-template-columns:220px 1fr;min-height:610px}
+.sidebar{border-right:1px solid var(--line);padding:16px;background:rgba(4,12,23,.35)}
+.side-title{font-size:11px;text-transform:uppercase;letter-spacing:.14em;color:#60748e;margin:14px 8px 7px}
+.side-item{
+  display:flex;gap:10px;align-items:center;padding:10px 11px;border-radius:10px;
+  color:var(--muted);font-size:14px;margin-bottom:3px;cursor:pointer
+}
+.side-item:hover,.side-item.active{background:rgba(73,168,255,.10);color:white}
+.proto-main{padding:20px}
+.proto-toolbar{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:18px}
+.proto-toolbar h3{margin:0}
+.tabs{display:flex;gap:7px;flex-wrap:wrap}
+.tab{border:1px solid var(--line);padding:8px 11px;border-radius:9px;color:var(--muted);background:transparent}
+.tab.active{background:rgba(73,168,255,.12);color:white;border-color:rgba(73,168,255,.26)}
+.dashboard-grid{display:grid;grid-template-columns:repeat(12,1fr);gap:12px}
+.widget{border:1px solid var(--line);background:rgba(255,255,255,.025);border-radius:16px;padding:14px;min-height:115px}
+.w3{grid-column:span 3}.w4{grid-column:span 4}.w6{grid-column:span 6}.w8{grid-column:span 8}.w12{grid-column:span 12}
+.widget h4{margin:0 0 12px;font-size:13px;color:#c9d8ea}
+.metric{font-size:28px;font-weight:800}
+.muted{color:var(--muted)}
+.bar{height:8px;background:#182942;border-radius:99px;overflow:hidden;margin:8px 0}
+.bar > span{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--accent),var(--accent-2))}
+.chart{
+  height:100px;display:flex;align-items:end;gap:7px;padding-top:10px
+}
+.chart i{display:block;flex:1;background:linear-gradient(180deg,rgba(73,168,255,.9),rgba(73,168,255,.2));border-radius:6px 6px 2px 2px}
+.table{width:100%;border-collapse:collapse;font-size:13px}
+.table th,.table td{padding:10px;border-bottom:1px solid var(--line);text-align:left}
+.table th{color:#8fa4bd;font-weight:600}
+.status{font-size:11px;padding:4px 8px;border-radius:999px;background:rgba(119,224,181,.12);color:var(--accent-2)}
+.status.warn{background:rgba(255,204,102,.12);color:var(--warn)}
+.status.danger{background:rgba(255,115,136,.12);color:var(--danger)}
+.intake-grid{display:grid;grid-template-columns:1fr .9fr;gap:18px}
+.form-card{border:1px solid var(--line);border-radius:17px;padding:16px;background:rgba(255,255,255,.025)}
+.field{display:grid;gap:6px;margin-bottom:12px}
+.field label{font-size:12px;color:#a7b8cb}
+.field input,.field select,.field textarea{
+  width:100%;background:#091626;color:white;border:1px solid var(--line);border-radius:10px;padding:10px 11px;outline:none
+}
+.field textarea{min-height:76px;resize:vertical}
+.queue-item{padding:12px;border:1px solid var(--line);border-radius:12px;margin-bottom:9px;background:rgba(255,255,255,.025)}
+.queue-item strong{display:block}.queue-item small{color:var(--muted)}
+.flow{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:24px}
+.flow-step{padding:16px;border:1px solid var(--line);border-radius:16px;background:rgba(255,255,255,.025);text-align:center}
+.flow-step b{display:block;font-size:13px}.flow-step span{color:var(--muted);font-size:12px}
+.timeline{display:grid;gap:14px}
+.timeline-item{border-radius:18px;padding:18px;display:grid;grid-template-columns:130px 1fr;gap:18px}
+.timeline-item .phase{color:var(--accent-2);font-weight:800}
+.footer{padding:38px 0 56px;color:var(--muted);border-top:1px solid var(--line);margin-top:30px}
+.code-pill{font-family:Consolas,monospace;background:#07111f;border:1px solid var(--line);padding:4px 7px;border-radius:8px;font-size:12px}
+.mobile-menu{display:none}
+.side-group{max-height:490px;overflow:auto;padding-right:4px}
+.side-group::-webkit-scrollbar{width:5px}.side-group::-webkit-scrollbar-thumb{background:#29415f;border-radius:9px}
+.feature-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.feature{padding:14px;border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,.025)}
+.feature b{display:block;margin-bottom:4px}.feature span{font-size:12px;color:var(--muted)}
+.action-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.select-chips{display:flex;gap:7px;flex-wrap:wrap;padding:10px;background:#091626;border:1px solid var(--line);border-radius:10px}
+.select-chip{padding:5px 9px;border-radius:999px;background:rgba(73,168,255,.14);color:#bfe1ff;font-size:12px}
+.notice{padding:12px 14px;border-left:3px solid var(--accent-2);background:rgba(119,224,181,.07);border-radius:8px;color:#c9d8ea;font-size:13px;margin:12px 0}
+.search{min-width:210px;background:#091626;color:white;border:1px solid var(--line);border-radius:10px;padding:9px 11px}
+@media(max-width:900px){
+  .hero-grid,.intake-grid{grid-template-columns:1fr}
+  .cards{grid-template-columns:1fr 1fr}
+  .stats{grid-template-columns:1fr 1fr}
+  .proto-layout{grid-template-columns:1fr}
+  .sidebar{display:none}
+  .w3,.w4{grid-column:span 6}.w8{grid-column:span 12}
+  .flow{grid-template-columns:1fr 1fr}
+  .nav-links{display:none}
+  .sidebar{display:block;border-right:0;border-bottom:1px solid var(--line)}
+  .side-group{display:flex;gap:5px;overflow:auto;max-height:none}.side-title{display:none}.side-item{min-width:max-content}
+}
+@media(max-width:600px){
+  .cards,.stats{grid-template-columns:1fr}
+  .w3,.w4,.w6,.w8,.w12{grid-column:span 12}
+  .dashboard-grid{grid-template-columns:1fr}
+  .flow{grid-template-columns:1fr}
+  .timeline-item{grid-template-columns:1fr}
+  .feature-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<nav class="nav">
+  <div class="container nav-inner">
+    <a href="#top" class="brand"><span class="logo">SH</span><span>Support Hub System</span></a>
+    <div class="nav-links">
+      <a href="#overview">Overview</a>
+      <a href="#modules">Modules</a>
+      <a href="#prototype">Prototype</a>
+      <a href="#architecture">Architecture</a>
+      <a href="#roadmap">Roadmap</a>
+    </div>
+    <a class="btn primary" href="#prototype">Launch Prototype</a>
+  </div>
+</nav>
+
+<header id="top" class="hero">
+  <div class="container hero-grid">
+    <div>
+      <div class="kicker">Enterprise Support Operations Platform</div>
+      <h1>One workspace for support, SLA, operations, customers and management.</h1>
+      <p>
+        Support Hub is a modern service-operations platform concept designed for technical support teams.
+        It combines ticketing, intelligent intake, SLA clocks, engineering operations, approvals, client management,
+        dashboards, finance signals, onboarding, shifts and an engineer assistant in one connected experience.
+      </p>
+      <div class="hero-actions">
+        <a href="#prototype" class="btn primary">Explore Live Prototype</a>
+        <a href="#modules" class="btn">View Capabilities</a>
+      </div>
+    </div>
+
+    <div class="hero-card">
+      <div class="window-top">
+        <div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div>
+        <span class="badge">Operations Live</span>
+      </div>
+      <div class="mock-grid">
+        <div class="mock-tile"><b>96.8%</b><span>First Response SLA</span></div>
+        <div class="mock-tile"><b>31</b><span>Open Tickets</span></div>
+        <div class="mock-tile"><b>7</b><span>Near Breach</span></div>
+      </div>
+      <div class="ticket-list">
+        <div class="ticket"><span class="priority p1"></span><div><b>#SH-10487 — PACS archive unavailable</b><small>Alfa Scan · WorkspaceVNA</small></div><span class="status danger">P1</span></div>
+        <div class="ticket"><span class="priority p2"></span><div><b>#SH-10491 — RIS workflow delay</b><small>Care Med · MiClinic</small></div><span class="status warn">P2</span></div>
+        <div class="ticket"><span class="priority"></span><div><b>#SH-10495 — Integration mapping request</b><small>Client Operations · Integration</small></div><span class="status">P3</span></div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<section id="overview" class="section">
+  <div class="container">
+    <div class="kicker">Product Vision</div>
+    <h2>From ticketing tool to support operating system.</h2>
+    <p class="section-intro">
+      The concept is built around real operational needs: fast intake, clear ownership, contract-aware SLA measurement,
+      escalation handling, management intelligence, engineer recognition, client lifecycle visibility and low-friction daily work.
+    </p>
+    <div class="stats">
+      <div class="stat"><b>360°</b><span>Client and support visibility</span></div>
+      <div class="stat"><b>SLA</b><span>Contract-calendar-aware service clocks</span></div>
+      <div class="stat"><b>AI</b><span>Assistant-ready ticket and workflow layer</span></div>
+      <div class="stat"><b>Role</b><span>Profile-based dashboards and permissions</span></div>
+    </div>
+  </div>
+</section>
+
+<section id="modules" class="section">
+  <div class="container">
+    <div class="kicker">Core Capabilities</div>
+    <h2>Designed to run the complete service operation.</h2>
+    <p class="section-intro">Every implemented workspace contributes to one governed operational record, from customer intake and entitlement through delivery, finance, workforce, reporting and administration.</p>
+
+    <div class="cards">
+      <article class="card"><div class="icon">🎫</div><h3>Ticket Lifecycle</h3><p>Creation, assignment, progress, comments, relations, handover, escalation, resolution, root cause and customer follow-up.</p></article>
+      <article class="card"><div class="icon">⚡</div><h3>Smart Intake</h3><p>Simple engineer intake with client, caller, product, title and priority. Call Center converts the intake atomically into a complete ticket.</p></article>
+      <article class="card"><div class="icon">⏱</div><h3>SLA Engine</h3><p>First response and resolution clocks based on contract calendars, priorities and business hours, with after-hours effort recognition.</p></article>
+      <article class="card"><div class="icon">🧭</div><h3>Engineer Assistant</h3><p>Compact desktop-style console for unassigned work, mine tickets, comments, escalation, handover, rating links and live update links.</p></article>
+      <article class="card"><div class="icon">📊</div><h3>Role Dashboards</h3><p>Support Intelligence and Top Management dashboards with assignable widgets, profile defaults and tab-level widget placement.</p></article>
+      <article class="card"><div class="icon">🏢</div><h3>Client Operations</h3><p>Client ownership, dedicated engineers, contract scope, risk indicators, checklists, visit planning and project handover signals.</p></article>
+      <article class="card"><div class="icon">🗓</div><h3>Shifts & Operations</h3><p>Shift types, eligibility, calendar assignment, on-call coverage, internal operations and operational after-hours effort.</p></article>
+      <article class="card"><div class="icon">✅</div><h3>Approvals & Escalations</h3><p>Team Leader queues for approvals, escalations, complaints, near-breach cases and reassignment actions.</p></article>
+      <article class="card"><div class="icon">🧠</div><h3>Knowledge & Onboarding</h3><p>Training materials, onboarding checklists, department hierarchy, KB resources and role-based learning paths.</p></article>
+      <article class="card"><div class="icon">📑</div><h3>Contracts & Entitlements</h3><p>Templates, client coverage, product and service scope, renewals, visits, finance governance and historically correct entitlement evidence.</p></article>
+      <article class="card"><div class="icon">🚚</div><h3>Projects & Field Visits</h3><p>Project handovers, visit planning, entitlement consumption, assignments, completion evidence and customer acknowledgement.</p></article>
+      <article class="card"><div class="icon">💬</div><h3>Customer Experience</h3><p>Portal ticketing, satisfaction, complaints, client health, secure live tracking and customer-success follow-up.</p></article>
+      <article class="card"><div class="icon">💳</div><h3>Finance & Payments</h3><p>Contract financials, invoices, payment tracking, statements, renewal signals and access-controlled management views.</p></article>
+      <article class="card"><div class="icon">🎯</div><h3>KPI & Reporting</h3><p>Engineer reviews, operational reports, saved views, exports, reconciliation and governed management scorecards.</p></article>
+      <article class="card"><div class="icon">🔐</div><h3>Administration & Audit</h3><p>Users, profiles, permissions, access requests, feature policies, imports, integrations, master data and immutable audit logs.</p></article>
+    </div>
+  </div>
+</section>
+
+<section id="prototype" class="section">
+  <div class="container">
+    <div class="kicker">Interactive Prototype</div>
+    <h2>Click through a product-style simulation.</h2>
+    <p class="section-intro">Use the navigation below to explore the platform end to end. The simulation mirrors the implemented system workspaces while remaining a safe, frontend-only demo.</p>
+
+    <div class="prototype-shell">
+      <div class="proto-top">
+        <div class="brand"><span class="logo" style="width:30px;height:30px;border-radius:9px">SH</span><span>Support Hub</span></div>
+        <div style="display:flex;gap:8px;align-items:center"><span class="badge">Live Prototype</span><button class="btn" onclick="toggleLanguage()">AR / EN</button></div>
+      </div>
+
+      <div class="proto-layout">
+        <aside class="sidebar">
+          <div class="side-group">
+            <div class="side-title">Workspaces</div>
+            <div class="side-item active" data-view="dashboard">◫ Dashboards</div>
+            <div class="side-item" data-view="tickets">🎫 Tickets</div>
+            <div class="side-item" data-view="intake">⚡ Pre-Tickets</div>
+            <div class="side-item" data-view="assistant">🧭 Support Assistant</div>
+            <div class="side-item" data-view="sla">⏱ SLA Monitor</div>
+            <div class="side-title">Customers</div>
+            <div class="side-item" data-view="clients">🏢 CRM & Clients</div>
+            <div class="side-item" data-view="contracts">📑 Contracts</div>
+            <div class="side-item" data-view="experience">💬 Customer Experience</div>
+            <div class="side-title">Delivery</div>
+            <div class="side-item" data-view="shifts">🗓 Operations & Visits</div>
+            <div class="side-item" data-view="projects">🚚 Project Handovers</div>
+            <div class="side-item" data-view="approvals">✅ Leadership Queue</div>
+            <div class="side-item" data-view="people">🧠 People & Knowledge</div>
+            <div class="side-title">Control</div>
+            <div class="side-item" data-view="finance">💳 Finance & KPI</div>
+            <div class="side-item" data-view="admin">🔐 Administration</div>
+          </div>
+        </aside>
+
+        <main class="proto-main">
+          <div id="view-dashboard" class="view">
+            <div class="proto-toolbar">
+              <div><div class="muted" style="font-size:12px">TOP MANAGEMENT</div><h3>Executive Overview</h3></div>
+              <div class="tabs">
+                <button class="tab active" onclick="setDashTab(this,'executive')">Executive Overview</button>
+                <button class="tab" onclick="setDashTab(this,'customer')">Customer Service</button>
+                <button class="tab" onclick="setDashTab(this,'financial')">Financial</button>
+              </div>
+            </div>
+            <div id="dash-executive" class="dashboard-grid dash-tab">
+              <div class="widget w3"><h4>Open Tickets</h4><div class="metric">31</div><span class="muted">-12% vs last week</span></div>
+              <div class="widget w3"><h4>SLA Compliance</h4><div class="metric">96.8%</div><div class="bar"><span style="width:96.8%"></span></div></div>
+              <div class="widget w3"><h4>At-Risk Clients</h4><div class="metric">4</div><span class="muted">2 require management follow-up</span></div>
+              <div class="widget w3"><h4>Near Breach</h4><div class="metric">7</div><span class="muted">1 critical P1</span></div>
+              <div class="widget w8"><h4>Support Load — Last 8 Weeks</h4><div class="chart"><i style="height:44%"></i><i style="height:58%"></i><i style="height:72%"></i><i style="height:55%"></i><i style="height:87%"></i><i style="height:65%"></i><i style="height:76%"></i><i style="height:61%"></i></div></div>
+              <div class="widget w4"><h4>Service Health</h4><div class="muted">First Response</div><div class="bar"><span style="width:97%"></span></div><div class="muted">Resolution</div><div class="bar"><span style="width:91%"></span></div><div class="muted">CSAT</div><div class="bar"><span style="width:94%"></span></div></div>
+              <div class="widget w4"><h4>Top 3 Support Agents</h4><table class="table"><tr><td>1</td><td>A. Barakat</td><td>96%</td></tr><tr><td>2</td><td>K. Kamal</td><td>94%</td></tr><tr><td>3</td><td>M. Magdy</td><td>91%</td></tr></table></div>
+              <div class="widget w8"><h4>My Assigned Dashboard</h4><p class="muted">Profile, department and user assignments resolve into the effective dashboard. Hidden-widget preferences are scoped to that dashboard, so assigned widgets such as Top 3 Support Agents remain visible.</p></div>
+              <div class="widget w12"><h4>Priority Attention</h4><table class="table"><tr><th>Ticket</th><th>Client</th><th>Owner</th><th>Status</th></tr><tr><td>#SH-10487</td><td>Alfa Scan</td><td>A. Barakat</td><td><span class="status danger">Near Breach</span></td></tr><tr><td>#SH-10491</td><td>Care Med</td><td>K. Kamal</td><td><span class="status warn">Escalated</span></td></tr></table></div>
+            </div>
+            <div id="dash-customer" class="dashboard-grid dash-tab" style="display:none">
+              <div class="widget w4"><h4>CSAT</h4><div class="metric">4.7 / 5</div><span class="muted">Based on resolved ticket ratings</span></div>
+              <div class="widget w4"><h4>Complaints</h4><div class="metric">5</div><span class="muted">2 pending TL review</span></div>
+              <div class="widget w4"><h4>Repeat Incidents</h4><div class="metric">8</div><span class="muted">Candidates for problem management</span></div>
+              <div class="widget w12"><h4>Client Service Overview</h4><table class="table"><tr><th>Client</th><th>Open</th><th>SLA</th><th>Risk</th></tr><tr><td>Alfa Scan</td><td>9</td><td>94.2%</td><td><span class="status warn">Watch</span></td></tr><tr><td>Care Med</td><td>5</td><td>97.9%</td><td><span class="status">Healthy</span></td></tr></table></div>
+            </div>
+            <div id="dash-financial" class="dashboard-grid dash-tab" style="display:none">
+              <div class="widget w4"><h4>Active Contracts</h4><div class="metric">42</div></div>
+              <div class="widget w4"><h4>Renewals Due</h4><div class="metric">6</div><span class="muted">Next 60 days</span></div>
+              <div class="widget w4"><h4>Commercial Approval Queue</h4><div class="metric">3</div></div>
+              <div class="widget w12"><h4>Commercial Signals</h4><table class="table"><tr><th>Client</th><th>Contract</th><th>Renewal</th><th>Status</th></tr><tr><td>Alfa Scan</td><td>Enterprise Support</td><td>2027-01-01</td><td><span class="status">Active</span></td></tr><tr><td>Care Med</td><td>Premium Support</td><td>2026-11-15</td><td><span class="status warn">Upcoming</span></td></tr></table></div>
+            </div>
+          </div>
+
+          <div id="view-tickets" class="view" style="display:none">
+            <div class="proto-toolbar"><h3>Ticket Workspace</h3><button class="btn primary" onclick="alert('Prototype: New ticket dialog would open here.')">+ New Ticket</button></div>
+            <div class="widget w12">
+              <table class="table">
+                <tr><th>Ticket</th><th>Client</th><th>Product</th><th>Priority</th><th>Owner</th><th>Status</th></tr>
+                <tr><td>#SH-10487</td><td>Alfa Scan</td><td>WorkspaceVNA</td><td>P1</td><td>A. Barakat</td><td><span class="status danger">In Progress</span></td></tr>
+                <tr><td>#SH-10491</td><td>Care Med</td><td>MiClinic</td><td>P2</td><td>K. Kamal</td><td><span class="status warn">Escalated</span></td></tr>
+                <tr><td>#SH-10495</td><td>Sky Scan</td><td>Integration</td><td>P3</td><td>M. Magdy</td><td><span class="status">Assigned</span></td></tr>
+              </table>
+            </div>
+          </div>
+
+          <div id="view-intake" class="view" style="display:none">
+            <div class="proto-toolbar"><div><div class="muted" style="font-size:12px">B-41</div><h3>Engineer Intake</h3></div><span class="badge">Fast Capture</span></div>
+            <div class="intake-grid">
+              <div class="form-card">
+                <div class="field"><label>Client</label><select><option>Alfa Scan</option><option>Care Med</option><option>Sky Scan</option></select></div>
+                <div class="field"><label>Caller</label><select><option>Ahmed — IT</option><option>+ Add New Caller</option></select></div>
+                <div class="field"><label>Product</label><select><option>MiClinic (RIS)</option><option>WorkspaceVNA</option><option>Integration</option></select></div>
+                <div class="field"><label>Title</label><input id="intakeTitle" value="Reception workflow delay" oninput="syncDescription()"></div>
+                <div class="field"><label>Priority</label><select><option>P3</option><option>P2</option><option>P1</option><option>P4</option></select></div>
+                <div class="field"><label>Description</label><textarea id="intakeDescription">Reception workflow delay</textarea></div>
+                <button class="btn primary" onclick="submitIntake()">Submit to Call Center Queue</button>
+              </div>
+              <div class="form-card">
+                <h4 style="margin-top:0">Call Center Queue</h4>
+                <div id="queue">
+                  <div class="queue-item"><strong>Alfa Scan — PACS archive issue</strong><small>WorkspaceVNA · P2 · Intake #IN-2031</small></div>
+                  <div class="queue-item"><strong>Care Med — Payment confirmation issue</strong><small>Integration · P3 · Intake #IN-2032</small></div>
+                </div>
+              </div>
+            </div>
+            <div class="flow">
+              <div class="flow-step"><b>1. Engineer Intake</b><span>Fast capture</span></div>
+              <div class="flow-step"><b>2. Call Center Queue</b><span>Validate details</span></div>
+              <div class="flow-step"><b>3. Convert Atomically</b><span>Preserve timestamps</span></div>
+              <div class="flow-step"><b>4. SLA Starts</b><span>Per policy</span></div>
+              <div class="flow-step"><b>5. Engineer Workflow</b><span>Assign → Progress → Resolve</span></div>
+            </div>
+          </div>
+
+          <div id="view-assistant" class="view" style="display:none">
+            <div class="proto-toolbar"><div><div class="muted" style="font-size:12px">ENGINEER ASSISTANT</div><h3>Mini Support Console</h3></div><div class="tabs"><button class="tab">Unassigned</button><button class="tab active">Mine</button></div></div>
+            <div class="cards">
+              <div class="card"><h3>#SH-10487</h3><p>Alfa Scan · WorkspaceVNA<br>P1 · Unassigned</p><button class="btn primary" onclick="this.textContent='Assigned to Me'">Assign</button></div>
+              <div class="card"><h3>#SH-10491</h3><p>Care Med · MiClinic<br>P2 · Assigned</p><button class="btn" onclick="this.textContent='In Progress'">Start Progress</button></div>
+              <div class="card"><h3>#SH-10495</h3><p>Sky Scan · Integration<br>P3 · Resolved</p><span class="status">Terminal — actions hidden</span></div>
+            </div>
+            <div class="widget w12" style="margin-top:14px"><h4>Context Actions for Active Tickets</h4><span class="code-pill">Comment</span> <span class="code-pill">Internal Note</span> <span class="code-pill">WhatsApp</span> <span class="code-pill">Rating Link</span> <span class="code-pill">Live Update Link</span> <span class="code-pill">Pending</span> <span class="code-pill">Handover</span> <span class="code-pill">Escalate</span><div class="notice">Pending, escalate and handover are automatically unavailable when a ticket is Resolved or Closed.</div></div>
+            <div class="form-card" style="margin-top:14px"><h4 style="margin-top:0">Resolution</h4><div class="field"><label>Services provided (multiple)</label><div class="select-chips"><span class="select-chip">Remote Support ×</span><span class="select-chip">Database Optimization ×</span><span class="select-chip">+ Add service</span></div></div><div class="field"><label>Resolution summary</label><textarea>Restored archive access and optimized the affected database service.</textarea></div><div class="notice">The service marked “Default resolution service” in CRM master data is preselected. Engineers can add or remove multiple services before resolving.</div><button class="btn primary">Resolve Ticket</button></div>
+          </div>
+
+          <div id="view-sla" class="view" style="display:none">
+            <div class="proto-toolbar"><h3>SLA Monitor</h3><span class="badge">Contract Aware</span></div>
+            <div class="dashboard-grid">
+              <div class="widget w4"><h4>First Response Compliance</h4><div class="metric">96.8%</div><div class="bar"><span style="width:96.8%"></span></div></div>
+              <div class="widget w4"><h4>Resolution Compliance</h4><div class="metric">91.2%</div><div class="bar"><span style="width:91.2%"></span></div></div>
+              <div class="widget w4"><h4>After-Hours Effort</h4><div class="metric">14h</div><span class="muted">Operational recognition, excluded from SLA consumption</span></div>
+              <div class="widget w12"><h4>Clock Rules</h4><p class="muted">Business-time calculation follows the contract calendar. Work completed after contracted hours is recognized separately as operational after-hours effort while SLA consumption remains calendar-based.</p><div class="notice">SLA preview uses the ticket's current concurrency version. A stale 409 response refreshes ticket state and retries safely instead of interrupting the engineer workflow.</div></div>
+            </div>
+          </div>
+
+          <div id="view-clients" class="view" style="display:none">
+            <div class="proto-toolbar"><h3>Client Operations</h3><button class="btn">+ Add Client</button></div>
+            <div class="cards">
+              <div class="card"><h3>Alfa Scan</h3><p>Owner: Technical Support<br>Dedicated Engineers: 3<br>Open Tickets: 9</p><span class="status warn">Watch</span></div>
+              <div class="card"><h3>Care Med</h3><p>Owner: Technical Support<br>Dedicated Engineers: 2<br>Open Tickets: 5</p><span class="status">Healthy</span></div>
+              <div class="card"><h3>Sky Scan</h3><p>Owner: PACS Team<br>Dedicated Engineers: 2<br>Open Tickets: 3</p><span class="status">Healthy</span></div>
+            </div>
+          </div>
+
+          <div id="view-shifts" class="view" style="display:none">
+            <div class="proto-toolbar"><h3>Unified Operations Workspace</h3><button class="btn primary">Generate Schedule</button></div>
+            <div class="tabs"><button class="tab active">Overview</button><button class="tab">Calendar</button><button class="tab">Internal Operations</button><button class="tab">Field Visits</button><button class="tab">Setup</button><button class="tab">Reports</button></div>
+            <div class="widget w12" style="margin-top:14px"><table class="table"><tr><th>Date</th><th>Type</th><th>Time</th><th>Assignment</th><th>State</th></tr><tr><td>Friday</td><td>Morning Shift</td><td>09:00–17:00</td><td>2 engineers</td><td><span class="status">Covered</span></td></tr><tr><td>Saturday</td><td>Outdoor Visit</td><td>10:00–13:00</td><td>Alfa Scan · 2 engineers</td><td><span class="status">Entitled</span></td></tr><tr><td>Sunday</td><td>System Demo</td><td>12:00–14:00</td><td>Care Med · 1 engineer</td><td><span class="status warn">Planned</span></td></tr></table></div>
+          </div>
+
+          <div id="view-approvals" class="view" style="display:none">
+            <div class="proto-toolbar"><h3>Team Leader Queue</h3><span class="badge">7 items need attention</span></div>
+            <div class="cards">
+              <div class="card"><h3>Approvals</h3><div class="metric">3</div><p>Commercial or entitlement actions waiting for decision.</p></div>
+              <div class="card"><h3>Escalations</h3><div class="metric">2</div><p>Technical escalations requiring ownership or reassignment.</p></div>
+              <div class="card"><h3>Near Breach</h3><div class="metric">2</div><p>Tickets approaching first-response or resolution deadlines.</p></div>
+            </div>
+          </div>
+
+          <div id="view-contracts" class="view" style="display:none">
+            <div class="proto-toolbar"><div><div class="muted" style="font-size:12px">GOVERNED ENTITLEMENT</div><h3>Contract Workspace</h3></div><button class="btn primary">+ New Contract</button></div>
+            <div class="tabs"><button class="tab active">Contracts</button><button class="tab">Coverage</button><button class="tab">Templates</button><button class="tab">Renewals</button><button class="tab">Visits</button><button class="tab">Finance</button></div>
+            <div class="feature-grid" style="margin-top:14px">
+              <div class="feature"><b>Active coverage</b><span>Exact client, product, module and service eligibility with effective-dated revisions.</span></div>
+              <div class="feature"><b>SLA policies & calendars</b><span>Priority targets, business hours, holidays and product-scoped service levels.</span></div>
+              <div class="feature"><b>Renewal governance</b><span>Opportunities, successor contracts, coverage carry-forward and auditable outcomes.</span></div>
+              <div class="feature"><b>Visit entitlements</b><span>Allowance ledgers, exact-client consumption, field evidence and acknowledgement.</span></div>
+            </div>
+            <div class="widget w12" style="margin-top:14px"><table class="table"><tr><th>Contract</th><th>Client</th><th>Coverage</th><th>Renewal</th><th>Status</th></tr><tr><td>Enterprise Support</td><td>Alfa Scan</td><td>12 services</td><td>2027-01-01</td><td><span class="status">Active</span></td></tr><tr><td>Premium Support</td><td>Care Med</td><td>8 services</td><td>2026-11-15</td><td><span class="status warn">Renewal due</span></td></tr></table></div>
+          </div>
+
+          <div id="view-experience" class="view" style="display:none">
+            <div class="proto-toolbar"><h3>Customer Experience</h3><span class="badge">Portal + Internal</span></div>
+            <div class="feature-grid">
+              <div class="feature"><b>Customer Portal</b><span>Contract-scoped request creation, ticket history, SLA status, training and eligible catalog.</span></div>
+              <div class="feature"><b>Complaints</b><span>Public tracking reference, internal ownership, escalation, evidence and resolution workflow.</span></div>
+              <div class="feature"><b>Satisfaction</b><span>Secure rating links, CSAT trends and low-score follow-up.</span></div>
+              <div class="feature"><b>Customer Success</b><span>Client health, risk, engagement, open actions and lifecycle signals.</span></div>
+            </div>
+          </div>
+
+          <div id="view-projects" class="view" style="display:none">
+            <div class="proto-toolbar"><h3>Project Handovers</h3><button class="btn primary">+ Start Handover</button></div>
+            <div class="flow">
+              <div class="flow-step"><b>1. Project scope</b><span>Client & products</span></div><div class="flow-step"><b>2. Readiness</b><span>Checklist</span></div><div class="flow-step"><b>3. Evidence</b><span>Documents</span></div><div class="flow-step"><b>4. Approval</b><span>Owners</span></div><div class="flow-step"><b>5. Support</b><span>Operational</span></div>
+            </div>
+            <div class="widget w12" style="margin-top:14px"><table class="table"><tr><th>Project</th><th>Client</th><th>Readiness</th><th>Owner</th><th>Status</th></tr><tr><td>WorkspaceVNA Expansion</td><td>Alfa Scan</td><td>92%</td><td>Implementation</td><td><span class="status warn">Awaiting approval</span></td></tr><tr><td>MiClinic Go-Live</td><td>Care Med</td><td>100%</td><td>Support</td><td><span class="status">Handed over</span></td></tr></table></div>
+          </div>
+
+          <div id="view-people" class="view" style="display:none">
+            <div class="proto-toolbar"><h3>People, Knowledge & Development</h3><button class="btn">+ Assign Program</button></div>
+            <div class="feature-grid">
+              <div class="feature"><b>Knowledge Base</b><span>Governed categories, articles, resources, search and training materials.</span></div>
+              <div class="feature"><b>Onboarding</b><span>Programs, templates, user assignments, checklists, progress and audited unassignment.</span></div>
+              <div class="feature"><b>Shift eligibility</b><span>Shift types, employee participation, roster templates and coverage-gap queues.</span></div>
+              <div class="feature"><b>KPI reviews</b><span>Review periods, targets, evidence, manager scoring and engineer recognition.</span></div>
+            </div>
+          </div>
+
+          <div id="view-finance" class="view" style="display:none">
+            <div class="proto-toolbar"><h3>Finance, KPI & Reports</h3><button class="btn">Export</button></div>
+            <div class="dashboard-grid">
+              <div class="widget w3"><h4>Open Balance</h4><div class="metric">1.2M</div><span class="muted">EGP</span></div>
+              <div class="widget w3"><h4>Collections Due</h4><div class="metric">8</div></div>
+              <div class="widget w3"><h4>Renewals</h4><div class="metric">6</div></div>
+              <div class="widget w3"><h4>Operational Score</h4><div class="metric">93%</div></div>
+              <div class="widget w12"><h4>Governed reporting</h4><p class="muted">Operational reports, financial analytics, management dashboards, reconciled exports, saved views and permission-aware drilldowns share the same authoritative records.</p></div>
+            </div>
+          </div>
+
+          <div id="view-admin" class="view" style="display:none">
+            <div class="proto-toolbar"><h3>System Administration</h3><input class="search" placeholder="Search administration…" oninput="filterFeatures(this.value)"></div>
+            <div class="feature-grid" id="adminFeatures">
+              <div class="feature"><b>Users & Profiles</b><span>Accounts, departments, primary/additional profiles and granular permissions.</span></div>
+              <div class="feature"><b>Access Requests</b><span>Request, review and audit access changes.</span></div>
+              <div class="feature"><b>CRM Master Data</b><span>Clients, contacts, products, modules, services and the default resolution-service flag.</span></div>
+              <div class="feature"><b>Ticket Configuration</b><span>Form settings, statuses, priorities, categories, notification rules and saved views.</span></div>
+              <div class="feature"><b>Dashboard Governance</b><span>Templates, widgets, tabs and profile, department or user assignments.</span></div>
+              <div class="feature"><b>Imports</b><span>Preview, validate and safely commit supported operational data files.</span></div>
+              <div class="feature"><b>Email & Outlook</b><span>Inbound/outbound integration, connection settings and delivery policy.</span></div>
+              <div class="feature"><b>Feature Policies</b><span>Control enabled capabilities without weakening backend authorization.</span></div>
+              <div class="feature"><b>System Operations</b><span>Health, jobs, configuration and controlled maintenance actions.</span></div>
+              <div class="feature"><b>Audit Logs</b><span>Searchable evidence for security, workflow and data-governance changes.</span></div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="architecture" class="section">
+  <div class="container">
+    <div class="kicker">Solution Architecture</div>
+    <h2>Portfolio-ready technical framing.</h2>
+    <p class="section-intro">The prototype is frontend-only, but the intended production architecture supports an enterprise web application with API-driven modules and SQL Server persistence.</p>
+    <div class="cards">
+      <div class="card"><h3>Frontend</h3><p>Responsive web UI, role-based navigation, dashboard widgets, multilingual labels, desktop-friendly workflows and mobile-responsive operational views.</p></div>
+      <div class="card"><h3>Backend API</h3><p>REST-based services for tickets, SLA, clients, approvals, operations, notifications, finance, onboarding and dashboard analytics.</p></div>
+      <div class="card"><h3>Data Layer</h3><p>SQL Server domain model covering tickets, assignment history, root causes, SLA clocks, contracts, calendars, clients, users, departments and workflow audit trails.</p></div>
+      <div class="card"><h3>Security</h3><p>Profile permissions, department visibility, client ownership, team access, approval scopes, audit logging and secure integration endpoints.</p></div>
+      <div class="card"><h3>Integration Ready</h3><p>Designed for healthcare-support environments that may connect with RIS/PACS/HIS, HL7, DICOM, payment services, portals, email, WhatsApp or external monitoring systems.</p></div>
+      <div class="card"><h3>AI Layer</h3><p>Future-ready for assisted intake, ticket summarization, suggested categorization, duplicate detection, root-cause suggestions and support knowledge recommendations.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="roadmap" class="section">
+  <div class="container">
+    <div class="kicker">Implementation Story</div>
+    <h2>Suggested roadmap for a real deployment.</h2>
+    <div class="timeline">
+      <div class="timeline-item"><div class="phase">Phase 1</div><div><b>Core Support Workflow</b><p class="muted">Tickets, assignments, comments, priorities, statuses, clients, products, users and permissions.</p></div></div>
+      <div class="timeline-item"><div class="phase">Phase 2</div><div><b>SLA & Contract Engine</b><p class="muted">Contract calendars, SLA policies, first-response/resolution clocks, business hours and breach monitoring.</p></div></div>
+      <div class="timeline-item"><div class="phase">Phase 3</div><div><b>Operations & Leadership</b><p class="muted">Escalations, approvals, complaints, shifts, after-hours effort, internal operations and operational dashboards.</p></div></div>
+      <div class="timeline-item"><div class="phase">Phase 4</div><div><b>Smart Intake & Engineer Assistant</b><p class="muted">Engineer Intake queue, Call Center conversion, assistant console, live-update links and rating workflow.</p></div></div>
+      <div class="timeline-item"><div class="phase">Phase 5</div><div><b>Intelligence & AI</b><p class="muted">Advanced analytics, intelligent routing, summarization, knowledge suggestions, anomaly detection and executive insights.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  <div class="container">
+    <div class="brand"><span class="logo">SH</span><span>Support Hub System</span></div>
+    <p>Interactive product portfolio prototype — built as a single self-contained HTML file for demos, GitHub Pages or stakeholder presentations.</p>
+  </div>
+</footer>
+
+<script>
+document.querySelectorAll('.side-item').forEach(item=>{
+  item.addEventListener('click',()=>{
+    document.querySelectorAll('.side-item').forEach(x=>x.classList.remove('active'));
+    item.classList.add('active');
+    document.querySelectorAll('.view').forEach(v=>v.style.display='none');
+    const el=document.getElementById('view-'+item.dataset.view);
+    if(el) el.style.display='block';
+  });
+});
+
+function setDashTab(btn,name){
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.dash-tab').forEach(x=>x.style.display='none');
+  document.getElementById('dash-'+name).style.display='grid';
+}
+function syncDescription(){
+  const title=document.getElementById('intakeTitle');
+  const desc=document.getElementById('intakeDescription');
+  if(desc.dataset.edited!=='true') desc.value=title.value;
+}
+document.getElementById('intakeDescription').addEventListener('input',function(){this.dataset.edited='true'});
+function submitIntake(){
+  const title=document.getElementById('intakeTitle').value.trim() || 'New support intake';
+  const q=document.getElementById('queue');
+  const d=document.createElement('div');
+  d.className='queue-item';
+  d.innerHTML='<strong>'+escapeHtml(title)+'</strong><small>MiClinic · P3 · Intake #IN-'+Math.floor(2033+Math.random()*90)+'</small>';
+  q.prepend(d);
+}
+function escapeHtml(str){
+  return str.replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+}
+function toggleLanguage(){
+  const current=document.documentElement.lang;
+  document.documentElement.lang=current==='en'?'ar':'en';
+  document.body.dir=current==='en'?'rtl':'ltr';
+}
+function filterFeatures(query){
+  const term=query.trim().toLowerCase();
+  document.querySelectorAll('#adminFeatures .feature').forEach(card=>{
+    card.style.display=card.textContent.toLowerCase().includes(term)?'block':'none';
+  });
+}
+</script>
+</body>
+</html>

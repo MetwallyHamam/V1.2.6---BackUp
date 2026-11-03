@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+  <system.webServer>
+    <webSocket enabled="true" />
+    <modules>
+      <remove name="WebDAVModule" />
+    </modules>
+    <handlers>
+      <remove name="WebDAV" />
+      <remove name="httpPlatformHandler" />
+      <add name="httpPlatformHandler" path="*" verb="*" modules="httpPlatformHandler" resourceType="Unspecified" />
+    </handlers>
+    <httpPlatform processPath=".\runtime\SupportHubBackend.exe" arguments="serve --host 127.0.0.1 --port %HTTP_PLATFORM_PORT%" stdoutLogEnabled="true" stdoutLogFile=".\logs\uvicorn" startupTimeLimit="120" requestTimeout="00:05:00" processesPerApplication="1">
+      <environmentVariables>
+        <!-- Application -->
+        <environmentVariable name="APP_ENV" value="production" />
+        <environmentVariable name="APP_NAME" value="Millensys Support Hub" />
+        <environmentVariable name="APP_VERSION" value="1.13.0" />
+        <environmentVariable name="SECRET_KEY" value="REPLACE_WITH_A_NEW_RANDOM_SECRET" />
+        <!-- SQL Server using ODBC Driver 17 -->
+        <environmentVariable name="DATABASE_URL" value="REPLACE_WITH_A_LEAST_PRIVILEGED_SQL_SERVER_URL" />
+        <!-- Browser and API -->
+        <environmentVariable name="FRONTEND_ORIGIN" value="https://millensysonline.net" />
+        <environmentVariable name="TRUSTED_HOSTS" value="millensysonline.net,www.millensysonline.net,localhost,127.0.0.1" />
+        <environmentVariable name="APPLICATION_PATH_BASE" value="/SupportHub/backend" />
+        <!-- Uploads and storage -->
+        <environmentVariable name="MAX_REQUEST_BYTES" value="10485760" />
+        <environmentVariable name="ATTACHMENT_STORAGE_PATH" value="D:\Support\Metwally\SupportHub\Storage\attachments" />
+        <environmentVariable name="ATTACHMENT_MAX_BYTES" value="8388608" />
+        <environmentVariable name="DATABASE_BACKUP_PATH" value="D:\Support\Metwally\SupportHub\Storage\backups" />
+        <!-- Escalations -->
+        <environmentVariable name="ESCALATION_SCHEDULER_ENABLED" value="true" />
+        <environmentVariable name="ESCALATION_SCHEDULER_INTERVAL_SECONDS" value="60" />
+        <!-- Authentication -->
+        <environmentVariable name="ACCESS_TOKEN_MINUTES" value="15" />
+        <environmentVariable name="REFRESH_TOKEN_DAYS" value="7" />
+        <environmentVariable name="LOGIN_MAX_FAILURES" value="5" />
+        <environmentVariable name="LOGIN_LOCKOUT_MINUTES" value="15" />
+        <environmentVariable name="PASSWORD_RESET_MINUTES" value="30" />
+        <environmentVariable name="PASSWORD_RESET_ALLOWED_DOMAINS" value="millensys.com,alfascan.com" />
+        <!-- Webhook integrations -->
+        <environmentVariable name="MONITORING_WEBHOOK_KEY" value="REPLACE_WITH_A_NEW_RANDOM_INTEGRATION_KEY" />
+        <environmentVariable name="INBOUND_EMAIL_WEBHOOK_KEY" value="REPLACE_WITH_A_NEW_RANDOM_EMAIL_KEY" />
+        <environmentVariable name="INTEGRATION_ACTOR_USERNAME" value="admin" />
+        <!-- Microsoft Graph / Outlook integration -->
+        <!-- Replace the next three placeholders with values from the Entra app registration. -->
+        <environmentVariable name="MICROSOFT_GRAPH_TENANT_ID" value="YOUR_ENTRA_TENANT_ID" />
+        <environmentVariable name="MICROSOFT_GRAPH_CLIENT_ID" value="YOUR_ENTRA_APPLICATION_CLIENT_ID" />
+        <environmentVariable name="MICROSOFT_GRAPH_CLIENT_SECRET" value="YOUR_NEW_CLIENT_SECRET_VALUE" />
+        <!-- Independent high-entropy value used to validate Microsoft Graph notifications. -->
+        <environmentVariable name="MICROSOFT_GRAPH_CLIENT_STATE" value="5e09d7a4f1c64b509d8f62a0ab837ba82264c186c7454cddba87467cb21f2b8d" />
+        <environmentVariable name="MICROSOFT_GRAPH_NOTIFICATION_URL" value="https://millensysonline.net/SupportHub/backend/api/v1/system/outlook-email/webhook" />
+        <environmentVariable name="MICROSOFT_GRAPH_LIFECYCLE_URL" value="https://millensysonline.net/SupportHub/backend/api/v1/system/outlook-email/lifecycle" />
+        <environmentVariable name="MICROSOFT_GRAPH_TIMEOUT_SECONDS" value="20" />
+        <!-- Email -->
+        <environmentVariable name="SMTP_ENABLED" value="false" />
+        <environmentVariable name="SMTP_HOST" value="localhost" />
+        <environmentVariable name="SMTP_PORT" value="587" />
+        <environmentVariable name="SMTP_USERNAME" value="" />
+        <environmentVariable name="SMTP_PASSWORD" value="" />
+        <environmentVariable name="SMTP_FROM_ADDRESS" value="support@localhost" />
+        <environmentVariable name="SMTP_USE_TLS" value="true" />
+        <environmentVariable name="EMAIL_MAX_ATTEMPTS" value="5" />
+        <!-- SMS -->
+        <environmentVariable name="SMS_ENABLED" value="false" />
+        <environmentVariable name="SMS_GATEWAY_URL" value="http://localhost:8080/messages" />
+        <environmentVariable name="SMS_API_TOKEN" value="" />
+        <environmentVariable name="SMS_SENDER_ID" value="Millensys" />
+        <environmentVariable name="SMS_MAX_ATTEMPTS" value="5" />
+        <!-- Microsoft Teams -->
+        <environmentVariable name="TEAMS_ENABLED" value="false" />
+        <environmentVariable name="TEAMS_WEBHOOK_URL" value="" />
+        <environmentVariable name="TEAMS_MAX_ATTEMPTS" value="5" />
+        <!-- Production bootstrap account remains disabled -->
+        <environmentVariable name="DEV_ADMIN_USERNAME" value="" />
+        <environmentVariable name="DEV_ADMIN_EMAIL" value="" />
+        <environmentVariable name="DEV_ADMIN_PASSWORD" value="" />
+      </environmentVariables>
+    </httpPlatform>
+    <httpErrors errorMode="DetailedLocalOnly" existingResponse="PassThrough" />
+    <security>
+      <requestFiltering>
+        <verbs allowUnlisted="true">
+          <clear />
+        </verbs>
+        <requestLimits maxAllowedContentLength="10485760" />
+      </requestFiltering>
+    </security>
+    <httpProtocol>
+      <customHeaders>
+        <remove name="X-Powered-By" />
+        <add name="X-Content-Type-Options" value="nosniff" />
+        <add name="X-Frame-Options" value="DENY" />
+        <add name="Referrer-Policy" value="strict-origin-when-cross-origin" />
+        <add name="Permissions-Policy" value="camera=(), microphone=(), geolocation=()" />
+      </customHeaders>
+    </httpProtocol>
+  </system.webServer>
+</configuration>
