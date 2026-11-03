@@ -1856,7 +1856,15 @@
     "loadFailed": "تعذر تحميل الإشعارات.",
     "empty": "لا توجد إشعارات تطابق هذا العرض.",
     "open": "فتح",
-    "markRead": "تحديد كمقروء"
+    "markRead": "تحديد كمقروء",
+    "preferences": "التفضيلات",
+    "urgent": "عاجل",
+    "actionRequired": "يتطلب إجراءً",
+    "updates": "التحديثات",
+    "attention": "يحتاج إلى انتباهك",
+    "dismiss": "إخفاء",
+    "selected": "تم تحديد {{count}}",
+    "select": "تحديد {{title}}"
   },
   "sendActions": {
     "button": "إجراءات الإرسال",

@@ -83,6 +83,7 @@ import { PageContextHeader } from "../components/PageContextHeader";
 import { QuickActions } from "../components/QuickActions";
 import { NewsAnnouncementDialog } from "../components/NewsAnnouncementDialog";
 import { resolveTicketsNavigationPath } from "../utils/ticketNavigation";
+import { useAttention } from "../components/AttentionCenter";
 
 const drawerWidth = 272;
 const collapsedDrawerWidth = 72;
@@ -466,15 +467,16 @@ export function AppLayout() {
     "topmanagementdashboard.view",
   );
   const canViewReports = canViewExecutiveDashboard;
+  const attention = useAttention(1);
 
   const employeeSections: NavigationSection[] = [
     {
-      label: t("navigation.home"),
+      label: "My Work",
       items: [
         {
           label: "My Workspace",
           path: "/my-workspace",
-          icon: <Widgets />,
+          icon: <Badge color="error" badgeContent={attention.data?.total ?? 0} max={99}><Widgets /></Badge>,
           color: "#7b1fa2",
           visible: true,
         },
@@ -485,25 +487,6 @@ export function AppLayout() {
           color: "#1976d2",
           visible: true,
         },
-        {
-          label: t("navigation.executiveDashboard"),
-          path: "/dashboard",
-          icon: <Assessment />,
-          color: "#5e35b1",
-          visible: canViewExecutiveDashboard,
-        },
-        {
-          label: t("navigation.topManagementDashboards"),
-          path: "/management-dashboards",
-          icon: <Assessment />,
-          color: "#283593",
-          visible: canViewTopManagementDashboard,
-        },
-      ],
-    },
-    {
-      label: t("navigation.support"),
-      items: [
         {
           label: t("navigation.supportAssistant"),
           path: "/support-workspace",
@@ -518,6 +501,25 @@ export function AppLayout() {
           color: "#e65100",
           visible: canViewTickets,
         },
+        {
+          label: t("navigation.notifications"),
+          path: "/notifications",
+          icon: <Notifications />,
+          color: "#c62828",
+          visible: true,
+        },
+        {
+          label: t("navigation.savedViews"),
+          path: "/saved-views",
+          icon: <ManageSearch />,
+          color: "#455a64",
+          visible: canViewTickets,
+        },
+      ],
+    },
+    {
+      label: "Service Management",
+      items: [
         {
           label: "Change Requests",
           path: "/change-requests",
@@ -554,13 +556,6 @@ export function AppLayout() {
           visible: canUsePreTickets,
         },
         {
-          label: t("navigation.savedViews"),
-          path: "/saved-views",
-          icon: <ManageSearch />,
-          color: "#455a64",
-          visible: canViewTickets,
-        },
-        {
           label: t("navigation.complaints"),
           path: "/complaints",
           icon: <ReportProblem />,
@@ -569,6 +564,32 @@ export function AppLayout() {
             hasPermission("complaint.create") ||
             hasPermission("complaint.manage") ||
             hasPermission("complaint.view.all"),
+        },
+      ],
+    },
+    {
+      label: "Analytics",
+      items: [
+        {
+          label: t("navigation.executiveDashboard"),
+          path: "/dashboard",
+          icon: <Assessment />,
+          color: "#5e35b1",
+          visible: canViewExecutiveDashboard,
+        },
+        {
+          label: t("navigation.topManagementDashboards"),
+          path: "/management-dashboards",
+          icon: <Assessment />,
+          color: "#283593",
+          visible: canViewTopManagementDashboard,
+        },
+        {
+          label: t("navigation.reports"),
+          path: "/reports",
+          icon: <Assessment />,
+          color: "#512da8",
+          visible: canViewReports,
         },
       ],
     },

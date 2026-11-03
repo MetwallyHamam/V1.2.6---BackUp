@@ -8,11 +8,32 @@ tickets page :
 5- ITOP sheet ticket importing. done
 6- live tabs corrections done
 7- Added My Workspace for each logged-in employee, including server-saved
-   favorites, ticket saved views, Support Now personal tabs, pinned tickets,
+   favorites, ticket saved views, Support Assistant personal tabs, pinned tickets,
    and recently visited pages. Users can select My Workspace as their default
    landing page. The approved Top Management dashboard is unchanged.
 8- My Workspace now provides a permission-aware seven-day personal schedule,
    current and upcoming shifts, assigned client visits, assigned internal
-   operations, Support Now workload counts, and pending ticket approvals.
+   operations, Support Assistant workload counts, and pending ticket approvals.
    Users can show or hide operational widgets, and the selection follows them
    across devices.
+9- Navigation is reorganized into My Work, Service Management, Customers,
+   Operations, Knowledge, Analytics, and Administration-oriented areas.
+10- Added a unified attention service and My Workspace attention center for
+    critical/due tickets, upcoming shifts and visits, assigned operations,
+    pending approvals, and important unread notifications. The My Workspace
+    navigation icon shows the current attention total.
+11- Improved Saved Views with reusable list controls, text and scope filters,
+    clearer default-view status, and a mobile card layout for field users.
+12- Reworked Notifications into urgency groups with responsive filtering,
+    selection, bulk mark-as-read, safe dismissal, and open-and-read actions.
+    Dismissed items remain stored for auditability and no longer affect unread
+    or unified-attention counts.
+13- Activated the Tickets mobile card list with touch-friendly selection and
+    actions, a persistent create-ticket action, sticky bulk controls, compact
+    active-filter chips, and desktop-only wide tables.
+14- Saved Views can now be duplicated as personal copies and added directly to
+    My Workspace favorites. Workspace saved-view links now load the requested
+    view's filters and optional layout in Tickets.
+15- Unified Attention now supports one-hour snoozing, category preferences,
+    and restoring snoozed work. Preferences are stored per user and preserved
+    when My Workspace customization changes.

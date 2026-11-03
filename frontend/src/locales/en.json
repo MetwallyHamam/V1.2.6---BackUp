@@ -1842,7 +1842,15 @@
     "loadFailed": "Notifications could not be loaded.",
     "empty": "No notifications match this view.",
     "open": "Open",
-    "markRead": "Mark read"
+    "markRead": "Mark read",
+    "preferences": "Preferences",
+    "urgent": "Urgent",
+    "actionRequired": "Action required",
+    "updates": "Updates",
+    "attention": "Needs your attention",
+    "dismiss": "Dismiss",
+    "selected": "{{count}} selected",
+    "select": "Select {{title}}"
   },
   "sendActions": {
     "button": "Send actions",

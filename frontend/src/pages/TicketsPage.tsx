@@ -845,6 +845,10 @@ export function TicketsPage() {
   );
   const lastHandledSearchRef = useRef(searchParams.toString());
   const applyingExternalFiltersRef = useRef(false);
+  const requestedSavedViewIdRef = useRef(
+    Number(searchParams.get("saved_view_id") || 0),
+  );
+  const appliedRequestedViewRef = useRef<number | null>(null);
   const [visibleFilterKeys, setVisibleFilterKeys] = useState<string[]>(() =>
     Array.from(
       new Set([
@@ -1991,6 +1995,17 @@ export function TicketsPage() {
     setActiveSavedViewId(view.id);
     setPage(0);
   };
+  useEffect(() => {
+    const requestedId =
+      Number(searchParams.get("saved_view_id") || 0) ||
+      requestedSavedViewIdRef.current;
+    if (!requestedId || appliedRequestedViewRef.current === requestedId || !savedViews.data)
+      return;
+    const requested = savedViews.data.find((view) => view.id === requestedId);
+    if (!requested) return;
+    appliedRequestedViewRef.current = requestedId;
+    applySavedView(requested);
+  }, [savedViews.data, searchParams]);
   const applyDatePreset = (preset: DatePreset, type: DateType = dateType) => {
     setDatePreset(preset);
     const { from, to } = dateRangeForPreset(preset, today());
@@ -3353,6 +3368,10 @@ export function TicketsPage() {
               py: 0.75,
               mb: 1,
               borderRadius: 2,
+              position: selectedIds.length ? "sticky" : "relative",
+              top: selectedIds.length ? 56 : undefined,
+              zIndex: selectedIds.length ? 5 : undefined,
+              boxShadow: selectedIds.length ? 3 : undefined,
             }}
           >
             <Stack
@@ -3439,7 +3458,15 @@ export function TicketsPage() {
                   variant="contained"
                   startIcon={<Add />}
                   onClick={() => navigate("/tickets/create")}
-                  sx={{ whiteSpace: "nowrap", boxShadow: 2 }}
+                  sx={{
+                    whiteSpace: "nowrap",
+                    boxShadow: 2,
+                    position: { xs: "fixed", sm: "static" },
+                    insetInlineEnd: { xs: 16, sm: "auto" },
+                    bottom: { xs: 16, sm: "auto" },
+                    zIndex: { xs: 8, sm: "auto" },
+                    borderRadius: { xs: 99, sm: 1 },
+                  }}
                 >
                   {t("ticketsList.createTicket")}
                 </Button>
@@ -3984,6 +4011,42 @@ export function TicketsPage() {
                 )}
               </Collapse>
             </Paper>
+          )}
+          {!trashTab && Object.keys(activeFilters).length > 0 && (
+            <Stack
+              direction="row"
+              gap={0.5}
+              mb={1}
+              flexWrap="wrap"
+              aria-label={t("ticketsList.activeFilters", {
+                defaultValue: "Active filters",
+              })}
+            >
+              {Object.entries(activeFilters)
+                .filter(
+                  ([key]) =>
+                    !key.endsWith("_from") &&
+                    !key.endsWith("_to") &&
+                    key !== "entitlement_status",
+                )
+                .slice(0, 6)
+                .map(([key, value]) => (
+                  <Chip
+                    key={key}
+                    size="small"
+                    label={`${filterLabel(key)}: ${String(value).replaceAll("_", " ")}`}
+                    onDelete={() => updateFilter(key, "")}
+                  />
+                ))}
+              {Object.keys(activeFilters).length > 6 && (
+                <Chip
+                  size="small"
+                  variant="outlined"
+                  label={`+${Object.keys(activeFilters).length - 6}`}
+                  onClick={() => setFiltersOpen(true)}
+                />
+              )}
+            </Stack>
           )}
           {!preTicketsTab && !!savedViews.data?.length && (
             <Tabs
@@ -5036,12 +5099,31 @@ export function TicketsPage() {
                   </Box>
                 </>
               )}
-              <Stack spacing={0.75} sx={{ display: "none" }}>
+              <Stack
+                spacing={0.75}
+                sx={{
+                  display: {
+                    xs: effectiveViewMode === "GRID" ? "flex" : "none",
+                    md: "none",
+                  },
+                  pb: { xs: 8, sm: 0 },
+                }}
+              >
                 {displayedTickets.map((ticket) => (
                   <Paper
                     key={`mobile-${ticket.id}`}
                     variant="outlined"
-                    sx={{ ...ticketRowStyle(ticket), p: 1 }}
+                    onClick={(event) => {
+                      if (!(event.target as HTMLElement).closest("a,button,input"))
+                        openTicket(ticket.id);
+                    }}
+                    sx={{
+                      ...ticketRowStyle(ticket),
+                      p: 1.25,
+                      minHeight: 96,
+                      cursor: "pointer",
+                      "&:active": { bgcolor: "action.selected" },
+                    }}
                   >
                     <Stack direction="row" alignItems="flex-start" gap={1}>
                       <Checkbox
@@ -5130,7 +5212,10 @@ export function TicketsPage() {
                 }}
                 sx={{
                   overflow: "auto",
-                  display: effectiveViewMode === "GRID" ? "block" : "none",
+                  display: {
+                    xs: "none",
+                    md: effectiveViewMode === "GRID" ? "block" : "none",
+                  },
                   maxWidth: "100%",
                   maxHeight: {
                     xs: "calc(100dvh - 190px)",

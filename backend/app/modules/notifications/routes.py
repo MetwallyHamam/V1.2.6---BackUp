@@ -24,6 +24,7 @@ from app.modules.notifications.schemas import (
     EscalationRuleCreate,
     EscalationRuleRead,
     EscalationRuleUpdate,
+    NotificationBulkAction,
     NotificationPreferenceRead,
     NotificationPreferenceUpdate,
     NotificationRead,
@@ -38,13 +39,22 @@ router = APIRouter(tags=["notifications and escalations"])
 
 
 def notification_query(
-    user_id: int, *, unread_only: bool = False, is_read: bool | None = None,
+    user_id: int,
+    *,
+    unread_only: bool = False,
+    is_read: bool | None = None,
     unacknowledged_only: bool = False,
-    severity: str | None = None, notification_type: str | None = None,
-    search: str | None = None, date_from: date | None = None, date_to: date | None = None,
+    severity: str | None = None,
+    notification_type: str | None = None,
+    search: str | None = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
     date_scope: str = "TODAY",
 ) -> Select[tuple[Notification]]:
-    statement = select(Notification).where(Notification.recipient_user_id == user_id)
+    statement = select(Notification).where(
+        Notification.recipient_user_id == user_id,
+        Notification.dismissed_at.is_(None),
+    )
     if unacknowledged_only:
         statement = statement.where(Notification.acknowledged_at.is_(None))
     if unread_only or is_read is False:
@@ -57,12 +67,20 @@ def notification_query(
         statement = statement.where(Notification.notification_type == notification_type)
     if search:
         term = f"%{search.strip()}%"
-        statement = statement.where(or_(Notification.title.ilike(term), Notification.message.ilike(term)))
+        statement = statement.where(
+            or_(Notification.title.ilike(term), Notification.message.ilike(term))
+        )
     effective_from = date_from or (server_now().date() if date_scope != "ALL" else None)
     if effective_from:
-        statement = statement.where(Notification.created_at >= datetime.combine(effective_from, time.min, tzinfo=server_timezone()))
+        statement = statement.where(
+            Notification.created_at
+            >= datetime.combine(effective_from, time.min, tzinfo=server_timezone())
+        )
     if date_to:
-        statement = statement.where(Notification.created_at < datetime.combine(date_to + timedelta(days=1), time.min, tzinfo=server_timezone()))
+        statement = statement.where(
+            Notification.created_at
+            < datetime.combine(date_to + timedelta(days=1), time.min, tzinfo=server_timezone())
+        )
     return statement
 
 
@@ -73,15 +91,22 @@ def _default_sound(db: Session) -> bool:
 
 def notification_snapshot(user_id: int) -> dict[str, int]:
     with SessionLocal() as db:
-        unread_count = db.scalar(
-            select(func.count(Notification.id)).where(
-                Notification.recipient_user_id == user_id,
-                Notification.is_read.in_([False]),
+        unread_count = (
+            db.scalar(
+                select(func.count(Notification.id)).where(
+                    Notification.recipient_user_id == user_id,
+                    Notification.is_read.in_([False]),
+                    Notification.dismissed_at.is_(None),
+                )
             )
-        ) or 0
-        latest_id = db.scalar(
-            select(func.max(Notification.id)).where(Notification.recipient_user_id == user_id)
-        ) or 0
+            or 0
+        )
+        latest_id = (
+            db.scalar(
+                select(func.max(Notification.id)).where(Notification.recipient_user_id == user_id)
+            )
+            or 0
+        )
     return {"unread_count": unread_count, "latest_id": latest_id}
 
 
@@ -99,7 +124,18 @@ def list_notifications(
     db: Session = Depends(get_db),
     user: User = Depends(current_user),
 ) -> list[Notification]:
-    statement = notification_query(user.id, unread_only=unread_only, unacknowledged_only=unacknowledged_only, is_read=is_read, severity=severity, notification_type=notification_type, search=search, date_from=date_from, date_to=date_to, date_scope=date_scope)
+    statement = notification_query(
+        user.id,
+        unread_only=unread_only,
+        unacknowledged_only=unacknowledged_only,
+        is_read=is_read,
+        severity=severity,
+        notification_type=notification_type,
+        search=search,
+        date_from=date_from,
+        date_to=date_to,
+        date_scope=date_scope,
+    )
     return list(db.scalars(statement.order_by(Notification.created_at.desc()).limit(100)))
 
 
@@ -127,7 +163,11 @@ def acknowledge_notification(
     db: Session = Depends(get_db),
     user: User = Depends(current_user),
 ) -> Response:
-    item = db.scalar(select(Notification).where(Notification.id == notification_id, Notification.recipient_user_id == user.id))
+    item = db.scalar(
+        select(Notification).where(
+            Notification.id == notification_id, Notification.recipient_user_id == user.id
+        )
+    )
     if not item:
         raise NotFoundError()
     now = server_now()
@@ -144,7 +184,11 @@ def mark_read(
     db: Session = Depends(get_db),
     user: User = Depends(current_user),
 ) -> Response:
-    item = db.scalar(select(Notification).where(Notification.id == notification_id, Notification.recipient_user_id == user.id))
+    item = db.scalar(
+        select(Notification).where(
+            Notification.id == notification_id, Notification.recipient_user_id == user.id
+        )
+    )
     if not item:
         raise NotFoundError()
     item.is_read = True
@@ -153,18 +197,91 @@ def mark_read(
     return Response(status_code=204)
 
 
+def _owned_notifications(db: Session, user_id: int, ids: list[int]) -> list[Notification]:
+    return list(
+        db.scalars(
+            select(Notification).where(
+                Notification.id.in_(set(ids)),
+                Notification.recipient_user_id == user_id,
+            )
+        )
+    )
+
+
+@router.post("/notifications/bulk-read", status_code=204)
+def bulk_mark_read(
+    data: NotificationBulkAction,
+    db: Session = Depends(get_db),
+    user: User = Depends(current_user),
+) -> Response:
+    now = server_now()
+    for item in _owned_notifications(db, user.id, data.ids):
+        item.is_read = True
+        item.read_at = item.read_at or now
+    db.commit()
+    return Response(status_code=204)
+
+
+@router.post("/notifications/bulk-dismiss", status_code=204)
+def bulk_dismiss(
+    data: NotificationBulkAction,
+    db: Session = Depends(get_db),
+    user: User = Depends(current_user),
+) -> Response:
+    now = server_now()
+    for item in _owned_notifications(db, user.id, data.ids):
+        item.is_read = True
+        item.read_at = item.read_at or now
+        item.dismissed_at = now
+    db.commit()
+    return Response(status_code=204)
+
+
+@router.post("/notifications/{notification_id}/dismiss", status_code=204)
+def dismiss_notification(
+    notification_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(current_user),
+) -> Response:
+    items = _owned_notifications(db, user.id, [notification_id])
+    if not items:
+        raise NotFoundError()
+    now = server_now()
+    items[0].is_read = True
+    items[0].read_at = items[0].read_at or now
+    items[0].dismissed_at = now
+    db.commit()
+    return Response(status_code=204)
+
+
 @router.post("/notifications/mark-all-read", status_code=204)
 def mark_all_read(
-    filtered: bool = False, severity: str | None = None, notification_type: str | None = None,
-    search: str | None = Query(default=None, max_length=100), date_from: date | None = None,
-    date_to: date | None = None, date_scope: str = Query(default="ALL", pattern="^(TODAY|ALL)$"),
-    db: Session = Depends(get_db), user: User = Depends(current_user),
+    filtered: bool = False,
+    severity: str | None = None,
+    notification_type: str | None = None,
+    search: str | None = Query(default=None, max_length=100),
+    date_from: date | None = None,
+    date_to: date | None = None,
+    date_scope: str = Query(default="ALL", pattern="^(TODAY|ALL)$"),
+    db: Session = Depends(get_db),
+    user: User = Depends(current_user),
 ) -> Response:
-    statement = notification_query(user.id, unread_only=True, severity=severity if filtered else None, notification_type=notification_type if filtered else None, search=search if filtered else None, date_from=date_from if filtered else None, date_to=date_to if filtered else None, date_scope=date_scope if filtered else "ALL")
+    statement = notification_query(
+        user.id,
+        unread_only=True,
+        severity=severity if filtered else None,
+        notification_type=notification_type if filtered else None,
+        search=search if filtered else None,
+        date_from=date_from if filtered else None,
+        date_to=date_to if filtered else None,
+        date_scope=date_scope if filtered else "ALL",
+    )
     now = server_now()
     ids = list(db.scalars(statement.with_only_columns(Notification.id)))
     if ids:
-        db.query(Notification).filter(Notification.id.in_(ids)).update({Notification.is_read: True, Notification.read_at: now}, synchronize_session=False)
+        db.query(Notification).filter(Notification.id.in_(ids)).update(
+            {Notification.is_read: True, Notification.read_at: now}, synchronize_session=False
+        )
         db.commit()
     return Response(status_code=204)
 
@@ -207,25 +324,51 @@ def update_notification_preferences(
 
 
 @router.get("/notification-views", response_model=list[NotificationViewRead])
-def list_notification_views(db: Session = Depends(get_db), user: User = Depends(current_user)) -> list[NotificationView]:
-    return list(db.scalars(select(NotificationView).where(NotificationView.user_id == user.id).order_by(NotificationView.name)))
+def list_notification_views(
+    db: Session = Depends(get_db), user: User = Depends(current_user)
+) -> list[NotificationView]:
+    return list(
+        db.scalars(
+            select(NotificationView)
+            .where(NotificationView.user_id == user.id)
+            .order_by(NotificationView.name)
+        )
+    )
 
 
 @router.post("/notification-views", response_model=NotificationViewRead, status_code=201)
-def create_notification_view(data: NotificationViewCreate, db: Session = Depends(get_db), user: User = Depends(current_user)) -> NotificationView:
+def create_notification_view(
+    data: NotificationViewCreate, db: Session = Depends(get_db), user: User = Depends(current_user)
+) -> NotificationView:
     if data.is_default:
-        db.query(NotificationView).filter(NotificationView.user_id == user.id).update({NotificationView.is_default: False})
-    view = NotificationView(user_id=user.id, name=data.name, filters_json=json.dumps(data.filters), is_default=data.is_default)
-    db.add(view); db.commit(); db.refresh(view)
+        db.query(NotificationView).filter(NotificationView.user_id == user.id).update(
+            {NotificationView.is_default: False}
+        )
+    view = NotificationView(
+        user_id=user.id,
+        name=data.name,
+        filters_json=json.dumps(data.filters),
+        is_default=data.is_default,
+    )
+    db.add(view)
+    db.commit()
+    db.refresh(view)
     return view
 
 
 @router.delete("/notification-views/{view_id}", status_code=204)
-def delete_notification_view(view_id: int, db: Session = Depends(get_db), user: User = Depends(current_user)) -> Response:
-    view = db.scalar(select(NotificationView).where(NotificationView.id == view_id, NotificationView.user_id == user.id))
+def delete_notification_view(
+    view_id: int, db: Session = Depends(get_db), user: User = Depends(current_user)
+) -> Response:
+    view = db.scalar(
+        select(NotificationView).where(
+            NotificationView.id == view_id, NotificationView.user_id == user.id
+        )
+    )
     if not view:
         raise NotFoundError()
-    db.delete(view); db.commit()
+    db.delete(view)
+    db.commit()
     return Response(status_code=204)
 
 
@@ -280,7 +423,13 @@ def list_rules(
     db: Session = Depends(get_db),
     _: User = Depends(require_permission("configuration.manage")),
 ) -> list[EscalationRule]:
-    return list(db.scalars(select(EscalationRule).order_by(EscalationRule.clock_type, EscalationRule.threshold_percent, EscalationRule.priority)))
+    return list(
+        db.scalars(
+            select(EscalationRule).order_by(
+                EscalationRule.clock_type, EscalationRule.threshold_percent, EscalationRule.priority
+            )
+        )
+    )
 
 
 @router.post("/escalation-rules", response_model=EscalationRuleRead, status_code=201)
@@ -295,11 +444,21 @@ def create_escalation_rule(
     try:
         db.flush()
         item.code = f"SLA_RULE_{item.id:06d}"
-        db.add(AuditLog(actor_user_id=actor.id, entity_type="EscalationRule", entity_id=str(item.id), action="escalation_rule.created", new_values_json=json.dumps(data.model_dump(mode="json"))))
+        db.add(
+            AuditLog(
+                actor_user_id=actor.id,
+                entity_type="EscalationRule",
+                entity_id=str(item.id),
+                action="escalation_rule.created",
+                new_values_json=json.dumps(data.model_dump(mode="json")),
+            )
+        )
         db.commit()
     except IntegrityError as exc:
         db.rollback()
-        raise ConflictError("DUPLICATE_ESCALATION_RULE", "That escalation rule already exists.") from exc
+        raise ConflictError(
+            "DUPLICATE_ESCALATION_RULE", "That escalation rule already exists."
+        ) from exc
     db.refresh(item)
     return item
 
@@ -315,17 +474,26 @@ def update_escalation_rule(
     if not item:
         raise NotFoundError("Escalation rule does not exist.")
     if item.version != data.expected_version:
-        raise ConflictError("STALE_ESCALATION_RULE", "The escalation rule changed; reload and try again.")
+        raise ConflictError(
+            "STALE_ESCALATION_RULE", "The escalation rule changed; reload and try again."
+        )
     _validate_escalation_rule_context(db, data, exclude_id=item.id)
     before = {
-        key: getattr(item, key)
-        for key in type(data).model_fields
-        if key != "expected_version"
+        key: getattr(item, key) for key in type(data).model_fields if key != "expected_version"
     }
     for key, value in data.model_dump(exclude={"expected_version"}).items():
         setattr(item, key, value)
     item.version += 1
-    db.add(AuditLog(actor_user_id=actor.id, entity_type="EscalationRule", entity_id=str(item.id), action="escalation_rule.updated", old_values_json=json.dumps(before), new_values_json=json.dumps(data.model_dump(mode="json"))))
+    db.add(
+        AuditLog(
+            actor_user_id=actor.id,
+            entity_type="EscalationRule",
+            entity_id=str(item.id),
+            action="escalation_rule.updated",
+            old_values_json=json.dumps(before),
+            new_values_json=json.dumps(data.model_dump(mode="json")),
+        )
+    )
     db.commit()
     db.refresh(item)
     return item

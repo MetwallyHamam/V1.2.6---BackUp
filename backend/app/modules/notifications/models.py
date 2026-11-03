@@ -20,9 +20,15 @@ IdType = BigInteger().with_variant(Integer, "sqlite")
 
 class Notification(Base):
     __tablename__ = "notifications"
-    __table_args__ = (Index("ix_notifications_recipient_read_created", "recipient_user_id", "is_read", "created_at"),)
+    __table_args__ = (
+        Index(
+            "ix_notifications_recipient_read_created", "recipient_user_id", "is_read", "created_at"
+        ),
+    )
     id: Mapped[int] = mapped_column(IdType, primary_key=True, autoincrement=True)
-    recipient_user_id: Mapped[int] = mapped_column(IdType, ForeignKey("users.id", ondelete="CASCADE"))
+    recipient_user_id: Mapped[int] = mapped_column(
+        IdType, ForeignKey("users.id", ondelete="CASCADE")
+    )
     notification_type: Mapped[str] = mapped_column(String(80))
     severity: Mapped[str] = mapped_column(String(20), default="INFO")
     title: Mapped[str] = mapped_column(String(200))
@@ -32,6 +38,7 @@ class Notification(Base):
     is_read: Mapped[bool] = mapped_column(Boolean, default=False)
     read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     acknowledged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    dismissed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
 
 
@@ -59,7 +66,9 @@ class NotificationView(Base):
     filters_json: Mapped[str] = mapped_column(String(2000))
     is_default: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, onupdate=utc_now
+    )
 
 
 class EventOutbox(Base):
@@ -113,7 +122,9 @@ class TicketNotificationRule(Base):
     deleted_by_user_id: Mapped[int | None] = mapped_column(IdType, ForeignKey("users.id"))
     version: Mapped[int] = mapped_column(Integer, default=1)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, onupdate=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, onupdate=utc_now
+    )
 
 
 class EmailDelivery(Base):
@@ -123,7 +134,9 @@ class EmailDelivery(Base):
         Index("ix_email_delivery_outbox_recipient", "outbox_id", "recipient_email", unique=True),
     )
     id: Mapped[int] = mapped_column(IdType, primary_key=True, autoincrement=True)
-    outbox_id: Mapped[int] = mapped_column(IdType, ForeignKey("event_outbox.id", ondelete="CASCADE"))
+    outbox_id: Mapped[int] = mapped_column(
+        IdType, ForeignKey("event_outbox.id", ondelete="CASCADE")
+    )
     recipient_user_id: Mapped[int | None] = mapped_column(IdType, ForeignKey("users.id"))
     recipient_email: Mapped[str] = mapped_column(String(320))
     subject: Mapped[str] = mapped_column(String(300))
@@ -142,7 +155,9 @@ class SmsDelivery(Base):
         Index("ix_sms_delivery_outbox_recipient", "outbox_id", "recipient_user_id", unique=True),
     )
     id: Mapped[int] = mapped_column(IdType, primary_key=True, autoincrement=True)
-    outbox_id: Mapped[int] = mapped_column(IdType, ForeignKey("event_outbox.id", ondelete="CASCADE"))
+    outbox_id: Mapped[int] = mapped_column(
+        IdType, ForeignKey("event_outbox.id", ondelete="CASCADE")
+    )
     recipient_user_id: Mapped[int] = mapped_column(IdType, ForeignKey("users.id"))
     phone_number: Mapped[str | None] = mapped_column(String(50))
     status: Mapped[str] = mapped_column(String(20), default="PENDING")
@@ -161,7 +176,9 @@ class TeamsDelivery(Base):
         Index("ix_teams_delivery_outbox", "outbox_id", unique=True),
     )
     id: Mapped[int] = mapped_column(IdType, primary_key=True, autoincrement=True)
-    outbox_id: Mapped[int] = mapped_column(IdType, ForeignKey("event_outbox.id", ondelete="CASCADE"))
+    outbox_id: Mapped[int] = mapped_column(
+        IdType, ForeignKey("event_outbox.id", ondelete="CASCADE")
+    )
     status: Mapped[str] = mapped_column(String(20), default="PENDING")
     attempt_count: Mapped[int] = mapped_column(Integer, default=0)
     last_error: Mapped[str | None] = mapped_column(String(1000))

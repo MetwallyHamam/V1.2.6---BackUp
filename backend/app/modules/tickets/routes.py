@@ -285,11 +285,13 @@ def get_personal_workspace(
     )
     if not preference:
         return PersonalWorkspaceRead()
-    return PersonalWorkspaceRead.model_validate({
-        "favorites": _workspace_items(preference.workspace_favorites_json),
-        "recent": _workspace_items(preference.workspace_recent_json),
-        **_workspace_settings(preference.workspace_settings_json),
-    })
+    return PersonalWorkspaceRead.model_validate(
+        {
+            "favorites": _workspace_items(preference.workspace_favorites_json),
+            "recent": _workspace_items(preference.workspace_recent_json),
+            **_workspace_settings(preference.workspace_settings_json),
+        }
+    )
 
 
 @router.put("/my-workspace", response_model=PersonalWorkspaceRead)
@@ -303,7 +305,9 @@ def update_personal_workspace(
     preference.workspace_favorites_json = json.dumps(
         [item.model_dump(mode="json") for item in favorites]
     )
-    preference.workspace_settings_json = json.dumps({"hidden_widgets": data.hidden_widgets})
+    settings = _workspace_settings(preference.workspace_settings_json)
+    settings["hidden_widgets"] = data.hidden_widgets
+    preference.workspace_settings_json = json.dumps(settings)
     db.commit()
     return PersonalWorkspaceRead(
         favorites=favorites,
@@ -327,7 +331,8 @@ def record_personal_workspace_visit(
         visited_at=server_now(),
     )
     recent = [
-        existing for existing in _workspace_items(preference.workspace_recent_json)
+        existing
+        for existing in _workspace_items(preference.workspace_recent_json)
         if existing.get("path") != data.path
     ]
     recent.insert(0, item.model_dump(mode="json"))
@@ -895,7 +900,8 @@ def list_tickets(
     incomplete_resolution_only: bool = False,
     without_product: bool = False,
     assistant_module: str | None = Query(
-        default=None, pattern="^(queue|mine|resolved|backlog|sla-risk|follow-up|missing-resolution)$"
+        default=None,
+        pattern="^(queue|mine|resolved|backlog|sla-risk|follow-up|missing-resolution)$",
     ),
     shift_handover_only: bool = False,
     created_from: DateTimeBoundary | None = None,
@@ -1006,12 +1012,16 @@ def list_tickets(
         elif assistant_module == "missing-resolution":
             assigned_user_id = str(user.id)
             resolved_status_ids = select(TicketStatus.id).where(TicketStatus.code == "RESOLVED")
-            has_service = select(TicketResolutionService.ticket_id).where(
-                TicketResolutionService.ticket_id == Ticket.id
-            ).exists()
-            has_root_cause = select(TicketRootCause.ticket_id).where(
-                TicketRootCause.ticket_id == Ticket.id
-            ).exists()
+            has_service = (
+                select(TicketResolutionService.ticket_id)
+                .where(TicketResolutionService.ticket_id == Ticket.id)
+                .exists()
+            )
+            has_root_cause = (
+                select(TicketRootCause.ticket_id)
+                .where(TicketRootCause.ticket_id == Ticket.id)
+                .exists()
+            )
             base_statement = base_statement.where(
                 Ticket.status_id.in_(resolved_status_ids),
                 or_(
@@ -1063,8 +1073,7 @@ def list_tickets(
         assignment_ids = select(TicketAssignmentHistory.ticket_id)
         if assigned_from:
             assignment_ids = assignment_ids.where(
-                TicketAssignmentHistory.created_at
-                >= ticket_filter_lower_bound(assigned_from)
+                TicketAssignmentHistory.created_at >= ticket_filter_lower_bound(assigned_from)
             )
         if assigned_to:
             upper, exclusive = ticket_filter_upper_bound(assigned_to)
@@ -1082,9 +1091,7 @@ def list_tickets(
     if shift_handover_only:
         base_statement = base_statement.where(Ticket.shift_handover_status == "PENDING")
     if exclude_ticket_type_code and not ticket_type_id:
-        excluded_type_ids = select(TicketType.id).where(
-            TicketType.code == exclude_ticket_type_code
-        )
+        excluded_type_ids = select(TicketType.id).where(TicketType.code == exclude_ticket_type_code)
         base_statement = base_statement.where(Ticket.ticket_type_id.not_in(excluded_type_ids))
     statement = apply_ticket_filters(
         base_statement,
@@ -1151,12 +1158,14 @@ def list_tickets(
     )
     if incomplete_resolution_only:
         resolved_status_ids = select(TicketStatus.id).where(TicketStatus.code == "RESOLVED")
-        has_service = select(TicketResolutionService.ticket_id).where(
-            TicketResolutionService.ticket_id == Ticket.id
-        ).exists()
-        has_root_cause = select(TicketRootCause.ticket_id).where(
-            TicketRootCause.ticket_id == Ticket.id
-        ).exists()
+        has_service = (
+            select(TicketResolutionService.ticket_id)
+            .where(TicketResolutionService.ticket_id == Ticket.id)
+            .exists()
+        )
+        has_root_cause = (
+            select(TicketRootCause.ticket_id).where(TicketRootCause.ticket_id == Ticket.id).exists()
+        )
         statement = statement.where(
             Ticket.status_id.in_(resolved_status_ids),
             or_(

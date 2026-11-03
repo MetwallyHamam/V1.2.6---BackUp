@@ -15,7 +15,12 @@ class NotificationRead(BaseModel):
     is_read: bool
     read_at: datetime | None
     acknowledged_at: datetime | None
+    dismissed_at: datetime | None
     created_at: datetime
+
+
+class NotificationBulkAction(BaseModel):
+    ids: list[int] = Field(min_length=1, max_length=100)
 
 
 class RealtimeTicketRead(BaseModel):
