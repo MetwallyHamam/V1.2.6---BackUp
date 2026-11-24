@@ -577,6 +577,41 @@ def test_service_dashboard_cards_count_and_drilldown_by_client(client, admin_hea
     assert response.status_code == 200, response.text
     cards = response.json()
     assert cards["incidents"]["count"] == 1
+    incident_record = cards["incidents"]["records"][0]
+    assert incident_record["status_code"] == "ASSIGNED"
+    assert incident_record["can_acknowledge"] is True
+    acknowledged = client.post(
+        f"/api/v1/tickets/{incident['id']}/transition",
+        headers=admin_headers,
+        json={"to_status_code": "IN_PROGRESS", "version": incident_record["version"]},
+    )
+    assert acknowledged.status_code == 200, acknowledged.text
+    active = client.get(
+        "/api/v1/service-management/dashboard-cards",
+        headers=admin_headers,
+        params={"client_id": incident["client_id"]},
+    ).json()["incidents"]
+    assert active["count"] == 1
+    assert active["records"][0]["status_code"] == "IN_PROGRESS"
+    assert active["records"][0]["can_acknowledge"] is False
+    assert active["records"][0]["can_resolve"] is True
+    resolved = client.post(
+        f"/api/v1/tickets/{incident['id']}/transition",
+        headers=admin_headers,
+        json={
+            "to_status_code": "RESOLVED",
+            "version": active["records"][0]["version"],
+            "resolution_summary": "Service restored from the overview action.",
+            "root_cause_summary": "A configuration mismatch caused the incident.",
+        },
+    )
+    assert resolved.status_code == 200, resolved.text
+    after_resolution = client.get(
+        "/api/v1/service-management/dashboard-cards",
+        headers=admin_headers,
+        params={"client_id": incident["client_id"]},
+    ).json()["incidents"]
+    assert after_resolution == {"count": 0, "records": []}
     assert cards["changes"]["count"] == 0
     assert cards["problems"]["count"] == 1
     assert cards["problems"]["records"][0]["route"] == f"/problems/{problem.json()['id']}"

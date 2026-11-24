@@ -158,6 +158,7 @@ from app.modules.tickets.service import (
 )
 from app.modules.tickets.timeline import ticket_timeline
 from app.modules.tickets.workflow import allowed_transition_codes, authorize_transition_actor
+from app.modules.uat.models import UatCycleTest, UatDefectLink
 
 router = APIRouter(prefix="/tickets", tags=["tickets"])
 catalog_router = APIRouter(tags=["ticket catalogs"])
@@ -732,6 +733,20 @@ def attach_ticket_queue_evidence(db: Session, tickets: list[Ticket]) -> list[Tic
     clients = {
         item.id: item for item in db.scalars(select(Client).where(Client.id.in_(client_ids)))
     }
+    uat_links = {
+        item.ticket_id: item
+        for item in db.scalars(
+            select(UatDefectLink).where(UatDefectLink.ticket_id.in_({ticket.id for ticket in tickets}))
+        )
+    }
+    uat_tests = {
+        item.id: item
+        for item in db.scalars(
+            select(UatCycleTest).where(
+                UatCycleTest.id.in_({item.cycle_test_id for item in uat_links.values()})
+            )
+        )
+    } if uat_links else {}
     requester_ids = {item.requester_contact_id for item in tickets if item.requester_contact_id}
     contacts = (
         {item.id: item for item in db.scalars(select(Contact).where(Contact.id.in_(requester_ids)))}
@@ -835,6 +850,37 @@ def attach_ticket_queue_evidence(db: Session, tickets: list[Ticket]) -> list[Tic
             or ticket.assigned_user_id == shared_user_id
             or bool(assignee and assignee.username_normalized == "support")
         )
+        uat_link = uat_links.get(ticket.id)
+        ticket.__dict__["is_uat_defect"] = uat_link is not None
+        ticket.__dict__["uat_cycle_id"] = uat_link.cycle_id if uat_link else None
+        ticket.__dict__["uat_cycle_test_id"] = uat_link.cycle_test_id if uat_link else None
+        ticket.__dict__["uat_attempt_id"] = uat_link.attempt_id if uat_link else None
+        ticket.__dict__["uat_cycle_code"] = uat_link.cycle_code if uat_link else None
+        ticket.__dict__["uat_test_code"] = uat_link.test_code if uat_link else None
+        ticket.__dict__["uat_release_version"] = uat_link.release_version if uat_link else None
+        uat_test = uat_tests.get(uat_link.cycle_test_id) if uat_link else None
+        ticket.__dict__["uat_workflow_status"] = (
+            uat_test.workflow_status
+            if uat_test and uat_test.test_result != "NOT_TESTED"
+            else (uat_test.client_workflow_status if uat_test else None)
+        )
+        ticket.__dict__["uat_ready_for_closure"] = bool(
+            uat_test
+            and (
+                (uat_test.retest_count > 0 and uat_test.test_result == "PASS")
+                or (
+                    uat_test.client_attempt_count > 1
+                    and uat_test.client_test_result == "PASS"
+                )
+            )
+        )
+        ticket.__dict__["uat_closure_warning"] = bool(
+            uat_test
+            and ticket.closed_at
+            and (
+                uat_test.test_result == "FAIL" or uat_test.client_test_result == "FAIL"
+            )
+        )
     return tickets
 
 
@@ -889,6 +935,9 @@ def list_tickets(
     root_cause_id: str | None = None,
     entitlement_status: str | None = None,
     source_channel: str | None = Query(default=None, max_length=30),
+    uat_defect_only: bool = False,
+    uat_cycle_code: str | None = Query(default=None, max_length=80),
+    uat_release_version: str | None = Query(default=None, max_length=100),
     sla_state: str | None = Query(default=None, max_length=100),
     open_only: bool = False,
     unassigned_only: bool = False,
@@ -954,6 +1003,13 @@ def list_tickets(
         assigned_teams = {row.name for row in my_teams}
         routed_team_ids = {row.id for row in my_teams}
     base_statement = visible_ticket_query(db, user)
+    if uat_defect_only or uat_cycle_code or uat_release_version:
+        uat_ticket_ids = select(UatDefectLink.ticket_id)
+        if uat_cycle_code:
+            uat_ticket_ids = uat_ticket_ids.where(UatDefectLink.cycle_code == uat_cycle_code)
+        if uat_release_version:
+            uat_ticket_ids = uat_ticket_ids.where(UatDefectLink.release_version == uat_release_version)
+        base_statement = base_statement.where(Ticket.id.in_(uat_ticket_ids))
     assistant_queue_default_scope = False
     if assistant_module:
         required = {
@@ -1134,6 +1190,7 @@ def list_tickets(
         source_channel=source_channel,
         sla_state=sla_state,
         open_only=open_only,
+        include_pending_approval_in_open=uat_defect_only,
         unassigned_only=unassigned_only,
         strictly_unassigned_only=strictly_unassigned_only,
         due_soon=due_soon,
@@ -1193,6 +1250,24 @@ def list_tickets(
             )
         )
     if breached_only:
+        # Completed clocks with a complete persisted outcome and no overrun can
+        # never become breached later. Exclude them in SQL before running the
+        # authoritative business-calendar calculation, which is substantially
+        # more expensive than the list query on large ticket portfolios.
+        breach_candidate_ids = select(TicketSlaClock.ticket_id).where(
+            TicketSlaClock.clock_type == "RESOLUTION",
+            or_(
+                TicketSlaClock.completed_at.is_(None),
+                TicketSlaClock.overrun_minutes > 0,
+                TicketSlaClock.accountable_minutes.is_(None),
+                TicketSlaClock.customer_pending_minutes.is_(None),
+                TicketSlaClock.millensys_pending_minutes.is_(None),
+                TicketSlaClock.escalation_minutes.is_(None),
+                TicketSlaClock.saved_minutes.is_(None),
+                TicketSlaClock.overrun_minutes.is_(None),
+            ),
+        )
+        statement = statement.where(Ticket.id.in_(breach_candidate_ids))
         breach_candidates = list(db.scalars(statement.order_by(None)))
         breached_ids = [
             ticket_id
@@ -1402,6 +1477,18 @@ def bulk_assign_tickets(
                 )
             )
         queue_ticket_reassignment_email(db, ticket, previous_assigned_user_id, actor)
+        from app.modules.uat.service import sync_ticket_to_uat
+
+        sync_ticket_to_uat(
+            db,
+            ticket,
+            actor,
+            target_status_code=(
+                "ASSIGNED"
+                if data.assigned_user_id or data.assigned_team
+                else (previous_status.code if previous_status else None)
+            ),
+        )
     db.commit()
     return {"updated": len(tickets)}
 
@@ -3300,11 +3387,12 @@ def list_attachments(
     if not ticket:
         raise NotFoundError()
     ensure_ticket_access(db, user, ticket)
+    statement = select(TicketAttachment).where(TicketAttachment.ticket_id == ticket_id)
+    if user.user_type == "CLIENT_PORTAL":
+        statement = statement.where(TicketAttachment.portal_visible.in_([True]))
     return list(
         db.scalars(
-            select(TicketAttachment)
-            .where(TicketAttachment.ticket_id == ticket_id)
-            .order_by(TicketAttachment.created_at)
+            statement.order_by(TicketAttachment.created_at)
         )
     )
 
@@ -3351,6 +3439,8 @@ def download_attachment(
         )
     )
     if not attachment:
+        raise NotFoundError()
+    if user.user_type == "CLIENT_PORTAL" and not attachment.portal_visible:
         raise NotFoundError()
     return FileResponse(
         attachment_path(attachment, settings),
@@ -3821,6 +3911,18 @@ def assign_ticket(
                 correlation_id=request.state.correlation_id,
             )
         )
+    from app.modules.uat.service import sync_ticket_to_uat
+
+    sync_ticket_to_uat(
+        db,
+        ticket,
+        actor,
+        target_status_code=(
+            "ASSIGNED"
+            if data.assigned_user_id or data.assigned_team
+            else (current_status.code if current_status else None)
+        ),
+    )
     db.commit()
     db.refresh(ticket)
     return ticket

@@ -4,7 +4,7 @@ from collections import Counter
 from datetime import date, datetime, time, timedelta
 from typing import Any, cast
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Response, status
 from fastapi.responses import StreamingResponse
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
@@ -17,6 +17,7 @@ from app.core.exceptions import AuthorizationError, ConflictError, NotFoundError
 from app.db.session import get_db
 from app.modules.client_portal.schemas import (
     PortalAnnouncement,
+    PortalContractRead,
     PortalResolutionAction,
     PortalTicketRead,
 )
@@ -60,7 +61,6 @@ from app.modules.service_management.models import (
 from app.modules.sla.service import (
     attach_ticket_sla_evidence,
     first_dedicated_assignments,
-    resolution_sla_result,
     resolution_sla_results,
 )
 from app.modules.tickets.models import (
@@ -90,6 +90,20 @@ from app.modules.tickets.service import (
 from app.modules.uat.models import DeploymentPlan, UatCycle
 
 router = APIRouter(prefix="/portal", tags=["client portal"])
+
+
+@router.get("/contracts/{contract_id}", response_model=PortalContractRead)
+def portal_contract(
+    contract_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(current_user),
+) -> Contract:
+    require_portal_user(user)
+    client_ids = sorted(effective_permissions(db, user).client_scope_ids)
+    contract = next((item for item in portal_contracts(db, client_ids) if item.id == contract_id), None)
+    if contract is None:
+        raise NotFoundError("Contract does not exist.")
+    return contract
 
 
 @router.get("/training-materials")
@@ -990,6 +1004,7 @@ def export_portal_contract_report(
 
 @router.get("/tickets", response_model=list[PortalTicketRead])
 def list_portal_tickets(
+    response: Response,
     search: str | None = Query(default=None, max_length=100),
     ticket_number: str | None = Query(default=None, max_length=100),
     status_id: int | None = None,
@@ -1002,6 +1017,8 @@ def list_portal_tickets(
     view: str | None = Query(
         default=None, pattern="^(all|incident|closed|pending|sla-met|sla-breached)$"
     ),
+    limit: int = Query(default=25, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
     user: User = Depends(current_user),
 ) -> list[Ticket]:
@@ -1022,12 +1039,14 @@ def list_portal_tickets(
             Ticket.status_id.in_(select(TicketStatus.id).where(TicketStatus.code.like("PENDING_%")))
         )
     elif view in {"sla-met", "sla-breached"}:
-        candidate_ids = [item.id for item in db.scalars(statement)]
-        matching_ids = []
-        for candidate in db.scalars(select(Ticket).where(Ticket.id.in_(candidate_ids or [-1]))):
-            result = resolution_sla_result(db, candidate)
-            if result and result.met == (view == "sla-met"):
-                matching_ids.append(candidate.id)
+        candidates = list(db.scalars(statement))
+        bulk_results = resolution_sla_results(db, candidates)
+        matching_ids = [
+            candidate.id
+            for candidate in candidates
+            if (result := bulk_results.get(candidate.id))
+            and result.met == (view == "sla-met")
+        ]
         statement = statement.where(Ticket.id.in_(matching_ids or [-1]))
     if search:
         term = f"%{search.strip()}%"
@@ -1053,7 +1072,14 @@ def list_portal_tickets(
             Ticket.created_at
             < datetime.combine(date_to + timedelta(days=1), time.min, server_timezone())
         )
-    tickets = list(db.scalars(statement.order_by(Ticket.updated_at.desc()).limit(100)))
+    total = db.scalar(select(func.count()).select_from(statement.order_by(None).subquery())) or 0
+    response.headers["X-Total-Count"] = str(total)
+    response.headers["Access-Control-Expose-Headers"] = "X-Total-Count"
+    tickets = list(
+        db.scalars(
+            statement.order_by(Ticket.updated_at.desc()).offset(offset).limit(limit)
+        )
+    )
     return attach_ticket_sla_evidence(db, tickets)
 
 

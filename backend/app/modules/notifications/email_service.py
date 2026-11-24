@@ -70,6 +70,25 @@ def smtp_group_sender(settings: Settings) -> GroupEmailSender:
 
 
 def _recipients(db: Session, item: EventOutbox) -> list[tuple[EmailRecipient, Notification]]:
+    if item.event_type == "WORK_ASSIGNMENT_EMAIL":
+        payload = json.loads(item.payload_json)
+        users = list(db.scalars(select(User).where(User.id.in_(payload["recipient_user_ids"]), User.is_active.in_([True]))))
+        return [
+            (
+                SimpleNamespace(id=user.id, email=user.support_notification_email or user.email),
+                Notification(
+                    recipient_user_id=user.id,
+                    notification_type="WORK_ASSIGNMENT",
+                    severity="INFO",
+                    title=str(payload["subject"]),
+                    message=str(payload["body"]),
+                    deep_link=str(payload["deep_link"]),
+                    deduplication_key=f"{item.deduplication_key}:user:{user.id}",
+                ),
+            )
+            for user in users
+            if user.support_notification_email or user.email
+        ]
     if item.event_type == "TICKET_MENTION_EMAIL":
         payload = json.loads(item.payload_json)
         users = list(
@@ -410,6 +429,8 @@ def process_email_outbox(
                     body = f"{notification.message}\n\nOpen the KPI workspace:\n{link}"
                 elif item.event_type == "CONTRACT_EXPIRATION_EMAIL":
                     body = f"{notification.message}\n\nOpen the contract workspace:\n{link}"
+                elif item.event_type == "WORK_ASSIGNMENT_EMAIL":
+                    body = f"{notification.message}\n\nOpen the assigned task:\n{link}"
                 else:
                     body = f"{notification.message}\n\nOpen the relevant tickets:\n{link}"
                 sender(user.email, notification.title, body)

@@ -14,6 +14,7 @@ class ClientCreate(BaseModel):
     status_id: int
     owner_department_id: int | None = None
     shared_department_ids: list[int] = Field(default_factory=list)
+    organization_id: int | None = None
     parent_client_id: int | None = None
     timezone: str = Field(default="Africa/Cairo", max_length=100)
     country: str | None = Field(default=None, max_length=100)
@@ -33,6 +34,7 @@ class ClientUpdate(BaseModel):
     status_id: int | None = None
     owner_department_id: int | None = None
     shared_department_ids: list[int] | None = None
+    organization_id: int | None = None
     parent_client_id: int | None = None
     timezone: str | None = Field(default=None, max_length=100)
     country: str | None = Field(default=None, max_length=100)
@@ -55,6 +57,7 @@ class ClientRead(OrmModel):
     status_id: int
     owner_department_id: int | None = None
     shared_department_ids: list[int] = Field(default_factory=list)
+    organization_id: int | None = None
     parent_client_id: int | None = None
     timezone: str
     country: str | None
@@ -77,6 +80,16 @@ class ClientPageRead(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+class ClientBulkCountryAssign(BaseModel):
+    client_ids: list[int] = Field(min_length=1, max_length=200)
+    country_id: int
+
+
+class ClientBulkCountryAssignResult(BaseModel):
+    updated_count: int
+    client_ids: list[int]
 
 
 class ClientHierarchyNode(BaseModel):
@@ -187,6 +200,7 @@ AccessType = Literal["SERVER", "VPN", "ANYDESK", "SYSTEM_ADMIN", "OTHER"]
 
 
 class ClientAccessCreate(BaseModel):
+    branch_id: int | None = None
     access_type: AccessType
     label: str = Field(min_length=2, max_length=150)
     server_or_address: str | None = Field(default=None, max_length=1000)
@@ -197,6 +211,7 @@ class ClientAccessCreate(BaseModel):
 
 
 class ClientAccessUpdate(BaseModel):
+    branch_id: int | None = None
     access_type: AccessType | None = None
     label: str | None = Field(default=None, min_length=2, max_length=150)
     server_or_address: str | None = Field(default=None, max_length=1000)
@@ -209,6 +224,8 @@ class ClientAccessUpdate(BaseModel):
 class ClientAccessRead(OrmModel):
     id: int
     client_id: int
+    branch_id: int | None
+    branch_name: str | None
     access_type: str
     label: str
     server_or_address: str | None

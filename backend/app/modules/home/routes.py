@@ -4,7 +4,7 @@ import json
 from datetime import date, datetime, time, timedelta
 from threading import Lock
 from time import monotonic
-from typing import Literal
+from typing import Literal, TypedDict
 
 from fastapi import APIRouter, Depends, Query, Response
 from pydantic import BaseModel, Field
@@ -38,13 +38,25 @@ _CACHE_SECONDS = 30.0
 _cache: dict[int, tuple[float, dict[str, object]]] = {}
 _cache_lock = Lock()
 _terminal_statuses = {"RESOLVED", "CLOSED", "CANCELLED"}
-_attention_categories = {"CRITICAL", "ACTION_REQUIRED", "DUE_SOON", "WAITING", "INFORMATION"}
+AttentionCategory = Literal["CRITICAL", "ACTION_REQUIRED", "DUE_SOON", "WAITING", "INFORMATION"]
+_attention_categories: set[AttentionCategory] = {
+    "CRITICAL",
+    "ACTION_REQUIRED",
+    "DUE_SOON",
+    "WAITING",
+    "INFORMATION",
+}
+
+
+class AttentionPreferencePayload(TypedDict):
+    enabled_categories: list[AttentionCategory]
+    snoozed_until: dict[str, str]
 
 
 class AttentionPreferenceUpdate(BaseModel):
-    enabled_categories: list[
-        Literal["CRITICAL", "ACTION_REQUIRED", "DUE_SOON", "WAITING", "INFORMATION"]
-    ] = Field(default_factory=lambda: sorted(_attention_categories), min_length=1)
+    enabled_categories: list[AttentionCategory] = Field(
+        default_factory=lambda: sorted(_attention_categories), min_length=1
+    )
 
 
 class AttentionSnoozeCreate(BaseModel):
@@ -67,24 +79,28 @@ def _attention_settings(
         return preference, {}
 
 
-def _attention_preference_payload(settings: dict[str, object]) -> dict[str, object]:
+def _attention_preference_payload(settings: dict[str, object]) -> AttentionPreferencePayload:
     enabled = settings.get("attention_categories", sorted(_attention_categories))
-    categories = (
-        [value for value in enabled if value in _attention_categories]
-        if isinstance(enabled, list)
-        else sorted(_attention_categories)
-    )
+    categories: list[AttentionCategory] = []
+    if isinstance(enabled, list):
+        categories = [
+            value for value in enabled if isinstance(value, str) and value in _attention_categories
+        ]
     raw_snoozed = settings.get("attention_snoozed_until", {})
     return {
         "enabled_categories": categories or sorted(_attention_categories),
-        "snoozed_until": raw_snoozed if isinstance(raw_snoozed, dict) else {},
+        "snoozed_until": (
+            {str(key): str(value) for key, value in raw_snoozed.items()}
+            if isinstance(raw_snoozed, dict)
+            else {}
+        ),
     }
 
 
 @router.get("/attention/preferences")
 def get_attention_preferences(
     db: Session = Depends(get_db), user: User = Depends(current_user)
-) -> dict[str, object]:
+) -> AttentionPreferencePayload:
     _, settings = _attention_settings(db, user.id)
     return _attention_preference_payload(settings)
 
@@ -94,7 +110,7 @@ def update_attention_preferences(
     data: AttentionPreferenceUpdate,
     db: Session = Depends(get_db),
     user: User = Depends(current_user),
-) -> dict[str, object]:
+) -> AttentionPreferencePayload:
     preference, settings = _attention_settings(db, user.id)
     if not preference:
         preference = SupportAssistantPreference(user_id=user.id)
@@ -108,7 +124,7 @@ def update_attention_preferences(
 @router.post("/attention/snooze")
 def snooze_attention_item(
     data: AttentionSnoozeCreate, db: Session = Depends(get_db), user: User = Depends(current_user)
-) -> dict[str, object]:
+) -> AttentionPreferencePayload:
     preference, settings = _attention_settings(db, user.id)
     if not preference:
         preference = SupportAssistantPreference(user_id=user.id)

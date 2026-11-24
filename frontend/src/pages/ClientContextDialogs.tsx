@@ -36,6 +36,8 @@ import { TicketSendActionsDialog } from "../components/TicketSendActions";
 
 type Access = {
   id: number;
+  branch_id: number | null;
+  branch_name: string | null;
   access_type: string;
   label: string;
   server_or_address: string | null;
@@ -44,6 +46,7 @@ type Access = {
   has_password: boolean;
   is_active: boolean;
 };
+type Branch = { id: number; name: string; is_active: boolean };
 type Contact = {
   id: number;
   full_name: string;
@@ -55,6 +58,8 @@ type Contact = {
 };
 const emptyAccess = {
   id: 0,
+  branch_id: null,
+  branch_name: null,
   access_type: "OTHER",
   label: "",
   server_or_address: "",
@@ -94,6 +99,12 @@ export function ClientAccessManagerDialog({
     queryFn: async () =>
       (await api.get<Access[]>(`/clients/${clientId}/access`)).data,
   });
+  const branches = useQuery({
+    queryKey: ["client-branches", String(clientId)],
+    enabled: open && !!clientId && hasPermission("client_access.view"),
+    queryFn: async () =>
+      (await api.get<Branch[]>(`/clients/${clientId}/branches`)).data,
+  });
   useEffect(() => {
     if (!open) {
       setEditing(null);
@@ -106,6 +117,7 @@ export function ClientAccessManagerDialog({
     mutationFn: async () => {
       if (!clientId || !editing) return;
       const payload = {
+        branch_id: editing.branch_id,
         access_type: editing.access_type,
         label: editing.label,
         server_or_address: editing.server_or_address || null,
@@ -162,6 +174,7 @@ export function ClientAccessManagerDialog({
               <TableRow>
                 {[
                   "Type",
+                  "Client / branch",
                   "Label / address",
                   "Username",
                   "Password",
@@ -177,6 +190,7 @@ export function ClientAccessManagerDialog({
               {records.data?.map((item) => (
                 <TableRow key={item.id}>
                   <TableCell>{item.access_type}</TableCell>
+                  <TableCell>{item.branch_name ?? "Entire client"}</TableCell>
                   <TableCell>
                     {item.label}
                     <Typography variant="caption" display="block" dir="ltr">
@@ -253,6 +267,25 @@ export function ClientAccessManagerDialog({
               {editing.id ? "Edit access record" : "New access record"}
             </Typography>
             <Stack direction={{ xs: "column", sm: "row" }} gap={1}>
+              <TextField
+                select
+                label="Client or branch access"
+                value={editing.branch_id ?? ""}
+                onChange={(e) =>
+                  setEditing({
+                    ...editing,
+                    branch_id: e.target.value ? Number(e.target.value) : null,
+                  })
+                }
+                sx={{ minWidth: 210 }}
+              >
+                <MenuItem value="">Entire client</MenuItem>
+                {branches.data?.filter((branch) => branch.is_active).map((branch) => (
+                  <MenuItem key={branch.id} value={branch.id}>
+                    {branch.name}
+                  </MenuItem>
+                ))}
+              </TextField>
               <TextField
                 select
                 label="Type"

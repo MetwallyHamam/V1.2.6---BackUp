@@ -453,6 +453,12 @@ def test_bulk_assign_and_transfer_preserve_completed_history(
     )
     assert assigned.status_code == 200, assigned.text
     assert assigned.json() == {"created": 2, "skipped": 0, "skipped_client_ids": []}
+    assert database.scalar(
+        select(Notification.id).where(
+            Notification.recipient_user_id == admin.id,
+            Notification.notification_type == "SERVICE_CHECKLIST_ASSIGNED",
+        )
+    )
     schedules = list(
         database.scalars(select(ServiceChecklistSchedule).order_by(ServiceChecklistSchedule.id))
     )
@@ -762,6 +768,7 @@ def test_quick_completion_closes_the_linked_ticket(
                 {
                     "item_id": event["items"][0]["id"],
                     "choice": "DONE",
+                    "resource_path": "https://backup.example.test/quick-close",
                     "check_date": now.isoformat(),
                 }
             ],

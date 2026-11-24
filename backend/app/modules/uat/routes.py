@@ -29,9 +29,12 @@ from app.modules.uat.models import (
     UatChecklistVersion,
     UatChecklistVersionItem,
     UatClientSignoff,
+    UatComment,
     UatCycle,
     UatCycleParticipant,
     UatCycleTest,
+    UatDefectLink,
+    UatEvidence,
     UatImplementationTask,
     UatSignoff,
     UatTestAttempt,
@@ -899,6 +902,22 @@ def _cycle_read(db: Session, row: UatCycle) -> dict[str, object]:
     participants = list(
         db.scalars(select(UatCycleParticipant).where(UatCycleParticipant.cycle_id == row.id))
     )
+    test_ids = [item.id for item in tests]
+    comment_counts: dict[int, int] = {
+        test_id: count for test_id, count in db.execute(
+            select(UatComment.cycle_test_id, func.count(UatComment.id))
+            .where(UatComment.cycle_test_id.in_(test_ids))
+            .group_by(UatComment.cycle_test_id)
+        ).all()
+    } if test_ids else {}
+    evidence_counts: dict[int, int] = {
+        test_id: count for test_id, count in db.execute(
+            select(UatTestAttempt.cycle_test_id, func.count(UatEvidence.id))
+            .join(UatEvidence, UatEvidence.attempt_id == UatTestAttempt.id)
+            .where(UatTestAttempt.cycle_test_id.in_(test_ids))
+            .group_by(UatTestAttempt.cycle_test_id)
+        ).all()
+    } if test_ids else {}
     ticket_numbers = {
         ticket.id: ticket.ticket_number
         for ticket in db.scalars(
@@ -964,6 +983,8 @@ def _cycle_read(db: Session, row: UatCycle) -> dict[str, object]:
                 "test_result": item.test_result,
                 "attempt_count": item.attempt_count,
                 "retest_count": item.retest_count,
+                "comment_count": comment_counts.get(item.id, 0),
+                "evidence_count": evidence_counts.get(item.id, 0),
                 "linked_ticket_id": item.linked_ticket_id,
                 "linked_ticket_number": ticket_numbers.get(item.linked_ticket_id)
                 if item.linked_ticket_id
@@ -1130,7 +1151,94 @@ def _signoff_summary(db: Session, cycle: UatCycle, actor: User) -> dict[str, obj
         json.loads(item.snapshot_json).get("is_mandatory", True) and item.test_result != "PASS"
         for item in tests
     )
-    return {**metrics, "mandatory_incomplete": mandatory_incomplete}
+    attempt_ids_by_test: dict[int, list[int]] = {}
+    for test_id, attempt_id in db.execute(
+        select(UatTestAttempt.cycle_test_id, UatTestAttempt.id).where(
+            UatTestAttempt.cycle_test_id.in_([item.id for item in tests])
+        )
+    ):
+        attempt_ids_by_test.setdefault(test_id, []).append(attempt_id)
+    evidence_attempt_ids = set(
+        db.scalars(
+            select(UatEvidence.attempt_id).where(
+                UatEvidence.attempt_id.in_(
+                    [value for values in attempt_ids_by_test.values() for value in values]
+                )
+            )
+        )
+    )
+    required_evidence_missing_ids = [
+        item.id
+        for item in tests
+        if json.loads(item.snapshot_json).get("evidence_required", False)
+        and not any(
+            attempt_id in evidence_attempt_ids
+            for attempt_id in attempt_ids_by_test.get(item.id, [])
+        )
+    ]
+    failed_ids = [item.id for item in tests if item.test_result == "FAIL"]
+    blocked_ids = [item.id for item in tests if item.test_result == "BLOCKED"]
+    mandatory_ids = [
+        item.id
+        for item in tests
+        if json.loads(item.snapshot_json).get("is_mandatory", True)
+        and item.test_result != "PASS"
+    ]
+    linked_ids = [item.linked_ticket_id for item in tests if item.linked_ticket_id]
+    linked_tickets = {
+        item.id: item for item in db.scalars(select(Ticket).where(Ticket.id.in_(linked_ids)))
+    } if linked_ids else {}
+    linked_status_ids = {item.status_id for item in linked_tickets.values()}
+    linked_statuses = {
+        item.id: item.code
+        for item in db.scalars(
+            select(TicketStatus).where(TicketStatus.id.in_(linked_status_ids))
+        )
+    } if linked_status_ids else {}
+    open_defect_items = [
+        {"test_id": item.id, "ticket_id": item.linked_ticket_id}
+        for item in tests
+        if item.linked_ticket_id
+        and (ticket := linked_tickets.get(item.linked_ticket_id)) is not None
+        and linked_statuses.get(ticket.status_id) not in {"RESOLVED", "CLOSED", "CANCELLED"}
+    ]
+    warnings: list[dict[str, object]] = []
+    now = server_now()
+    portal_workflow = cycle.allow_client_testing or cycle.allow_client_signoff
+    if cycle.status == "ACTIVE" and portal_workflow and not cycle.portal_visible:
+        warnings.append({"code": "PORTAL_NOT_PUBLISHED", "message": "Active client UAT is not published to the portal.", "blocking": True})
+    if cycle.portal_visible and cycle.client_access_start_at and now < _aware(cycle.client_access_start_at):
+        warnings.append({"code": "PORTAL_ACCESS_NOT_STARTED", "message": "Client portal access has not started.", "blocking": True})
+    if cycle.portal_visible and cycle.client_access_end_at and now > _aware(cycle.client_access_end_at):
+        warnings.append({"code": "PORTAL_ACCESS_EXPIRED", "message": "Client portal access has expired.", "blocking": True})
+    if cycle.allow_client_testing and not any(item.client_tester_user_id for item in tests):
+        warnings.append({"code": "NO_CLIENT_TESTER", "message": "No client tester is assigned.", "blocking": True})
+    if cycle.allow_client_testing and not any((cycle.allow_client_pass, cycle.allow_client_fail, cycle.allow_client_blocked)):
+        warnings.append({"code": "NO_CLIENT_RESULT_ACTION", "message": "Client testing has no enabled result action.", "blocking": True})
+    approver = db.get(User, cycle.client_approver_user_id) if cycle.client_approver_user_id else None
+    if cycle.allow_client_signoff and (
+        not approver or not approver.is_active or approver.user_type != "CLIENT_PORTAL"
+    ):
+        warnings.append({"code": "INVALID_CLIENT_APPROVER", "message": "Client sign-off lacks a valid active portal approver.", "blocking": True})
+    checks = [
+        {"code": "MANDATORY_TESTS", "label": "Mandatory tests passed", "passed": not mandatory_ids, "test_ids": mandatory_ids},
+        {"code": "FAILED_TESTS", "label": "No failed tests", "passed": not failed_ids, "test_ids": failed_ids},
+        {"code": "BLOCKED_TESTS", "label": "No blocked tests", "passed": not blocked_ids, "test_ids": blocked_ids},
+        {"code": "OPEN_DEFECTS", "label": "No open defects", "passed": not open_defect_items, "items": open_defect_items},
+        {"code": "REQUIRED_EVIDENCE", "label": "Required evidence attached", "passed": not required_evidence_missing_ids, "test_ids": required_evidence_missing_ids},
+        {"code": "COMPLETION", "label": "All tests completed", "passed": metrics["completion_percent"] == 100, "test_ids": [item.id for item in tests if item.test_result == "NOT_TESTED"]},
+    ]
+    ready = bool(tests) and all(item["passed"] for item in checks) and not any(
+        item["blocking"] for item in warnings
+    )
+    return {
+        **metrics,
+        "mandatory_incomplete": mandatory_incomplete,
+        "required_evidence_missing": len(required_evidence_missing_ids),
+        "checks": checks,
+        "configuration_warnings": warnings,
+        "ready": ready,
+    }
 
 
 def _signoff_read(row: UatSignoff) -> dict[str, object]:
@@ -1215,16 +1323,11 @@ def request_signoff(
                 "UAT_CLIENT_SIGNOFF_CHANGED",
                 "Client tests changed after approval. Request a new client decision.",
             )
-    if (
-        not summary["total"]
-        or summary["mandatory_incomplete"]
-        or summary["failed"]
-        or summary["blocked"]
-        or summary["open_defects"]
-    ):
+    if not summary["ready"]:
         raise ConflictError(
             "UAT_SIGNOFF_NOT_READY",
-            "Resolve failed and blocked tests, open defects, and incomplete mandatory tests before requesting sign-off.",
+            "Complete the sign-off readiness checklist and resolve blocking configuration warnings.",
+            {"checks": summary["checks"], "configuration_warnings": summary["configuration_warnings"]},
         )
     number = (
         db.scalar(
@@ -1287,6 +1390,12 @@ def _decide_signoff(
         raise ConflictError("UAT_REJECTION_COMMENT_REQUIRED", "A rejection comment is required.")
     if decision == "APPROVED":
         summary = _signoff_summary(db, cycle, actor)
+        if not summary["ready"]:
+            raise ConflictError(
+                "UAT_SIGNOFF_NOT_READY",
+                "The cycle no longer satisfies the sign-off readiness checklist.",
+                {"checks": summary["checks"], "configuration_warnings": summary["configuration_warnings"]},
+            )
         original = json.loads(row.summary_snapshot_json)
         tracked = (
             "total",
@@ -2212,9 +2321,9 @@ def execute_test(
             "UAT_NEEDS_INVESTIGATION",
             "The coordinator must investigate the failure, create a ticket, or return the test to Ready.",
         )
-    if row.linked_ticket_id and row.workflow_status == "WAITING_FIX":
+    if row.linked_ticket_id and row.workflow_status in {"WAITING_FIX", "FIX_IN_PROGRESS"}:
         raise ConflictError(
-            "UAT_WAITING_FIX", "The linked ticket must be resolved before retesting."
+            "UAT_WAITING_FIX", "The linked ticket fix must be resolved before retesting."
         )
     when = server_now()
     row.attempt_count += 1
@@ -2223,7 +2332,7 @@ def execute_test(
     row.test_result = data.result
     row.workflow_status = {
         "PASS": "COMPLETED",
-        "FAIL": "NEEDS_INVESTIGATION",
+        "FAIL": "WAITING_FIX" if row.linked_ticket_id and row.retest_count else "NEEDS_INVESTIGATION",
         "BLOCKED": "BLOCKED",
     }[data.result]
     row.tested_at = when
@@ -2279,6 +2388,12 @@ def execute_test(
                 deduplication_key=f"uat-retest-result:{row.id}:attempt:{row.attempt_count}",
             )
         )
+        if row.linked_ticket_id:
+            linked_ticket = db.get(Ticket, row.linked_ticket_id)
+            if linked_ticket:
+                from app.modules.uat.service import mark_retest_outcome
+
+                mark_retest_outcome(db, linked_ticket, row, actor, data.result)
     _audit(db, actor, "UatCycleTest", row.id, "uat.test.executed")
     _commit(db)
     return {
@@ -2366,6 +2481,16 @@ def _defect_draft(db: Session, row: UatCycleTest) -> dict[str, object]:
         raise ConflictError(
             "UAT_NOT_FAILED", "Record a failed attempt before creating a defect ticket."
         )
+    client_safe_evidence = list(
+        db.scalars(
+            select(UatEvidence)
+            .where(
+                UatEvidence.attempt_id == latest.id,
+                UatEvidence.visibility == "CLIENT_VISIBLE",
+            )
+            .order_by(UatEvidence.id)
+        )
+    )
     product = (
         db.get(Product, cycle.product_id or snapshot.get("product_id"))
         if cycle.product_id or snapshot.get("product_id")
@@ -2374,9 +2499,7 @@ def _defect_draft(db: Session, row: UatCycleTest) -> dict[str, object]:
     module = db.get(ProductModule, snapshot.get("module_id")) if snapshot.get("module_id") else None
     client = db.get(Client, cycle.client_id)
     contract = db.get(Contract, cycle.contract_id) if cycle.contract_id else None
-    subject = f"UAT Failed - {product.name if product else 'Product'} - {module.name if module else 'General'} - {snapshot['title']}"[
-        :300
-    ]
+    subject = f"[UAT][Release {cycle.release_version}] {snapshot['title']} — {snapshot['code']}"[:300]
     lines = [
         f"UAT cycle: {cycle.code} - {cycle.title}",
         f"UAT test ID: {row.id}",
@@ -2397,7 +2520,10 @@ def _defect_draft(db: Session, row: UatCycleTest) -> dict[str, object]:
         f"Actual: {latest.actual_result}",
         f"Failure: {latest.failure_reason or latest.actual_result}",
         f"Severity: {latest.severity or 'MEDIUM'}",
+        f"Attempt: {latest.attempt_number}",
         f"Tester ID: {latest.tested_by_user_id}",
+        "Client-safe evidence: "
+        + (", ".join(item.original_filename for item in client_safe_evidence) or "None"),
     ]
     return {
         "subject": subject,
@@ -2471,6 +2597,11 @@ def create_defect_ticket(
             **data.model_dump(),
         ),
         actor,
+        # This is a governed system-generated defect, not the interactive
+        # employee ticket form. Its UAT snapshot/cycle supplies the available
+        # context, while interactive required fields such as Caller may have
+        # no meaningful value and are not exposed by this workflow.
+        enforce_configured_required_fields=False,
     )
     row.linked_ticket_id = ticket.id
     latest = db.scalar(
@@ -2480,6 +2611,13 @@ def create_defect_ticket(
     )
     if latest:
         latest.linked_ticket_id = ticket.id
+    if not db.scalar(select(UatDefectLink.id).where(UatDefectLink.ticket_id == ticket.id)):
+        db.add(UatDefectLink(
+            ticket_id=ticket.id, cycle_id=cycle.id, cycle_test_id=row.id,
+            attempt_id=latest.id if latest else None, cycle_code=cycle.code,
+            test_code=snapshot.get("code"), release_version=cycle.release_version,
+            created_by_user_id=actor.id,
+        ))
     row.workflow_status = "WAITING_FIX"
     notify_defect_created(db, cycle, row, ticket)
     _audit(db, actor, "UatCycleTest", row.id, "uat.defect_ticket.linked")

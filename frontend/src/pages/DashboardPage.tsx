@@ -66,6 +66,7 @@ import { DashboardCustomizer, type Widget } from "./DashboardCustomizer";
 import { ManagerOverview, type ManagerSummary } from "./ManagerOverview";
 import { useTranslation } from "react-i18next";
 import { serverDateInput } from "../utils/serverTime";
+import { UnifiedOperationsExecutivePanel } from "../components/UnifiedOperationsExecutivePanel";
 
 type DashboardFilterOption = { id: number; name: string; client_id?: number };
 type DashboardFilterMetadata = {
@@ -663,7 +664,7 @@ export function DashboardPage({
   const defaultPeriod = currentMonthToDate();
   const [dashboardSection, setDashboardSection] = useState("OVERVIEW");
   const { hasPermission, user } = useAuth();
-  const layoutKey = `supporthub-dashboard-layout-${user?.id ?? "anonymous"}-${dashboardType}`;
+  const layoutKey = `supporthub-dashboard-layout-v2-${user?.id ?? "anonymous"}-${dashboardType}`;
   const [personalLayout, setPersonalLayout] = useState<Record<string, { order: number; width: number }>>({});
   const [layoutDirty, setLayoutDirty] = useState(false);
   const [draggedWidget, setDraggedWidget] = useState<string | null>(null);
@@ -674,7 +675,7 @@ export function DashboardPage({
   }, [layoutKey]);
   function widgetWidth(code: string, fallback: number) { return personalLayout[code]?.width ?? fallback; }
   function resizeWidget(code: string, fallback: number) {
-    const sizes = [4, 6, 8, 12];
+    const sizes = [3, 4, 6, 8, 12];
     const current = widgetWidth(code, fallback);
     setPersonalLayout(value => ({ ...value, [code]: { order: value[code]?.order ?? 0, width: sizes[(Math.max(0, sizes.indexOf(current)) + 1) % sizes.length] } }));
     setLayoutDirty(true);
@@ -688,7 +689,7 @@ export function DashboardPage({
     setDraggedWidget(null);
     setLayoutDirty(true);
   }
-  function layoutControls(code: string, fallback: number) { return <Stack direction="row" sx={{ position: "absolute", zIndex: 5, top: 8, insetInlineEnd: 8, bgcolor: "background.paper", borderRadius: 1, boxShadow: 2 }}><IconButton size="small" draggable onDragStart={event => { event.stopPropagation(); setDraggedWidget(code); }} onDragEnd={() => setDraggedWidget(null)} aria-label={`Move ${code}`} title="Drag to move"><DragIndicator fontSize="small" /></IconButton><IconButton size="small" onClick={() => resizeWidget(code, fallback)} aria-label={`Resize ${code}`} title="Resize widget"><AspectRatio fontSize="small" /></IconButton></Stack>; }
+  function layoutControls(code: string, fallback: number) { return <Stack className="dashboard-layout-controls" direction="row" sx={{ position: "absolute", zIndex: 5, top: 8, insetInlineEnd: 8, bgcolor: "background.paper", border: 1, borderColor: "divider", borderRadius: 2, boxShadow: 2, opacity: { xs: 1, md: 0 }, transform: { md: "translateY(-4px)" }, transition: "opacity .18s ease, transform .18s ease" }}><IconButton size="small" draggable onDragStart={event => { event.stopPropagation(); setDraggedWidget(code); }} onDragEnd={() => setDraggedWidget(null)} aria-label={`Move ${code}`} title="Drag to move"><DragIndicator fontSize="small" /></IconButton><IconButton size="small" onClick={() => resizeWidget(code, fallback)} aria-label={`Resize ${code}`} title="Resize widget"><AspectRatio fontSize="small" /></IconButton></Stack>; }
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const [agent, setAgent] = useState("ALL");
@@ -992,6 +993,10 @@ export function DashboardPage({
     );
   }
   const data = query.data;
+  const activeFilterCount = Object.values(dashboardFilters).filter(Boolean).length;
+  const reportingPeriod = consumptionDates.from && consumptionDates.to
+    ? `${consumptionDates.from} – ${consumptionDates.to}`
+    : "Select a valid period";
   const repeatedIssueRows = Object.entries(data.top_repeated_issues ?? {});
   const repeatedIssuesPageCount = Math.max(
     1,
@@ -1013,18 +1018,70 @@ export function DashboardPage({
         minHeight: "calc(100vh - 64px)",
       }}
     >
-      <InactiveClientsKpi />
+      <Paper
+        elevation={0}
+        sx={{
+          position: "relative",
+          overflow: "hidden",
+          p: { xs: 2.5, md: 3.5 },
+          borderRadius: 4,
+          background: (theme) => theme.palette.mode === "dark"
+            ? "linear-gradient(135deg, #071a33 0%, #0c4a5a 62%, #0f766e 100%)"
+            : "linear-gradient(135deg, #0b2f5b 0%, #075985 58%, #0f766e 100%)",
+          color: "white",
+          boxShadow: "0 18px 45px rgba(15, 57, 112, .18)",
+          "&::after": {
+            content: '""', position: "absolute", width: 280, height: 280,
+            borderRadius: "50%", insetInlineEnd: -90, top: -145,
+            bgcolor: "rgba(255,255,255,.08)",
+          },
+        }}
+      >
+        <Stack direction={{ xs: "column", lg: "row" }} alignItems={{ lg: "center" }} gap={2.5} position="relative" zIndex={1}>
+          <Box sx={{ flexGrow: 1 }}>
+            <Stack direction="row" gap={1} alignItems="center" mb={1}>
+              <Insights sx={{ opacity: .9 }} />
+              <Typography variant="overline" fontWeight={800} letterSpacing={1.4} sx={{ opacity: .86 }}>
+                {dashboardType === "EXECUTIVE" ? "SUPPORT PERFORMANCE" : "MANAGEMENT INTELLIGENCE"}
+              </Typography>
+            </Stack>
+            <Typography variant="h3" fontWeight={900} sx={{ fontSize: { xs: "1.85rem", md: "2.55rem" }, lineHeight: 1.08 }}>
+              {t("employeeDashboard.supportIntelligence")}
+            </Typography>
+            <Typography sx={{ opacity: .82, mt: 1, maxWidth: 720 }}>
+              {t("employeeDashboard.supportSubtitle")}
+            </Typography>
+            <Stack direction="row" gap={1} mt={2} flexWrap="wrap">
+              <Chip size="small" label={reportingPeriod} sx={{ color: "white", bgcolor: "rgba(255,255,255,.14)", backdropFilter: "blur(8px)" }} />
+              <Chip size="small" label={`${activeFilterCount} business filter${activeFilterCount === 1 ? "" : "s"}`} sx={{ color: "white", bgcolor: "rgba(255,255,255,.14)" }} />
+              <Chip size="small" label={t("employeeDashboard.updated", { time: new Date(query.dataUpdatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) })} sx={{ color: "white", bgcolor: "rgba(255,255,255,.14)" }} />
+            </Stack>
+          </Box>
+          <Stack direction={{ xs: "column", sm: "row" }} gap={1} flexWrap="wrap">
+            <Button variant="outlined" color="inherit" startIcon={<Refresh />} onClick={() => query.refetch()} sx={{ borderColor: "rgba(255,255,255,.45)", bgcolor: "rgba(255,255,255,.05)" }}>
+              {t("employeeDashboard.refresh")}
+            </Button>
+            <Button variant="outlined" color="inherit" onClick={() => navigate("/tickets")} sx={{ borderColor: "rgba(255,255,255,.45)" }}>
+              {t("employeeDashboard.ticketQueue")}
+            </Button>
+            {hasPermission("report.export") && <Button variant="contained" color="inherit" sx={{ color: "#0f3970", fontWeight: 800 }} onClick={exportTickets}>{t("employeeDashboard.export")}</Button>}
+          </Stack>
+        </Stack>
+      </Paper>
+      <Paper variant="outlined" sx={{ px: 1, borderRadius: 3, borderColor: "divider" }}>
+        <Tabs value={dashboardSection} onChange={(_, value) => setDashboardSection(value)} variant="scrollable" scrollButtons="auto">
+          <Tab value="OVERVIEW" label={t("employeeDashboard.overview")} />
+          <Tab value="DETAILS" label={t("employeeDashboard.details")} />
+        </Tabs>
+      </Paper>
       {data.total_tickets === 0 && (
         <Alert severity="info">{t("employeeDashboard.emptyScope")}</Alert>
       )}
-      {(hasPermission("dashboard.customize.own") ||
-        hasPermission("dashboard.manage_widgets")) && (
-        <Stack direction="row" justifyContent="flex-end">
-          <DashboardCustomizer dashboardType={dashboardType} />
-        </Stack>
-      )}
-      {dashboardSection === "OVERVIEW" && <Box textAlign="right"><Button size="small" startIcon={<Save />} disabled={!layoutDirty} onClick={() => { localStorage.setItem(layoutKey, JSON.stringify(personalLayout)); setLayoutDirty(false); }}>Save layout</Button></Box>}
-      <Paper sx={{ p: 2, borderRadius: 3 }}>
+      <Stack direction="row" justifyContent="flex-end" gap={1}>
+        {dashboardSection === "OVERVIEW" && <Button size="small" startIcon={<Save />} disabled={!layoutDirty} onClick={() => { localStorage.setItem(layoutKey, JSON.stringify(personalLayout)); setLayoutDirty(false); }}>Save layout</Button>}
+        {(hasPermission("dashboard.customize.own") || hasPermission("dashboard.manage_widgets")) && <DashboardCustomizer dashboardType={dashboardType} />}
+      </Stack>
+      <Paper variant="outlined" sx={{ p: 2, borderRadius: 3, borderColor: "divider", boxShadow: "0 8px 28px rgba(15,23,42,.05)" }}>
         <Stack
           direction={{ xs: "column", md: "row" }}
           gap={1}
@@ -1032,8 +1089,8 @@ export function DashboardPage({
           alignItems={{ md: "center" }}
         >
           <Box>
-            <Typography fontWeight={800}>
-              {t("employeeDashboard.filters")}
+            <Typography fontWeight={900}>
+              Reporting scope
             </Typography>
             <Typography variant="caption" color="text.secondary">
               {t("employeeDashboard.filtersHint")}
@@ -1041,9 +1098,9 @@ export function DashboardPage({
           </Box>
           <Chip
             size="small"
-            label={t("employeeDashboard.active", {
-              count: Object.values(dashboardFilters).filter(Boolean).length + 2,
-            })}
+            label={`${reportingPeriod} · ${activeFilterCount} filter${activeFilterCount === 1 ? "" : "s"}`}
+            color={activeFilterCount ? "primary" : "default"}
+            variant={activeFilterCount ? "filled" : "outlined"}
           />
           <Button
             size="small"
@@ -1163,7 +1220,8 @@ export function DashboardPage({
           </Alert>
         )}
       </Paper>
-      {dashboardSection === "OVERVIEW" &&
+      {dashboardSection === "DETAILS" && <InactiveClientsKpi />}
+      {dashboardSection === "DETAILS" &&
         hasPermission("dashboard.online_engineers.view") && (
           <Paper sx={{ p: 2.5, borderRadius: 3 }}>
             <Stack direction="row" alignItems="center" mb={2}>
@@ -1339,71 +1397,7 @@ export function DashboardPage({
           ))}
         </Box>
       )}
-      <Paper
-        elevation={0}
-        sx={{
-          p: 2.5,
-          borderRadius: 3,
-          background: "linear-gradient(120deg, #0f3970, #0b7285)",
-          color: "white",
-        }}
-      >
-        <Stack
-          direction={{ xs: "column", md: "row" }}
-          alignItems={{ md: "center" }}
-          gap={2}
-        >
-          <Box sx={{ flexGrow: 1 }}>
-            <Typography variant="h4" fontWeight={800}>
-              {t("employeeDashboard.supportIntelligence")}
-            </Typography>
-            <Typography sx={{ opacity: 0.82 }}>
-              {t("employeeDashboard.supportSubtitle")}
-            </Typography>
-          </Box>
-          <Chip
-            label={t("employeeDashboard.updated", {
-              time: new Date(query.dataUpdatedAt).toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-              }),
-            })}
-            sx={{ color: "white", bgcolor: "rgba(255,255,255,.15)" }}
-          />
-          <Button
-            color="inherit"
-            startIcon={<Refresh />}
-            onClick={() => query.refetch()}
-          >
-            {t("employeeDashboard.refresh")}
-          </Button>
-          <Button color="inherit" onClick={() => navigate("/tickets")}>
-            {t("employeeDashboard.ticketQueue")}
-          </Button>
-          {hasPermission("report.export") && (
-            <Button
-              variant="contained"
-              color="inherit"
-              sx={{ color: "#0f3970" }}
-              onClick={exportTickets}
-            >
-              {t("employeeDashboard.export")}
-            </Button>
-          )}
-        </Stack>
-      </Paper>
-      <Paper sx={{ px: 1, borderRadius: 3 }}>
-        <Tabs
-          value={dashboardSection}
-          onChange={(_, value) => setDashboardSection(value)}
-          variant="scrollable"
-          scrollButtons="auto"
-        >
-          <Tab value="OVERVIEW" label={t("employeeDashboard.overview")} />
-          <Tab value="DETAILS" label={t("employeeDashboard.details")} />
-        </Tabs>
-      </Paper>
-      {dashboardSection === "OVERVIEW" &&
+      {dashboardSection === "DETAILS" &&
         (hasPermission("entitlement_approval.view") ||
           hasPermission("dashboard.manager")) && (
           <Card
@@ -1453,7 +1447,15 @@ export function DashboardPage({
           </Card>
         )}
       {dashboardSection === "OVERVIEW" && (
-        <Grid container spacing={2}>
+        <Box>
+          <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ sm: "flex-end" }} gap={1} mb={1.5}>
+            <Box>
+              <Typography variant="h5" fontWeight={900}>Executive snapshot</Typography>
+              <Typography variant="body2" color="text.secondary">The most important workload, risk, and service indicators for the selected reporting scope.</Typography>
+            </Box>
+            <Chip variant="outlined" size="small" label="Select a KPI to inspect its evidence" />
+          </Stack>
+          <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 1.5 }}>
           {cards
             .filter((card) =>
               configuredWidgets.some(
@@ -1462,8 +1464,8 @@ export function DashboardPage({
             )
             .sort((a, b) => (personalLayout[a.key]?.order ?? cards.indexOf(a)) - (personalLayout[b.key]?.order ?? cards.indexOf(b)))
             .map((card) => (
-              <Grid key={card.key} size={{ xs: 12, sm: 6, lg: widgetWidth(card.key, 4) }} onDragOver={event => event.preventDefault()} onDrop={() => moveWidget(card.key, cards.filter(item => configuredWidgets.some(widget => widget.widget_code === item.key)).sort((a, b) => (personalLayout[a.key]?.order ?? cards.indexOf(a)) - (personalLayout[b.key]?.order ?? cards.indexOf(b))).map(item => item.key), Object.fromEntries(cards.map(item => [item.key, 4])))} sx={{ position: "relative" }}>
-                {layoutControls(card.key, 4)}
+              <Box key={card.key} onDragOver={event => event.preventDefault()} onDrop={() => moveWidget(card.key, cards.filter(item => configuredWidgets.some(widget => widget.widget_code === item.key)).sort((a, b) => (personalLayout[a.key]?.order ?? cards.indexOf(a)) - (personalLayout[b.key]?.order ?? cards.indexOf(b))).map(item => item.key), Object.fromEntries(cards.map(item => [item.key, 3])))} sx={{ position: "relative", minWidth: 0, "&:hover .dashboard-layout-controls, &:focus-within .dashboard-layout-controls": { opacity: 1, transform: "translateY(0)" } }}>
+                {layoutControls(card.key, 3)}
                 <Card
                   component="button"
                   onClick={() => openCard(card.key)}
@@ -1473,15 +1475,20 @@ export function DashboardPage({
                     width: "100%",
                     textAlign: "left",
                     height: "100%",
+                    borderRadius: 3,
+                    borderTop: `4px solid ${card.color}`,
+                    background: (theme) => theme.palette.mode === "dark" ? "linear-gradient(145deg, rgba(255,255,255,.035), rgba(255,255,255,.01))" : "linear-gradient(145deg, #fff, #f8fafc)",
+                    transition: "transform .18s ease, box-shadow .18s ease, border-color .18s ease",
+                    "&:hover": { transform: "translateY(-3px)", boxShadow: "0 14px 30px rgba(15,23,42,.11)" },
                   }}
                 >
-                  <CardContent>
+                  <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>
                     <Stack direction="row" alignItems="center">
                       <Box
                         sx={{
                           display: "grid",
                           placeItems: "center",
-                          p: 1,
+                          p: .75,
                           borderRadius: 2,
                           color: card.color,
                           bgcolor: `${card.color}15`,
@@ -1497,18 +1504,23 @@ export function DashboardPage({
                         }}
                       />
                     </Stack>
-                    <Typography variant="h4" fontWeight={800} mt={1.5}>
+                    <Typography variant="h4" fontWeight={900} mt={1} sx={{ letterSpacing: "-.03em", lineHeight: 1.05 }}>
                       {data[card.key]}
                     </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {t(`employeeDashboard.${card.label}`)} ·{" "}
-                      {t("employeeDashboard.viewDetails")}
-                    </Typography>
+                    <Typography fontWeight={700}>{t(`employeeDashboard.${card.label}`)}</Typography>
+                    <Typography variant="caption" color="text.secondary">{t("employeeDashboard.viewDetails")} →</Typography>
                   </CardContent>
                 </Card>
-              </Grid>
+              </Box>
             ))}
-        </Grid>
+          </Box>
+        </Box>
+      )}
+      {dashboardSection === "OVERVIEW" && hasPermission("analytics.executive.view") && (
+        <UnifiedOperationsExecutivePanel
+          periodStart={consumptionDates.from}
+          periodEnd={consumptionDates.to}
+        />
       )}
       {dashboardSection === "OVERVIEW" && (
         <Grid container spacing={2}>
@@ -1524,12 +1536,12 @@ export function DashboardPage({
             .map((widget) => (
               <Grid
                 key={widget.widget_code}
-                size={{ xs: 12, md: widgetWidth(widget.widget_code, Math.max(4, widget.width)) }}
+                size={{ xs: 12, sm: widget.widget_type === "KPI_CARD" ? 6 : 12, md: widgetWidth(widget.widget_code, widget.widget_type === "KPI_CARD" ? 3 : Math.max(4, widget.width)) }}
                 onDragOver={event => event.preventDefault()}
-                onDrop={() => moveWidget(widget.widget_code, configuredWidgets.filter(item => !cards.some(card => card.key === item.widget_code) && !["service_health", "top_support_agents"].includes(item.widget_code)).sort((a, b) => (personalLayout[a.widget_code]?.order ?? configuredWidgets.indexOf(a)) - (personalLayout[b.widget_code]?.order ?? configuredWidgets.indexOf(b))).map(item => item.widget_code), Object.fromEntries(configuredWidgets.map(item => [item.widget_code, Math.max(4, item.width)])))}
-                sx={{ position: "relative" }}
+                onDrop={() => moveWidget(widget.widget_code, configuredWidgets.filter(item => !cards.some(card => card.key === item.widget_code) && !["service_health", "top_support_agents"].includes(item.widget_code)).sort((a, b) => (personalLayout[a.widget_code]?.order ?? configuredWidgets.indexOf(a)) - (personalLayout[b.widget_code]?.order ?? configuredWidgets.indexOf(b))).map(item => item.widget_code), Object.fromEntries(configuredWidgets.map(item => [item.widget_code, item.widget_type === "KPI_CARD" ? 3 : Math.max(4, item.width)])))}
+                sx={{ position: "relative", "&:hover .dashboard-layout-controls, &:focus-within .dashboard-layout-controls": { opacity: 1, transform: "translateY(0)" } }}
               >
-                {layoutControls(widget.widget_code, Math.max(4, widget.width))}
+                {layoutControls(widget.widget_code, widget.widget_type === "KPI_CARD" ? 3 : Math.max(4, widget.width))}
                 {widget.widget_code.startsWith("service_") ? (
                   <ServiceManagementWidget
                     category={widget.widget_code === "service_incidents" ? "incidents" : widget.widget_code === "service_change_requests" ? "changes" : "problems"}
@@ -1763,7 +1775,7 @@ export function DashboardPage({
           (widget) => widget.widget_code === "top_support_agents",
         ) && (
           <Grid container spacing={2}>
-            <Grid size={{ xs: 12, md: 6 }}>
+            <Grid size={{ xs: 12 }}>
               <Paper
                 sx={{
                   p: 2.5,
@@ -1783,7 +1795,7 @@ export function DashboardPage({
                 <Typography variant="body2" color="text.secondary" mb={2}>
                   {t("employeeDashboard.topThreeHint")}
                 </Typography>
-                <Stack spacing={1.25}>
+                <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" }, gap: 1.25 }}>
                   {topSupportAgents.map((row, index) => (
                     <Paper
                       variant="outlined"
@@ -1820,7 +1832,7 @@ export function DashboardPage({
                       </Stack>
                     </Paper>
                   ))}
-                </Stack>
+                </Box>
                 {!topSupportAgents.length && (
                   <Typography color="text.secondary">
                     {t("employeeDashboard.noSupportAgents")}
@@ -1857,9 +1869,9 @@ export function DashboardPage({
       )}
       {dashboardSection === "OVERVIEW" &&
         hasPermission("dashboard.manager") && (
-          <Grid container spacing={2}>
+          <Grid container spacing={2} alignItems="flex-start">
             <Grid size={{ xs: 12, lg: 7 }}>
-              <Paper sx={{ p: 2.5, height: "100%", borderRadius: 3 }}>
+              <Paper sx={{ p: 2.5, borderRadius: 3 }}>
                 <Stack direction="row" alignItems="center" spacing={1} mb={2}>
                   <Insights color="primary" />
                   <Box>

@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from xml.etree import ElementTree
 
@@ -9,6 +10,7 @@ from app.core.config import Settings
 from app.main import create_app
 from app.modules.escalations import scheduler
 from app.modules.escalations.scheduler import _acquire_database_lock, _release_database_lock
+from supporthub_runtime import load_web_config_environment
 
 
 def test_database_pool_settings_have_bounded_production_defaults() -> None:
@@ -93,3 +95,37 @@ def test_iis_configuration_runs_two_persistent_backend_processes() -> None:
     )
     assert "limit_max_requests=" not in runtime
     assert "limit_max_requests_jitter=" not in runtime
+
+
+def test_runtime_ignores_unresolved_web_config_secret_placeholders(
+    tmp_path: Path, monkeypatch
+) -> None:  # type: ignore[no-untyped-def]
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    (tmp_path / "web.config").write_text(
+        """<configuration><environmentVariables>
+        <environmentVariable name="DATABASE_URL" value="REPLACE_WITH_SECRET" />
+        <environmentVariable name="APP_NAME" value="Configured App" />
+        </environmentVariables></configuration>""",
+        encoding="utf-8",
+    )
+
+    load_web_config_environment(tmp_path)
+
+    assert "DATABASE_URL" not in os.environ
+    assert os.environ["APP_NAME"] == "Configured App"
+
+
+def test_runtime_preserves_an_existing_host_secret(
+    tmp_path: Path, monkeypatch
+) -> None:  # type: ignore[no-untyped-def]
+    monkeypatch.setenv("DATABASE_URL", "mssql+pymssql://host-secret/database")
+    (tmp_path / "web.config").write_text(
+        """<configuration><environmentVariables>
+        <environmentVariable name="DATABASE_URL" value="mssql+pymssql://template/database" />
+        </environmentVariables></configuration>""",
+        encoding="utf-8",
+    )
+
+    load_web_config_environment(tmp_path)
+
+    assert os.environ["DATABASE_URL"] == "mssql+pymssql://host-secret/database"

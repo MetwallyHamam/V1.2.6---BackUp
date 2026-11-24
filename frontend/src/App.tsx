@@ -4,6 +4,9 @@ import { lazy, Suspense, useEffect } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { api } from "./api/client";
 import { AppLayout } from "./layouts/AppLayout";
+import { ProjectManagementPage } from "./pages/ProjectManagementPage";
+import { ProjectSchedulePage } from "./pages/ProjectSchedulePage";
+import { ProjectTemplatesPage } from "./pages/ProjectTemplatesPage";
 import { ProtectedRoute } from "./routes/ProtectedRoute";
 import { PermissionRoute } from "./routes/PermissionRoute";
 import { InternalUserRoute } from "./routes/InternalUserRoute";
@@ -13,6 +16,34 @@ const ClientsPage = lazy(() =>
   import("./pages/ClientsPage").then((module) => ({
     default: module.ClientsPage,
   })),
+);
+const CustomerStructurePage = lazy(() =>
+  import("./pages/CustomerStructurePage").then((module) => ({
+    default: module.CustomerStructurePage,
+  })),
+);
+const CompanyOperationsSetupPage = lazy(() =>
+  import("./pages/CompanyOperationsSetupPage").then((module) => ({
+    default: module.CompanyOperationsSetupPage,
+  })),
+);
+const ProjectsPage = lazy(() =>
+  import("./pages/ProjectsPage").then((module) => ({ default: module.ProjectsPage })),
+);
+const ProjectExecutionPage = lazy(() =>
+  import("./pages/ProjectExecutionPage").then((module) => ({ default: module.ProjectExecutionPage })),
+);
+const ProjectAnalyticsPage = lazy(() =>
+  import("./pages/ProjectAnalyticsPage").then((module) => ({ default: module.ProjectAnalyticsPage })),
+);
+const ImplementationAnalyticsPage = lazy(() =>
+  import("./pages/ImplementationAnalyticsPage").then((module) => ({ default: module.ImplementationAnalyticsPage })),
+);
+const ImplementationIntakePage = lazy(() =>
+  import("./pages/ImplementationIntakePage").then((module) => ({ default: module.ImplementationIntakePage })),
+);
+const SupportReadinessAnalyticsPage = lazy(() =>
+  import("./pages/SupportReadinessAnalyticsPage").then((module) => ({ default: module.SupportReadinessAnalyticsPage })),
 );
 const ComplaintsPage = lazy(() =>
   import("./pages/ComplaintsPage").then((module) => ({
@@ -79,6 +110,9 @@ const MyWorkspacePage = lazy(() =>
     default: module.MyWorkspacePage,
   })),
 );
+const WorkAssignmentsPage = lazy(() => import("./pages/WorkAssignmentsPage").then((module) => ({ default: module.WorkAssignmentsPage })));
+const MaintenancePage = lazy(() => import("./pages/MaintenancePage").then((module) => ({ default: module.MaintenancePage })));
+const PublicWorkAssignmentPage = lazy(() => import("./pages/PublicWorkAssignmentPage").then((module) => ({ default: module.PublicWorkAssignmentPage })));
 const DashboardAdminPage = lazy(() =>
   import("./pages/DashboardAdminPage").then((module) => ({
     default: module.DashboardAdminPage,
@@ -383,6 +417,7 @@ export function App() {
         />
         <Route path="/uat-share/:token" element={<PublicUatTrackingPage />} />
         <Route path="/deployment-live/:token" element={<PublicDeploymentTrackingPage />} />
+        <Route path="/work-assignment-live/:token" element={<PublicWorkAssignmentPage />} />
         <Route
           path="/shared/reports/:token"
           element={<PublicTicketReportPage />}
@@ -393,11 +428,32 @@ export function App() {
         />
         <Route element={<ProtectedRoute />}>
           <Route path="change-password" element={<ChangePasswordPage />} />
+          <Route
+            element={
+              <PermissionRoute
+                anyOf={[
+                  "ticket.view.own",
+                  "ticket.view.team",
+                  "ticket.view.department",
+                  "ticket.view.all",
+                  "ticket.pre_ticket.view.own",
+                  "ticket.pre_ticket.queue.view",
+                ]}
+              />
+            }
+          >
+            <Route
+              path="support-assistant-app"
+              element={<SupportWorkspacePage />}
+            />
+          </Route>
           <Route element={<AppLayout />}>
             <Route index element={<Navigate to="/home" replace />} />
             <Route element={<InternalUserRoute />}>
               <Route path="home" element={<HomePage />} />
               <Route path="my-workspace" element={<MyWorkspacePage />} />
+              <Route path="work-assignments" element={<WorkAssignmentsPage />} />
+              <Route element={<PermissionRoute anyOf={["maintenance.view"]} />}><Route path="maintenance" element={<MaintenancePage />} /></Route>
               <Route
                 path="organization"
                 element={<OrganizationHierarchyPage />}
@@ -430,6 +486,27 @@ export function App() {
             <Route path="manager-finance" element={<FinancialPage />} />
             <Route path="payments" element={<FinancialPage />} />
             <Route path="clients" element={<ClientsPage />} />
+            <Route
+              element={
+                <PermissionRoute
+                  anyOf={["customer_structure.policy.view", "client.view"]}
+                />
+              }
+            >
+              <Route
+                path="customer-structure"
+                element={<CustomerStructurePage />}
+              />
+            </Route>
+            <Route
+              element={
+                <PermissionRoute
+                  anyOf={["customer_structure.policy.view", "client.manage", "project.manage"]}
+                />
+              }
+            >
+              <Route path="company-operations-setup" element={<CompanyOperationsSetupPage />} />
+            </Route>
             <Route path="customer-success" element={<CustomerSuccessPage />} />
             <Route path="clients/:id/edit" element={<EditClientPage />} />
             <Route path="clients/:id/profile" element={<ClientProfilePage />} />
@@ -492,6 +569,27 @@ export function App() {
               />
             </Route>
             <Route path="onboarding" element={<OnboardingPage />} />
+            <Route element={<PermissionRoute anyOf={["project.portfolio.view"]} />}>
+              <Route path="project-management" element={<ProjectManagementPage />} />
+              <Route path="projects" element={<ProjectsPage />} />
+              <Route path="projects/:id/execution" element={<ProjectExecutionPage />} />
+              <Route path="projects/:id/schedule" element={<ProjectSchedulePage />} />
+            </Route>
+            <Route element={<PermissionRoute anyOf={["project.create"]} />}>
+              <Route path="project-templates" element={<ProjectTemplatesPage />} />
+            </Route>
+            <Route element={<PermissionRoute anyOf={["analytics.project.view"]} />}>
+              <Route path="project-analytics" element={<ProjectAnalyticsPage />} />
+            </Route>
+            <Route element={<PermissionRoute anyOf={["analytics.implementation.view"]} />}>
+              <Route path="implementation-analytics" element={<ImplementationAnalyticsPage />} />
+            </Route>
+            <Route element={<PermissionRoute anyOf={["project.assignment.respond"]} />}>
+              <Route path="implementation-intake" element={<ImplementationIntakePage />} />
+            </Route>
+            <Route element={<PermissionRoute anyOf={["analytics.support_readiness.view"]} />}>
+              <Route path="support-readiness" element={<SupportReadinessAnalyticsPage />} />
+            </Route>
             <Route element={<PermissionRoute anyOf={["report.view"]} />}>
               <Route path="reports" element={<ReportsCenterPage />} />
             </Route>

@@ -131,6 +131,7 @@ async def save_attachment(
             sha256=content_digest,
             operation_key=operation_key,
             scan_status="NOT_SCANNED",
+            portal_visible=actor.user_type == "CLIENT_PORTAL",
         )
         ticket.last_activity_at = server_now()
         ticket.version += 1
@@ -142,7 +143,11 @@ async def save_attachment(
                 entity_id=str(ticket.id),
                 action="ticket.attachment.uploaded",
                 new_values_json=json.dumps(
-                    {"filename": original_filename, "size_bytes": size}
+                    {
+                        "filename": original_filename,
+                        "size_bytes": size,
+                        "portal_visible": attachment.portal_visible,
+                    }
                 ),
             )
         )

@@ -1,4 +1,4 @@
-import { Add, Assessment, Business, DeleteOutline, Edit, NoteAdd, Refresh, Search, VpnKey } from '@mui/icons-material'
+import { Add, Assessment, Business, DeleteOutline, Edit, FilterAlt, NoteAdd, Refresh, Search, VpnKey } from '@mui/icons-material'
 import {
   Alert,
   Autocomplete,
@@ -56,6 +56,7 @@ type Client = {
 }
 type Catalog = { id: number; code: string; name: string; name_ar?: string; is_active: boolean }
 type ClientPage = { items: Client[]; total: number; limit: number; offset: number }
+type CleanupFilter = 'ALL' | 'MISSING_REGION' | 'MISSING_ACCESS' | 'MISSING_BOTH'
 type Country = {id:number;code:string;name:string;name_ar?:string;default_timezone?:string;is_active:boolean}
 type City = {id:number;country_id:number;code:string;name:string;name_ar?:string;is_active:boolean}
 type Department = { id: number; code: string; name: string; name_ar?: string; is_active: boolean }
@@ -63,14 +64,21 @@ type ContractTemplate = { id: number; name: string; template_type: string; versi
 type AccessDraft = { access_type: string; label: string; server_or_address: string; username: string; password: string; notes: string }
 const blankAccess = (): AccessDraft => ({ access_type: 'SERVER', label: '', server_or_address: '', username: '', password: '', notes: '' })
 
-export function clientListSearchParams(search:string,accountStatus:string,statusId:string,page:number,countryId=''):URLSearchParams {
+export function clientListSearchParams(search:string,accountStatus:string,statusId:string,page:number,countryId='',cleanupFilter:CleanupFilter='ALL'):URLSearchParams {
   const params=new URLSearchParams()
   if(search)params.set('search',search)
   if(accountStatus!=='ACTIVE')params.set('account_status',accountStatus)
   if(statusId)params.set('status_id',statusId)
   if(countryId)params.set('country_id',countryId)
+  if(cleanupFilter!=='ALL')params.set('cleanup',cleanupFilter)
   if(page>0)params.set('page',String(page+1))
   return params
+}
+
+export function updateClientPageSelection(current:number[],pageIds:number[],checked:boolean):number[] {
+  return checked
+    ? [...new Set([...current, ...pageIds])]
+    : current.filter(id => !pageIds.includes(id))
 }
 
 export function ClientsPage() {
@@ -84,7 +92,13 @@ export function ClientsPage() {
   const [accountStatus, setAccountStatus] = useState<'ACTIVE' | 'INACTIVE' | 'ALL'>(() => searchParams.get('account_status') === 'INACTIVE' ? 'INACTIVE' : searchParams.get('account_status') === 'ALL' ? 'ALL' : 'ACTIVE')
   const [clientStatusId, setClientStatusId] = useState(()=>searchParams.get('status_id')??'')
   const [countryId] = useState(()=>searchParams.get('country_id')??'')
+  const [cleanupFilter, setCleanupFilter] = useState<CleanupFilter>(() => {
+    const value = searchParams.get('cleanup')
+    return value === 'MISSING_REGION' || value === 'MISSING_ACCESS' || value === 'MISSING_BOTH' ? value : 'ALL'
+  })
   const [page, setPage] = useState(()=>Math.max(0,(Number(searchParams.get('page'))||1)-1))
+  const [selectedClientIds, setSelectedClientIds] = useState<number[]>([])
+  const [bulkCountry, setBulkCountry] = useState<Country | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [countryOpen, setCountryOpen] = useState(false)
   const [cityOpen,setCityOpen]=useState(false)
@@ -98,9 +112,9 @@ export function ClientsPage() {
   const [ownerDepartmentId, setOwnerDepartmentId] = useState('')
   const [sharedDepartments, setSharedDepartments] = useState<Department[]>([])
   const clients = useQuery({
-    queryKey: ['clients-page', search, accountStatus, clientStatusId, countryId, page],
+    queryKey: ['clients-page', search, accountStatus, clientStatusId, countryId, cleanupFilter, page],
     queryFn: async () =>
-      (await api.get<ClientPage>('/clients/search-page', { params: { search: search || undefined, account_status: accountStatus, active_only: false, status_id: clientStatusId || undefined, country_id: countryId || undefined, limit: 20, offset: page * 20 } })).data,
+      (await api.get<ClientPage>('/clients/search-page', { params: { search: search || undefined, account_status: accountStatus, active_only: false, status_id: clientStatusId || undefined, country_id: countryId || undefined, missing_region: cleanupFilter === 'MISSING_REGION' || cleanupFilter === 'MISSING_BOTH' || undefined, missing_access: cleanupFilter === 'MISSING_ACCESS' || cleanupFilter === 'MISSING_BOTH' || undefined, limit: 20, offset: page * 20 } })).data,
   })
   const parentClients = useQuery({ queryKey: ['clients', 'parent-options'], queryFn: async () => (await api.get<Client[]>('/clients', { params: { active_only: false, limit: 200 } })).data, enabled: dialogOpen })
   const statuses = useQuery({
@@ -115,9 +129,10 @@ export function ClientsPage() {
   const departments = useQuery({ queryKey: ['departments'], queryFn: async () => (await api.get<Department[]>('/departments', { params: { active_only: true } })).data })
   const contractTemplates = useQuery({ queryKey: ['contract-templates'], queryFn: async () => (await api.get<ContractTemplate[]>('/contract-templates', { params: { active_only: true } })).data, enabled: dialogOpen || Boolean(contractClient) })
   useEffect(()=>{
-    const next=clientListSearchParams(search,accountStatus,clientStatusId,page,countryId)
+    const next=clientListSearchParams(search,accountStatus,clientStatusId,page,countryId,cleanupFilter)
     if(next.toString()!==searchParams.toString())setSearchParams(next,{replace:true})
-  },[accountStatus,clientStatusId,countryId,page,search,searchParams,setSearchParams])
+  },[accountStatus,cleanupFilter,clientStatusId,countryId,page,search,searchParams,setSearchParams])
+  useEffect(() => { setSelectedClientIds([]) }, [accountStatus, cleanupFilter, clientStatusId, countryId, search])
   useEffect(() => {
     if (!selectedTemplateId && contractTemplates.data?.length) {
       setSelectedTemplateId(String(contractTemplates.data.find(item => item.is_default)?.id ?? contractTemplates.data[0].id))
@@ -156,6 +171,10 @@ export function ClientsPage() {
   const createExistingContract = useMutation({
     mutationFn: async (payload: { clientId: number; body: Record<string, unknown> }) => (await api.post(`/clients/${payload.clientId}/contracts/from-template`, payload.body)).data,
     onSuccess: async () => { setContractClient(null); await queryClient.invalidateQueries({ queryKey: ['contracts'] }) },
+  })
+  const assignCountry = useMutation({
+    mutationFn: async () => (await api.post<{ updated_count: number }>('/clients/bulk-assign-country', { client_ids: selectedClientIds, country_id: bulkCountry?.id })).data,
+    onSuccess: async () => { setSelectedClientIds([]); setBulkCountry(null); await queryClient.invalidateQueries({ queryKey: ['clients-page'] }) },
   })
 
   function confirmDelete(client: Client) {
@@ -218,39 +237,75 @@ export function ClientsPage() {
     } | undefined
     return body?.error?.details?.fields?.[0]?.msg ?? body?.error?.message ?? t('clients.saveFailed')
   })()
+  const currentPageIds = clients.data?.items.map(item => item.id) ?? []
+  const selectedOnPage = currentPageIds.filter(id => selectedClientIds.includes(id)).length
+  const allCurrentPageSelected = currentPageIds.length > 0 && selectedOnPage === currentPageIds.length
+  const selectionSpansPages = selectedClientIds.length > selectedOnPage
 
   return (
-    <Paper sx={{ p: { xs: 1.5, sm: 3 }, maxWidth: '100%', overflow: 'hidden' }}>
-      <InactiveClientsKpi />
-      <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems={{ xs: 'stretch', md: 'center' }} mb={3}>
+    <Box sx={{ maxWidth: '100%', minWidth: 0 }}>
+      <Paper sx={{ p: { xs: 2, md: 3 }, mb: 2, overflow: 'hidden', border: 1, borderColor: 'divider', background: 'linear-gradient(135deg, rgba(25,118,210,.10), rgba(0,150,136,.06) 55%, background.paper 100%)' }}>
+      <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems={{ xs: 'stretch', md: 'center' }}>
         <Box sx={{ flexGrow: 1 }}>
-          <Typography variant="h4">{t('clients.title')}</Typography>
+          <Stack direction="row" alignItems="center" gap={1} flexWrap="wrap">
+            <Business color="primary" />
+            <Typography variant="h4" fontWeight={900}>{t('clients.title')}</Typography>
+            <Chip size="small" color="primary" variant="outlined" label={t('clients.resultCount', { count: clients.data?.total ?? 0 })} />
+          </Stack>
           <Typography color="text.secondary">{t('clients.subtitle')}</Typography>
         </Box>
+        {hasPermission('client.manage') && (
+          <Stack direction={{ xs: 'column', sm: 'row' }} gap={1}>
+            <Button variant="outlined" onClick={() => setCountryOpen(true)}>{t('clients.countryMaster')}</Button>
+            <Button variant="contained" startIcon={<Add />} onClick={() => setDialogOpen(true)}>{t('clients.addClient')}</Button>
+          </Stack>
+        )}
+      </Stack>
+      </Paper>
+
+      <InactiveClientsKpi />
+      <Paper variant="outlined" sx={{ p: { xs: 1.5, md: 2 }, mb: 2, borderRadius: 3 }}>
+      <Stack direction="row" alignItems="center" gap={1} mb={1.5}>
+        <FilterAlt color="primary" fontSize="small" />
+        <Typography fontWeight={800}>{t('clients.filters')}</Typography>
+        <Button size="small" sx={{ marginInlineStart: 'auto' }} onClick={() => { setSearch(''); setAccountStatus('ACTIVE'); setClientStatusId(''); setCleanupFilter('ALL'); setPage(0) }}>{t('clients.resetFilters')}</Button>
+      </Stack>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0,1fr))', lg: 'minmax(240px,2fr) repeat(3,minmax(150px,1fr)) auto' }, gap: 1.25, alignItems: 'center' }}>
         <TextField
           size="small"
           label={t('clients.search')}
           value={search}
           onChange={(event) => { setSearch(event.target.value); setPage(0) }}
           slotProps={{ input: { startAdornment: <Search sx={{ mr: 1 }} /> } }}
-          sx={{ width: { xs: '100%', md: 220 } }}
+          fullWidth
         />
-        <TextField select size="small" label={t('clients.accountStatus')} value={accountStatus} onChange={(event) => { setAccountStatus(event.target.value as 'ACTIVE' | 'INACTIVE' | 'ALL'); setPage(0) }} sx={{ width: { xs: '100%', md: 155 } }}>
+        <TextField select size="small" label={t('clients.accountStatus')} value={accountStatus} onChange={(event) => { setAccountStatus(event.target.value as 'ACTIVE' | 'INACTIVE' | 'ALL'); setPage(0) }} fullWidth>
           <MenuItem value="ACTIVE">{t('clients.active')}</MenuItem>
           <MenuItem value="INACTIVE">{t('clients.inactive')}</MenuItem>
           <MenuItem value="ALL">{t('clients.allAccounts')}</MenuItem>
         </TextField>
-        <TextField select size="small" label={t('clients.clientStatus')} value={clientStatusId} onChange={(event) => { setClientStatusId(event.target.value); setPage(0) }} sx={{ width: { xs: '100%', md: 155 } }}>
+        <TextField select size="small" label={t('clients.clientStatus')} value={clientStatusId} onChange={(event) => { setClientStatusId(event.target.value); setPage(0) }} fullWidth>
           <MenuItem value="">{t('clients.allStatuses')}</MenuItem>
           {statuses.data?.map((status) => <MenuItem key={status.id} value={status.id}>{getLocalizedName(status, language)}</MenuItem>)}
+        </TextField>
+        <TextField select size="small" label={t('clients.profileCleanup')} value={cleanupFilter} onChange={(event) => { setCleanupFilter(event.target.value as CleanupFilter); setPage(0) }} fullWidth>
+          <MenuItem value="ALL">{t('clients.allProfiles')}</MenuItem>
+          <MenuItem value="MISSING_BOTH">{t('clients.missingBoth')}</MenuItem>
+          <MenuItem value="MISSING_REGION">{t('clients.missingRegion')}</MenuItem>
+          <MenuItem value="MISSING_ACCESS">{t('clients.missingAccess')}</MenuItem>
         </TextField>
         <IconButton onClick={() => clients.refetch()} aria-label={t('clients.refresh')}>
           <Refresh />
         </IconButton>
-        {hasPermission('client.manage') && (
-          <Stack direction={{ xs: 'column', sm: 'row' }} gap={1}><Button fullWidth variant="outlined" onClick={() => setCountryOpen(true)}>{t('clients.countryMaster')}</Button><Button fullWidth variant="contained" startIcon={<Add />} onClick={() => setDialogOpen(true)}>{t('clients.addClient')}</Button></Stack>
-        )}
-      </Stack>
+      </Box>
+      </Paper>
+
+      {hasPermission('client.manage') && selectedClientIds.length > 0 && <Paper variant="outlined" sx={{ p: 1.5, mb: 2, position: 'sticky', top: 72, zIndex: 5, borderColor: 'primary.main', boxShadow: 3, bgcolor: 'background.paper' }}><Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ sm: 'center' }}>
+        <Box sx={{ flexGrow: 1 }}><Typography fontWeight={900}>{t('clients.selectedCount', { count: selectedClientIds.length })}</Typography><Typography variant="caption" color="text.secondary">{selectionSpansPages ? t('clients.selectionAcrossPages', { pageCount: selectedOnPage }) : t('clients.selectionCurrentPage', { count: selectedOnPage })}</Typography></Box>
+        <Autocomplete size="small" options={(countries.data ?? []).filter(item => item.is_active)} value={bulkCountry} onChange={(_, value) => setBulkCountry(value)} getOptionLabel={option => getLocalizedName(option, language)} renderInput={params => <TextField {...params} label={t('clients.assignCountry')} />} sx={{ minWidth: 240 }} />
+        <Button variant="contained" disabled={!bulkCountry || assignCountry.isPending} onClick={() => assignCountry.mutate()}>{t('clients.applyCountry')}</Button>
+        <Button onClick={() => setSelectedClientIds([])}>{t('clients.clearSelection')}</Button>
+      </Stack>{assignCountry.isError && <Alert severity="error" sx={{ mt: 1 }}>{t('clients.bulkCountryFailed')}</Alert>}</Paper>}
 
       {clients.isLoading && <CircularProgress aria-label={t('clients.loading')} />}
       {deleteError && <Alert severity="error" sx={{ mb: 2 }}>{deleteError}</Alert>}
@@ -263,22 +318,25 @@ export function ClientsPage() {
         </Box>
       )}
       {!!clients.data?.items.length && (
-        <TableContainer sx={{ width: '100%', overflowX: 'auto' }}><Table sx={{ minWidth: 900 }}>
+        <Paper variant="outlined" sx={{ overflow: 'hidden', borderRadius: 3 }}><TableContainer sx={{ width: '100%', overflowX: 'auto' }}><Table sx={{ minWidth: 900 }}>
           <TableHead>
             <TableRow>
+              {hasPermission('client.manage') && <TableCell padding="checkbox"><Checkbox aria-label={t('clients.selectPage')} checked={allCurrentPageSelected} indeterminate={selectedOnPage > 0 && !allCurrentPageSelected} onChange={event => setSelectedClientIds(current => updateClientPageSelection(current, currentPageIds, event.target.checked))} /></TableCell>}
               <TableCell>{t('clients.code')}</TableCell><TableCell>{t('clients.client')}</TableCell>
-              <TableCell>{t('clients.status')}</TableCell><TableCell>{t('clients.timezone')}</TableCell>
+              <TableCell>{t('clients.status')}</TableCell><TableCell>{t('clients.region')}</TableCell><TableCell>{t('clients.timezone')}</TableCell>
               <TableCell>{t('clients.contact')}</TableCell><TableCell>{t('clients.account')}</TableCell><TableCell>{t('clients.actions')}</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {clients.data.items.map((client) => (
-              <TableRow hover key={client.id}>
-                <TableCell><strong>{client.code}</strong></TableCell>
+              <TableRow hover key={client.id} selected={selectedClientIds.includes(client.id)} sx={{ '&:nth-of-type(even)': { bgcolor: 'action.hover' } }}>
+                {hasPermission('client.manage') && <TableCell padding="checkbox"><Checkbox aria-label={t('clients.selectClient', { name: client.name })} checked={selectedClientIds.includes(client.id)} onChange={event => setSelectedClientIds(current => event.target.checked ? [...current, client.id] : current.filter(id => id !== client.id))} /></TableCell>}
+                <TableCell><Chip size="small" variant="outlined" label={client.code} sx={{ fontFamily: 'monospace', fontWeight: 800 }} /></TableCell>
                 <TableCell><Link component={RouterLink} to={`/clients/${client.id}/edit`} state={{clientsList:`${location.pathname}${location.search}`}} underline="hover" fontWeight={700}>{client.name}</Link></TableCell>
                 <TableCell sx={{ whiteSpace: 'nowrap' }}>
                   {getLocalizedName(statuses.data?.find((status) => status.id === client.status_id), language) || '—'}
                 </TableCell>
+                <TableCell>{client.country || client.zone || <Chip size="small" color="warning" label={t('clients.missingRegion')} />}</TableCell>
                 <TableCell><span dir="ltr" style={{unicodeBidi:'isolate'}}>{client.timezone}</span></TableCell>
                 <TableCell><span dir="ltr" style={{unicodeBidi:'isolate'}}>{client.email ?? client.phone_number ?? '—'}</span></TableCell>
                 <TableCell>
@@ -295,8 +353,9 @@ export function ClientsPage() {
             ))}
           </TableBody>
         </Table></TableContainer>
+        {clients.data && <TablePagination component="div" count={clients.data.total} page={page} onPageChange={(_, nextPage) => setPage(nextPage)} rowsPerPage={20} rowsPerPageOptions={[20]} labelRowsPerPage={t('clients.perPage')} sx={{ borderTop: 1, borderColor: 'divider', overflowX: 'auto', '.MuiTablePagination-toolbar': { px: { xs: 1, sm: 2 } } }} />}
+        </Paper>
       )}
-      {clients.data && <TablePagination component="div" count={clients.data.total} page={page} onPageChange={(_, nextPage) => setPage(nextPage)} rowsPerPage={20} rowsPerPageOptions={[20]} labelRowsPerPage={t('clients.perPage')} sx={{ overflowX: 'auto', '.MuiTablePagination-toolbar': { px: { xs: 0, sm: 2 } } }} />}
 
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} fullWidth maxWidth="sm">
         <Box component="form" onSubmit={submit}>
@@ -391,6 +450,6 @@ export function ClientsPage() {
       </Dialog>
       <Dialog open={countryOpen} onClose={()=>setCountryOpen(false)} fullWidth maxWidth="xs"><Box component="form" onSubmit={submitCountry}><DialogTitle>{t('clients.addCountryCity')}</DialogTitle><DialogContent>{createCountry.isError&&<Alert severity="error">{t('clients.locationExists')}</Alert>}<TextField required name="name" label={t('clients.countryNameEn')} fullWidth margin="normal" helperText={t('clients.countryCodeAutomatic')} inputProps={{dir:'ltr'}}/><TextField required name="name_ar" label={t('clients.countryNameAr')} fullWidth margin="normal" inputProps={{dir:'rtl'}}/><TextField required name="city_name" label={t('clients.cityNameEn')} fullWidth margin="normal" helperText={t('clients.cityExample')} inputProps={{dir:'ltr'}}/><TextField required name="city_name_ar" label={t('clients.cityNameAr')} fullWidth margin="normal" inputProps={{dir:'rtl'}}/><TextField name="default_timezone" label={t('clients.defaultTimezone')} fullWidth margin="normal" inputProps={{dir:'ltr'}}/></DialogContent><DialogActions><Button onClick={()=>setCountryOpen(false)}>{t('clients.cancel')}</Button><Button type="submit" variant="contained" disabled={createCountry.isPending}>{t('clients.saveSelect')}</Button></DialogActions></Box></Dialog>
       <Dialog open={cityOpen} onClose={()=>setCityOpen(false)} fullWidth maxWidth="xs"><Box component="form" onSubmit={submitCity}><DialogTitle>{t('clients.addCityTitle', { country: getLocalizedName(selectedCountry, language) })}</DialogTitle><DialogContent>{createCity.isError&&<Alert severity="error">{t('clients.cityExists')}</Alert>}<TextField required name="name" label={t('clients.cityNameEn')} fullWidth margin="normal" helperText={t('clients.cityCodeAutomatic')} inputProps={{dir:'ltr'}}/><TextField required name="name_ar" label={t('clients.cityNameAr')} fullWidth margin="normal" inputProps={{dir:'rtl'}}/></DialogContent><DialogActions><Button onClick={()=>setCityOpen(false)}>{t('clients.cancel')}</Button><Button type="submit" variant="contained" disabled={createCity.isPending||!selectedCountry}>{t('clients.saveSelect')}</Button></DialogActions></Box></Dialog>
-    </Paper>
+    </Box>
   )
 }

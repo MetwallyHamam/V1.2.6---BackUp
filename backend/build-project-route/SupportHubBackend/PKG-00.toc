@@ -1,0 +1,85 @@
+('D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
+ 'Ticketing System\\V1.2.6 - '
+ 'BackUp\\backend\\build-project-route\\SupportHubBackend\\SupportHubBackend.pkg',
+ {'BINARY': True,
+  'DATA': True,
+  'EXECUTABLE': True,
+  'EXTENSION': True,
+  'PYMODULE': True,
+  'PYSOURCE': True,
+  'PYZ': False,
+  'SPLASH': True,
+  'SYMLINK': False},
+ [('pyi-contents-directory _internal', '', 'OPTION'),
+  ('PYZ-00.pyz',
+   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
+   'Ticketing System\\V1.2.6 - '
+   'BackUp\\backend\\build-project-route\\SupportHubBackend\\PYZ-00.pyz',
+   'PYZ'),
+  ('struct',
+   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
+   'Ticketing System\\V1.2.6 - '
+   'BackUp\\backend\\build-project-route\\SupportHubBackend\\localpycs\\struct.pyc',
+   'PYMODULE'),
+  ('pyimod01_archive',
+   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
+   'Ticketing System\\V1.2.6 - '
+   'BackUp\\backend\\build-project-route\\SupportHubBackend\\localpycs\\pyimod01_archive.pyc',
+   'PYMODULE'),
+  ('pyimod02_importers',
+   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
+   'Ticketing System\\V1.2.6 - '
+   'BackUp\\backend\\build-project-route\\SupportHubBackend\\localpycs\\pyimod02_importers.pyc',
+   'PYMODULE'),
+  ('pyimod03_ctypes',
+   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
+   'Ticketing System\\V1.2.6 - '
+   'BackUp\\backend\\build-project-route\\SupportHubBackend\\localpycs\\pyimod03_ctypes.pyc',
+   'PYMODULE'),
+  ('pyimod04_pywin32',
+   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
+   'Ticketing System\\V1.2.6 - '
+   'BackUp\\backend\\build-project-route\\SupportHubBackend\\localpycs\\pyimod04_pywin32.pyc',
+   'PYMODULE'),
+  ('pyiboot01_bootstrap',
+   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
+   'Ticketing System\\V1.2.6 - '
+   'BackUp\\backend\\.venv\\Lib\\site-packages\\PyInstaller\\loader\\pyiboot01_bootstrap.py',
+   'PYSOURCE'),
+  ('pyi_rth_inspect',
+   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
+   'Ticketing System\\V1.2.6 - '
+   'BackUp\\backend\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks\\pyi_rth_inspect.py',
+   'PYSOURCE'),
+  ('pyi_rth_pkgutil',
+   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
+   'Ticketing System\\V1.2.6 - '
+   'BackUp\\backend\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks\\pyi_rth_pkgutil.py',
+   'PYSOURCE'),
+  ('pyi_rth_multiprocessing',
+   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
+   'Ticketing System\\V1.2.6 - '
+   'BackUp\\backend\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks\\pyi_rth_multiprocessing.py',
+   'PYSOURCE'),
+  ('pyi_rth_setuptools',
+   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
+   'Ticketing System\\V1.2.6 - '
+   'BackUp\\backend\\.venv\\Lib\\site-packages\\PyInstaller\\hooks\\rthooks\\pyi_rth_setuptools.py',
+   'PYSOURCE'),
+  ('pyi_rth_cryptography_openssl',
+   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
+   'Ticketing System\\V1.2.6 - '
+   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pyinstaller_hooks_contrib\\rthooks\\pyi_rth_cryptography_openssl.py',
+   'PYSOURCE'),
+  ('supporthub_runtime',
+   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
+   'Ticketing System\\V1.2.6 - BackUp\\backend\\supporthub_runtime.py',
+   'PYSOURCE')],
+ 'python314.dll',
+ True,
+ False,
+ False,
+ [],
+ None,
+ None,
+ None)

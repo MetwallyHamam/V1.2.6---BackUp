@@ -35,6 +35,11 @@ from app.modules.uat.models import UatImplementationTask
 from app.modules.visits.models import VisitType
 
 PERMISSIONS = [
+    "analytics.dictionary.view",
+    "analytics.project.view",
+    "analytics.implementation.view",
+    "analytics.support_readiness.view",
+    "analytics.executive.view",
     "uat.view",
     "uat.library.manage",
     "uat.cycle.manage",
@@ -183,6 +188,37 @@ PERMISSIONS = [
     "client.view",
     "client.profile.view",
     "client.manage",
+    "customer_structure.policy.view",
+    "customer_structure.policy.manage",
+    "project.portfolio.view",
+    "project.create",
+    "project.manage",
+    "project.manage.assigned",
+    "project.assignment.request",
+    "project.assignment.respond",
+    "implementation.task.view",
+    "implementation.task.manage",
+    "implementation.task.execute",
+    "implementation.task.blocker.manage",
+    "implementation.task.evidence.create",
+    "implementation.task.assign",
+    "implementation.task.worklog",
+    "implementation.task.review",
+    "implementation.unplanned.create",
+    "implementation.unplanned.approve",
+    "implementation.private_history.view",
+    "cross_department.request.create",
+    "cross_department.request.respond",
+    "cross_department.request.manage",
+    "cross_department.event.publish",
+    "cross_department.ticket_link.manage",
+    "cross_department.history.view",
+    "handover.view",
+    "handover.prepare",
+    "handover.submit",
+    "handover.review",
+    "handover.accept",
+    "handover.activate_support",
     "client.delete",
     "client_access.view",
     "client_access.manage",
@@ -237,6 +273,9 @@ PERMISSIONS = [
     "user.manage",
     "profile.manage",
     "configuration.manage",
+    "maintenance.view",
+    "maintenance.manage",
+    "maintenance.run",
     "feature_policy.view",
     "feature_policy.manage",
     "entitlement_approval.request",
@@ -611,6 +650,64 @@ PROFILE_MAP = {
         "project_handover.engineer.lookup",
         "project_handover.contract_template.apply",
     },
+    "PROJECT_MANAGER": {
+        "client.view",
+        "client.profile.view",
+        "project.portfolio.view",
+        "project.create",
+        "project.manage.assigned",
+        "project.assignment.request",
+        "cross_department.request.create",
+        "cross_department.event.publish",
+        "cross_department.ticket_link.manage",
+        "cross_department.history.view",
+        "handover.view",
+        "handover.prepare",
+        "handover.submit",
+    },
+    "IMPLEMENTATION_MANAGER": {
+        "project.portfolio.view",
+        "project.assignment.respond",
+        "implementation.task.view",
+        "implementation.task.assign",
+        "implementation.task.review",
+        "implementation.unplanned.approve",
+        "implementation.private_history.view",
+        "cross_department.request.create",
+        "cross_department.request.respond",
+        "cross_department.event.publish",
+        "cross_department.history.view",
+        "handover.view",
+    },
+    "IMPLEMENTATION_TEAM_LEADER": {
+        "project.portfolio.view",
+        "implementation.task.view",
+        "implementation.task.assign",
+        "implementation.task.review",
+        "implementation.private_history.view",
+        "cross_department.request.respond",
+        "cross_department.event.publish",
+        "cross_department.history.view",
+        "handover.view",
+    },
+    "IMPLEMENTATION_ENGINEER": {
+        "project.portfolio.view",
+        "implementation.task.view",
+        "implementation.task.execute",
+        "implementation.task.blocker.manage",
+        "implementation.task.evidence.create",
+        "implementation.task.worklog",
+        "implementation.unplanned.create",
+        "cross_department.history.view",
+        "handover.view",
+    },
+    "SUPPORT_HANDOVER_REVIEWER": {
+        "project.portfolio.view",
+        "cross_department.history.view",
+        "handover.view",
+        "handover.review",
+        "handover.accept",
+    },
     "ADMINISTRATOR": set(PERMISSIONS),
     "CLIENT_PORTAL": {
         "uat.portal.view",
@@ -695,8 +792,28 @@ for _profile_code, _profile_permissions in PROFILE_MAP.items():
         _profile_permissions.add("ticket.copy")
     _profile_permissions.add("news.view")
 PROFILE_MAP["ADMINISTRATOR"].update(
-    {"news.create", "news.publish", "news.manage", "news.analytics"}
+    {"news.create", "news.publish", "news.manage", "news.analytics", "maintenance.view", "maintenance.manage", "maintenance.run", "customer_structure.policy.view", "customer_structure.policy.manage", "project.portfolio.view", "project.create", "project.manage", "project.assignment.request", "project.assignment.respond", "implementation.task.view", "implementation.task.manage", "implementation.task.assign", "implementation.task.worklog", "implementation.task.review", "implementation.unplanned.create", "implementation.unplanned.approve"}
 )
+PROFILE_MAP["ADMINISTRATOR"].update({"analytics.dictionary.view", "analytics.project.view", "analytics.implementation.view", "analytics.support_readiness.view", "analytics.executive.view"})
+PROFILE_MAP["PROJECT_HANDOVER"].update({"analytics.dictionary.view", "analytics.project.view", "analytics.implementation.view", "analytics.support_readiness.view"})
+PROFILE_MAP["SUPPORT_MANAGER"].update({"analytics.dictionary.view", "analytics.support_readiness.view"})
+PROFILE_MAP["TOP_MANAGEMENT"].update({"analytics.dictionary.view", "analytics.project.view", "analytics.support_readiness.view", "analytics.executive.view"})
+for _profile_code in ("SUPPORT_MANAGER", "TOP_MANAGEMENT", "PROJECT_HANDOVER"):
+    PROFILE_MAP[_profile_code].update({"customer_structure.policy.view", "project.portfolio.view"})
+PROFILE_MAP["PROJECT_HANDOVER"].update({"project.create", "project.manage", "project.assignment.request", "project.assignment.respond"})
+PROFILE_MAP["PROJECT_HANDOVER"].update({"implementation.task.view", "implementation.task.manage", "implementation.task.assign", "implementation.task.worklog", "implementation.task.review", "implementation.unplanned.create", "implementation.unplanned.approve"})
+PROFILE_MAP["PROJECT_HANDOVER"].update({"implementation.task.execute", "implementation.task.blocker.manage", "implementation.task.evidence.create"})
+PROFILE_MAP["PROJECT_HANDOVER"].add("implementation.private_history.view")
+PROFILE_MAP["PROJECT_HANDOVER"].update({"cross_department.request.create", "cross_department.request.respond", "cross_department.request.manage", "cross_department.event.publish", "cross_department.ticket_link.manage", "cross_department.history.view"})
+PROFILE_MAP["PROJECT_HANDOVER"].update({"handover.view", "handover.prepare", "handover.submit"})
+PROFILE_MAP["ADMINISTRATOR"].update({"cross_department.request.create", "cross_department.request.respond", "cross_department.request.manage", "cross_department.event.publish", "cross_department.ticket_link.manage", "cross_department.history.view"})
+PROFILE_MAP["ADMINISTRATOR"].add("implementation.private_history.view")
+PROFILE_MAP["ADMINISTRATOR"].update({"handover.view", "handover.prepare", "handover.submit", "handover.review", "handover.accept", "handover.activate_support"})
+for _profile_code in ("L1_SUPPORT", "L2_SUPPORT", "L3_SUPPORT", "SUPPORT_MANAGER"):
+    PROFILE_MAP[_profile_code].add("cross_department.history.view")
+for _profile_code in ("SUPPORT_MANAGER",):
+    PROFILE_MAP[_profile_code].update({"cross_department.request.create", "cross_department.request.respond", "cross_department.ticket_link.manage", "cross_department.event.publish"})
+    PROFILE_MAP[_profile_code].update({"handover.view", "handover.review", "handover.accept", "handover.activate_support"})
 for _profile_code in ("CALL_CENTER", "L1_SUPPORT", "L2_SUPPORT", "L3_SUPPORT", "SUPPORT_MANAGER", "ADMINISTRATOR"):
     PROFILE_MAP[_profile_code].add("support_assistant.backlog.view")
     PROFILE_MAP[_profile_code].update({"ticket.flag.view", "ticket.flag.apply", "ticket.flag.remove"})
@@ -737,6 +854,11 @@ NAMES = {
     "TOP_MANAGEMENT": "Top Management",
     "FINANCIAL_MANAGEMENT": "Financial Management",
     "PROJECT_HANDOVER": "Project Handover",
+    "PROJECT_MANAGER": "Project Manager",
+    "IMPLEMENTATION_MANAGER": "Implementation Manager",
+    "IMPLEMENTATION_TEAM_LEADER": "Implementation Team Leader",
+    "IMPLEMENTATION_ENGINEER": "Implementation Engineer",
+    "SUPPORT_HANDOVER_REVIEWER": "Support Handover Reviewer",
     "ADMINISTRATOR": "System Administrator",
     "CLIENT_PORTAL": "Client Portal",
 }

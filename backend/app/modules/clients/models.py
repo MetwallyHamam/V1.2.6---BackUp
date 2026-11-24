@@ -86,6 +86,140 @@ class ClientLocation(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
+class Account(Base):
+    __tablename__ = "accounts"
+    __table_args__ = (
+        Index("ix_accounts_name", "name"),
+        Index("ix_accounts_active", "is_active"),
+    )
+
+    id: Mapped[int] = mapped_column(IdType, primary_key=True, autoincrement=True)
+    code: Mapped[str] = mapped_column(String(50), unique=True)
+    name: Mapped[str] = mapped_column(Unicode(200))
+    description: Mapped[str | None] = mapped_column(UnicodeText)
+    owner_department_id: Mapped[int | None] = mapped_column(
+        IdType, ForeignKey("departments.id")
+    )
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, onupdate=utc_now
+    )
+    organizations: Mapped[list["Organization"]] = relationship(back_populates="account")
+
+
+class Organization(Base):
+    __tablename__ = "organizations"
+    __table_args__ = (
+        UniqueConstraint("account_id", "code", name="uq_organizations_account_code"),
+        Index("ix_organizations_account_active", "account_id", "is_active"),
+        Index("ix_organizations_name", "name"),
+    )
+
+    id: Mapped[int] = mapped_column(IdType, primary_key=True, autoincrement=True)
+    account_id: Mapped[int] = mapped_column(
+        IdType, ForeignKey("accounts.id", ondelete="RESTRICT")
+    )
+    code: Mapped[str] = mapped_column(String(50))
+    name: Mapped[str] = mapped_column(Unicode(200))
+    legal_name: Mapped[str | None] = mapped_column(Unicode(250))
+    description: Mapped[str | None] = mapped_column(UnicodeText)
+    owner_department_id: Mapped[int | None] = mapped_column(
+        IdType, ForeignKey("departments.id")
+    )
+    department_policy_mode: Mapped[str] = mapped_column(String(20), default="EXTEND")
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, onupdate=utc_now
+    )
+    account: Mapped[Account] = relationship(back_populates="organizations")
+    clients: Mapped[list["Client"]] = relationship(back_populates="organization")
+    department_assignments: Mapped[list["OrganizationDepartmentAssignment"]] = relationship(
+        cascade="all, delete-orphan"
+    )
+
+
+class OrganizationDepartmentAssignment(Base):
+    __tablename__ = "organization_department_assignments"
+    __table_args__ = (
+        Index(
+            "ix_org_department_assignments_effective",
+            "organization_id",
+            "department_id",
+            "is_active",
+            "effective_from",
+            "effective_until",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(IdType, primary_key=True, autoincrement=True)
+    organization_id: Mapped[int] = mapped_column(
+        IdType, ForeignKey("organizations.id", ondelete="CASCADE")
+    )
+    department_id: Mapped[int] = mapped_column(IdType, ForeignKey("departments.id"))
+    relationship: Mapped[str] = mapped_column(String(30))
+    access_profile: Mapped[str] = mapped_column(String(40))
+    effective_from: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    effective_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    reason: Mapped[str | None] = mapped_column(Unicode(500))
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_by_user_id: Mapped[int] = mapped_column(IdType, ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
+class ClientDepartmentAssignment(Base):
+    __tablename__ = "client_department_assignments"
+    __table_args__ = (
+        Index(
+            "ix_client_department_assignments_effective",
+            "client_id",
+            "department_id",
+            "is_active",
+            "effective_from",
+            "effective_until",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(IdType, primary_key=True, autoincrement=True)
+    client_id: Mapped[int] = mapped_column(IdType, ForeignKey("clients.id", ondelete="CASCADE"))
+    department_id: Mapped[int] = mapped_column(IdType, ForeignKey("departments.id"))
+    relationship: Mapped[str] = mapped_column(String(30))
+    access_profile: Mapped[str] = mapped_column(String(40))
+    effective_from: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    effective_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    reason: Mapped[str | None] = mapped_column(Unicode(500))
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_by_user_id: Mapped[int] = mapped_column(IdType, ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
+class BranchDepartmentAssignment(Base):
+    __tablename__ = "branch_department_assignments"
+    __table_args__ = (
+        Index(
+            "ix_branch_department_assignments_effective",
+            "branch_id",
+            "department_id",
+            "is_active",
+            "effective_from",
+            "effective_until",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(IdType, primary_key=True, autoincrement=True)
+    branch_id: Mapped[int] = mapped_column(IdType, ForeignKey("branches.id", ondelete="CASCADE"))
+    department_id: Mapped[int] = mapped_column(IdType, ForeignKey("departments.id"))
+    relationship: Mapped[str] = mapped_column(String(30))
+    access_profile: Mapped[str] = mapped_column(String(40))
+    effective_from: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    effective_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    reason: Mapped[str | None] = mapped_column(Unicode(500))
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_by_user_id: Mapped[int] = mapped_column(IdType, ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
 class Client(Base):
     __tablename__ = "clients"
     __table_args__ = (
@@ -95,6 +229,10 @@ class Client(Base):
     )
 
     id: Mapped[int] = mapped_column(IdType, primary_key=True, autoincrement=True)
+    organization_id: Mapped[int | None] = mapped_column(
+        IdType, ForeignKey("organizations.id", ondelete="RESTRICT")
+    )
+    department_policy_mode: Mapped[str] = mapped_column(String(20), default="EXTEND")
     parent_client_id: Mapped[int | None] = mapped_column(IdType, ForeignKey("clients.id"))
     owner_department_id: Mapped[int | None] = mapped_column(IdType, ForeignKey("departments.id"))
     code: Mapped[str] = mapped_column(String(50), unique=True)
@@ -118,6 +256,7 @@ class Client(Base):
         DateTime(timezone=True), default=utc_now, onupdate=utc_now
     )
     status: Mapped[ClientStatus] = relationship()
+    organization: Mapped[Organization | None] = relationship(back_populates="clients")
     parent: Mapped["Client | None"] = relationship(
         remote_side="Client.id", back_populates="children", foreign_keys=[parent_client_id]
     )
@@ -132,6 +271,9 @@ class Client(Base):
     )
     department_links: Mapped[list["ClientDepartmentLink"]] = relationship(
         cascade="all, delete-orphan", lazy="selectin"
+    )
+    department_assignments: Mapped[list[ClientDepartmentAssignment]] = relationship(
+        cascade="all, delete-orphan"
     )
 
     @property
@@ -163,6 +305,9 @@ class ClientAccessCredential(Base):
     client_id: Mapped[int] = mapped_column(
         IdType, ForeignKey("clients.id", ondelete="CASCADE"), nullable=False
     )
+    branch_id: Mapped[int | None] = mapped_column(
+        IdType, ForeignKey("branches.id"), nullable=True
+    )
     access_type: Mapped[str] = mapped_column(String(30), nullable=False)
     label: Mapped[str] = mapped_column(String(150), nullable=False)
     server_or_address: Mapped[str | None] = mapped_column(String(1000))
@@ -177,10 +322,15 @@ class ClientAccessCredential(Base):
         DateTime(timezone=True), default=utc_now, onupdate=utc_now
     )
     client: Mapped[Client] = relationship(back_populates="access_credentials")
+    branch: Mapped["Branch | None"] = relationship(foreign_keys=[branch_id])
 
     @property
     def has_password(self) -> bool:
         return bool(self.password_ciphertext)
+
+    @property
+    def branch_name(self) -> str | None:
+        return self.branch.name if self.branch else None
 
 
 class Branch(Base):
@@ -192,6 +342,7 @@ class Branch(Base):
 
     id: Mapped[int] = mapped_column(IdType, primary_key=True, autoincrement=True)
     client_id: Mapped[int] = mapped_column(IdType, ForeignKey("clients.id", ondelete="CASCADE"))
+    department_policy_mode: Mapped[str] = mapped_column(String(20), default="INHERIT")
     code: Mapped[str] = mapped_column(String(50))
     name: Mapped[str] = mapped_column(String(200))
     timezone: Mapped[str | None] = mapped_column(String(100))
@@ -209,6 +360,9 @@ class Branch(Base):
         DateTime(timezone=True), default=utc_now, onupdate=utc_now
     )
     client: Mapped[Client] = relationship(back_populates="branches")
+    department_assignments: Mapped[list[BranchDepartmentAssignment]] = relationship(
+        cascade="all, delete-orphan"
+    )
 
 
 class Contact(Base):

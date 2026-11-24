@@ -24,6 +24,7 @@ TEST_SETTINGS = Settings(
     secret_key="test-secret-key-with-more-than-thirty-two-characters",
     database_url="sqlite+pysqlite://",
     escalation_scheduler_enabled=False,
+    maintenance_scheduler_enabled=False,
     password_reset_allowed_domains="",
 )
 

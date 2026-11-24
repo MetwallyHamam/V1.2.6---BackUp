@@ -23,6 +23,14 @@ Wave 0 through Wave 2A are complete. The files below decompose every remaining r
 | 15 | 8 | `WAVE_8_SCORECARDS_RENEWAL_INTELLIGENCE_EXECUTION_PLAN.md` | Fair scorecards and renewal intelligence |
 | 16 | 9 | `WAVE_9_SNAPSHOTS_SCHEDULED_REPORTING_FORECASTING_EXECUTION_PLAN.md` | Historical snapshots, scheduling, forecasting |
 
+## Focused Product Initiatives
+
+| Initiative | Master-plan section | Current status | Next bounded scope |
+|---|---|---|---|
+| UAT experience and defect-ticket enhancement | `MASTER_DEVELOPMENT_PLAN V2.md` section 15A | DONE | Release packaging/publication decision only |
+
+The UAT initiative is intentionally maintained inside the consolidated master plan. Resume from its latest `CODEX STOP POINT` and execute only one phase per implementation session.
+
 Global rules for every file:
 
 - Preserve exact-client authorization and immutable historical evidence.

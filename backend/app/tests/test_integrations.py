@@ -2,10 +2,13 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.modules.clients.models import ClientStatus
+from app.modules.clients.models import ClientStatus, Contact
+from app.modules.configuration.models import TicketFormFieldSetting
+from app.modules.contracts.models import TicketSlaClock
 from app.modules.integrations.models import IntegrationDelivery
 from app.modules.integrations.schemas import InboundPreTicketSettings
 from app.modules.pre_tickets.models import EngineerPreTicket
+from app.modules.tickets.models import Ticket, TicketFlagAssignment
 
 
 def test_legacy_inbound_caller_mapping_is_migrated() -> None:
@@ -279,6 +282,21 @@ def test_scoped_api_client_creates_idempotent_ticket_and_can_be_revoked(
     admin_headers: dict[str, str],
     database: Session,
 ) -> None:
+    branch_setting = database.scalar(
+        select(TicketFormFieldSetting).where(
+            TicketFormFieldSetting.field_key == "branch_id"
+        )
+    )
+    if branch_setting is None:
+        branch_setting = TicketFormFieldSetting(
+            field_key="branch_id", is_visible=True, is_required=True
+        )
+        database.add(branch_setting)
+    else:
+        branch_setting.is_visible = True
+        branch_setting.is_required = True
+    database.commit()
+
     client_id = create_client(client, admin_headers, database)
     credential = client.post(
         "/api/v1/integrations/api-clients",
@@ -303,6 +321,60 @@ def test_scoped_api_client_creates_idempotent_ticket_and_can_be_revoked(
     )
     assert created.status_code == 201, created.text
     assert created.json()["duplicate"] is False
+    ticket_id = created.json()["ticket_id"]
+    ticket = database.get(Ticket, ticket_id)
+    requester = database.get(Contact, ticket.requester_contact_id)
+    assert requester.full_name == "MiMonitoringService"
+    maintenance_flag = database.scalar(
+        select(TicketFlagAssignment).where(
+            TicketFlagAssignment.ticket_id == ticket_id,
+            TicketFlagAssignment.flag_code_snapshot == "SYSTEM_MAINTENANCE",
+            TicketFlagAssignment.removed_at.is_(None),
+        )
+    )
+    assert maintenance_flag is not None
+    assert maintenance_flag.pauses_sla_snapshot is True
+    resolution_clock = database.scalar(
+        select(TicketSlaClock).where(
+            TicketSlaClock.ticket_id == ticket_id,
+            TicketSlaClock.clock_type == "RESOLUTION",
+        )
+    )
+    if resolution_clock is not None:
+        assert resolution_clock.state == "PAUSED"
+    status_response = client.get(
+        f"/api/v1/integrations/api/tickets/{ticket_id}",
+        headers={"X-API-Key": api_key},
+    )
+    assert status_response.status_code == 200, status_response.text
+    assert status_response.json()["status_code"] in {"NEW", "ASSIGNED"}
+    started = client.patch(
+        f"/api/v1/integrations/api/tickets/{ticket_id}/status",
+        headers={"X-API-Key": api_key},
+        json={"event_id": "application-event-1-start", "status_code": "IN_PROGRESS"},
+    )
+    assert started.status_code == 200, started.text
+    assert started.json()["status_code"] == "IN_PROGRESS"
+    repeated_status = client.patch(
+        f"/api/v1/integrations/api/tickets/{ticket_id}/status",
+        headers={"X-API-Key": api_key},
+        json={"event_id": "application-event-1-start", "status_code": "IN_PROGRESS"},
+    )
+    assert repeated_status.status_code == 200
+    assert repeated_status.json()["duplicate"] is True
+    closed = client.patch(
+        f"/api/v1/integrations/api/tickets/{ticket_id}/status",
+        headers={"X-API-Key": api_key},
+        json={
+            "event_id": "application-event-1-close",
+            "status_code": "CLOSED",
+            "resolution_summary": "Monitoring confirms that the application service recovered.",
+            "root_cause_summary": "The monitored application service stopped unexpectedly.",
+        },
+    )
+    assert closed.status_code == 200, closed.text
+    assert closed.json()["status_code"] == "CLOSED"
+    assert closed.json()["resolution_summary"].startswith("Monitoring confirms")
     duplicate = client.post(
         "/api/v1/integrations/api/tickets",
         headers={"X-API-Key": api_key},

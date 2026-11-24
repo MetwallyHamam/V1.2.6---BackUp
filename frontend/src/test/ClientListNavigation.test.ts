@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { clientListSearchParams } from '../pages/ClientsPage'
+import { clientListSearchParams, updateClientPageSelection } from '../pages/ClientsPage'
 import { capabilityForPermission } from '../auth/permissionRegistry'
 
 describe('client list navigation state',()=>{
@@ -11,7 +11,21 @@ describe('client list navigation state',()=>{
     expect(clientListSearchParams('','ACTIVE','',0).toString()).toBe('')
   })
 
+  it('preserves the temporary profile cleanup filter',()=>{
+    expect(clientListSearchParams('', 'ACTIVE', '', 0, '', 'MISSING_BOTH').toString()).toBe('cleanup=MISSING_BOTH')
+  })
+
   it('turns an API permission into a secure requestable action',()=>{
     expect(capabilityForPermission('contract.manage')).toEqual({permission:'contract.manage',capability:'Contract manage',module:'Support Hub',resource:'action:contract.manage'})
+  })
+})
+
+describe('client selection across pages',()=>{
+  it('adds a page without removing selections from previous pages',()=>{
+    expect(updateClientPageSelection([1,2],[21,22],true)).toEqual([1,2,21,22])
+  })
+
+  it('clears only the current page selection',()=>{
+    expect(updateClientPageSelection([1,2,21,22],[21,22],false)).toEqual([1,2])
   })
 })

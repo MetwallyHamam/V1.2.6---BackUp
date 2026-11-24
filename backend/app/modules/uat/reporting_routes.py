@@ -19,7 +19,7 @@ from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import require_permission
-from app.core.clock import server_now
+from app.core.clock import as_server_time, server_now
 from app.core.exceptions import NotFoundError
 from app.db.session import get_db
 from app.modules.clients.models import Client
@@ -47,9 +47,18 @@ def _xlsx_safe(value: object) -> object:
     return _csv_safe(value.isoformat() if isinstance(value, datetime) else value)
 
 
+def _as_utc(value: datetime) -> datetime:
+    return as_server_time(value)
+
+
 def _portfolio(db: Session, actor: User) -> list[dict[str, object]]:
     cycles = list(db.scalars(select(UatCycle).order_by(UatCycle.created_at.desc())))
     clients = {row.id: row.name for row in db.scalars(select(Client).where(Client.id.in_([cycle.client_id for cycle in cycles])))} if cycles else {}
+    coordinator_ids = {cycle.coordinator_user_id for cycle in cycles}
+    coordinators = {
+        row.id: row.full_name
+        for row in db.scalars(select(User).where(User.id.in_(coordinator_ids)))
+    } if coordinator_ids else {}
     rows: list[dict[str, object]] = []
     today = server_now().date()
     for cycle in cycles:
@@ -60,29 +69,109 @@ def _portfolio(db: Session, actor: User) -> list[dict[str, object]]:
         client_signoff = db.scalar(select(UatClientSignoff).where(UatClientSignoff.cycle_id == cycle.id).order_by(UatClientSignoff.decision_number.desc()))
         internal_signoff = db.scalar(select(UatSignoff).where(UatSignoff.cycle_id == cycle.id).order_by(UatSignoff.request_number.desc()))
         attention: list[str] = []
-        if metrics["critical_failures"]:
-            attention.append("Critical failures present")
-        if metrics["open_defects"]:
-            attention.append("Open defects")
-        if cycle.due_date and cycle.status != "COMPLETED":
-            if cycle.due_date < today:
-                attention.append("Overdue")
-            elif (cycle.due_date - today).days <= 3:
-                attention.append("Due soon")
-        if cycle.status == "ACTIVE" and metrics["not_tested"]:
-            attention.append("Testing incomplete")
+        overdue_tests = sum(
+            test.due_date is not None
+            and test.due_date < today
+            and test.test_result != "PASS"
+            for test in tests
+        )
+        failures_without_tickets = sum(
+            test.test_result == "FAIL" and test.linked_ticket_id is None for test in tests
+        )
+        blocked_tests = sum(
+            test.test_result == "BLOCKED" or test.workflow_status == "BLOCKED" for test in tests
+        )
+        missing_client_assignments = sum(
+            cycle.allow_client_testing and test.client_tester_user_id is None for test in tests
+        )
+        portal_access_expired = bool(
+            cycle.portal_visible
+            and cycle.client_access_end_at
+            and _as_utc(cycle.client_access_end_at) < _as_utc(server_now())
+            and cycle.status != "COMPLETED"
+        )
+        if overdue_tests:
+            attention.append("Overdue tests")
+        if failures_without_tickets:
+            attention.append("Failures without tickets")
+        if blocked_tests:
+            attention.append("Blocked tests")
+        if missing_client_assignments:
+            attention.append("Missing client assignments")
+        if portal_access_expired:
+            attention.append("Expired portal access")
         if internal_signoff and internal_signoff.status == "PENDING":
-            attention.append("Awaiting sign-off")
+            attention.append("Pending sign-off")
+        mandatory_incomplete = sum(
+            json.loads(test.snapshot_json).get("is_mandatory", True)
+            and test.test_result != "PASS"
+            for test in tests
+        )
+        ready_for_signoff = bool(
+            cycle.status == "ACTIVE"
+            and tests
+            and mandatory_incomplete == 0
+            and not metrics["open_defects"]
+            and not (internal_signoff and internal_signoff.status == "PENDING")
+        )
+        awaiting_client = bool(
+            cycle.status == "ACTIVE"
+            and cycle.portal_visible
+            and cycle.allow_client_testing
+            and any(test.client_tester_user_id and test.client_test_result == "NOT_TESTED" for test in tests)
+        )
+        if cycle.status == "DRAFT" or (cycle.status == "ACTIVE" and not cycle.portal_visible and client_tests):
+            next_action = "Configure Portal"
+        elif failures_without_tickets or blocked_tests or metrics["failed"] or metrics["open_defects"]:
+            next_action = "Review Failures"
+        elif ready_for_signoff or (internal_signoff and internal_signoff.status == "PENDING"):
+            next_action = "Review Sign-off"
+        else:
+            next_action = "Continue Testing"
+        due_state = "NO_DUE_DATE"
+        if cycle.due_date:
+            if cycle.status != "COMPLETED" and cycle.due_date < today:
+                due_state = "OVERDUE"
+            elif cycle.status != "COMPLETED" and (cycle.due_date - today).days <= 3:
+                due_state = "DUE_SOON"
+            else:
+                due_state = "ON_TRACK"
+        attention_priority = {
+            "Overdue tests": 0, "Failures without tickets": 1, "Blocked tests": 2,
+            "Expired portal access": 3, "Missing client assignments": 4, "Pending sign-off": 5,
+        }
+        urgency_rank = min((attention_priority[item] for item in attention), default=9)
         rows.append({"id": cycle.id, "code": cycle.code, "title": cycle.title,
                      "client_id": cycle.client_id, "client_name": clients.get(cycle.client_id, "Unknown"),
                      "release_version": cycle.release_version, "status": cycle.status,
+                     "environment": cycle.environment,
+                     "coordinator_user_id": cycle.coordinator_user_id,
+                     "coordinator_name": coordinators.get(cycle.coordinator_user_id, "Unknown"),
                      "due_date": cycle.due_date, "metrics": metrics,
                      "client_total": len(client_tests),
                      "client_passed": sum(test.client_test_result == "PASS" for test in client_tests),
                      "client_failed": sum(test.client_test_result == "FAIL" for test in client_tests),
                      "client_signoff": client_signoff.decision if client_signoff else "NOT_REQUESTED",
                      "internal_signoff": internal_signoff.status if internal_signoff else "NOT_REQUESTED",
-                     "attention": attention})
+                     "attention": attention,
+                     "attention_counts": {
+                         "overdue_tests": overdue_tests,
+                         "failures_without_tickets": failures_without_tickets,
+                         "blocked_tests": blocked_tests,
+                         "missing_client_assignments": missing_client_assignments,
+                     },
+                     "awaiting_client": awaiting_client,
+                     "ready_for_signoff": ready_for_signoff,
+                     "due_state": due_state,
+                     "next_action": next_action,
+                     "urgency_rank": urgency_rank})
+    rows.sort(key=lambda row: (
+        row["status"] == "COMPLETED",
+        row["urgency_rank"],
+        row["due_date"] is None,
+        row["due_date"] or today,
+        str(row["code"]),
+    ))
     return rows
 
 

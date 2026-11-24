@@ -15,10 +15,14 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.add_column(
-        "notifications", sa.Column("dismissed_at", sa.DateTime(timezone=True), nullable=True)
-    )
+    columns = {column["name"] for column in sa.inspect(op.get_bind()).get_columns("notifications")}
+    if "dismissed_at" not in columns:
+        op.add_column(
+            "notifications", sa.Column("dismissed_at", sa.DateTime(timezone=True), nullable=True)
+        )
 
 
 def downgrade() -> None:
-    op.drop_column("notifications", "dismissed_at")
+    columns = {column["name"] for column in sa.inspect(op.get_bind()).get_columns("notifications")}
+    if "dismissed_at" in columns:
+        op.drop_column("notifications", "dismissed_at")

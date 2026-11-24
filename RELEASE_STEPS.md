@@ -1,5 +1,127 @@
 # Release Steps and Development Recovery Log
 
+## 1.66.169 — 2026-11-21
+
+Status: UAT enhancement source and local IIS deployment verified; distributable package not built or published.
+
+- Completes UAT portfolio/navigation, guided execution, structured defect-ticket linkage/discovery, ticket synchronization, and sign-off/configuration safety.
+- Advances database compatibility to `0282_uat_defect_links`; local SQL Server `MillensysSupportHub` migrated successfully and IIS reports a compatible schema.
+- Fixes governed UAT defect creation when interactive ticket settings require fields the system-generated workflow cannot collect.
+- SQLite clean/populated migration rehearsals passed, including legacy defect-link backfill.
+- Ruff, strict MyPy, all 569 backend tests, TypeScript, all 137 frontend tests, production build, and `git diff --check` passed. ESLint has no errors and retains one existing `UatPage` hook-dependency warning.
+- Local IIS smoke passed for internal UAT, portal Active UAT, failed-test ticket creation, Tickets discovery, entitlement approval where required, assignment, resolution, and retest. Evidence: cycle `UAT-IIS-20261121182546`, ticket `INC-2026-021555`.
+- Recoverable local deployment backups are retained under `D:\SupportHub\Release\frontend.pre-uat0282` and the corresponding backend `*.pre-uat0282` / runtime fix backup directories.
+- Packaging and publication are intentionally deferred.
+
+## 1.66.168 — 2026-11-20
+
+Status: self-contained Windows x64/IIS release built and verified.
+
+- Adds the monitoring integration API for ticket creation, status lookup, In Progress transitions, and closure with resolution evidence.
+- Adds API-key credential creation fixes, scoped client enforcement, idempotent event handling, and ownership checks.
+- Assigns monitoring tickets to caller `MiMonitoringService`, applies the `SYSTEM_MAINTENANCE` flag, and pauses the resolution SLA.
+- Prevents configurable interactive form requirements from rejecting the monitoring API's supported payload.
+- Includes portal attachment visibility, portal contract-response hardening, Work Assignment evidence, and advanced maintenance scheduling.
+- Advances database compatibility to `0281_portal_attachment_access`; packaged migration is required.
+- Full release gates passed: Ruff, strict MyPy across 214 backend source files, 568 backend tests, frontend lint, 133 frontend tests, TypeScript, production frontend build, and PyInstaller runtime assembly.
+- Manifest version and IIS `APP_VERSION` are `1.66.168`; database head is `0281_portal_attachment_access`.
+- ZIP readability, 2,130 entries, required contents, runtime command help, and forbidden configuration/cache inspection passed.
+- Artifact: `releases/SupportHub-1.66.168.zip` (54,171,962 bytes), SHA-256 `492A674BAAA5AB2CDEF272E7EB2C6F3187D0F713E6E099BC24909A681E9152FC`.
+
+## 1.66.166 — 2026-11-07
+
+Status: advanced maintenance scheduling source implementation; release package not built.
+
+- Adds governed daily, weekly, and monthly schedules for log cleanup, verified SQL Server backup, and backend/frontend application backup.
+- Adds manual **Run now**, schedule enablement, retention days, minimum retained copies, next/last run status, artifact details, and execution history.
+- Coordinates scheduled execution across IIS workers with a SQL Server application lock and prevents overlapping maintenance jobs inside a process.
+- Keeps filesystem source and destination configuration server-controlled to prevent browser users from selecting arbitrary paths.
+- Adds `maintenance.view`, `maintenance.manage`, and `maintenance.run` permissions; the Administrator profile receives all three.
+- Advances database compatibility to `0281_portal_attachment_access`; migration is required from `1.66.165`.
+
+## 1.66.165 — 2026-11-05
+
+Status: source implementation complete and verified; release package not built.
+
+- Requires written evidence before an engineer can move a task to **Blocked**, **Completed**, or approve and close a reviewed task.
+- Opens the evidence dialog for both drag-and-drop lane changes and direct workflow actions.
+- Supports an optional validated evidence attachment and displays saved evidence in the task drill-down.
+- Fixes live-link copying on HTTP/LAN deployments by using the supported clipboard fallback and provides an immediate **Open link** action.
+- Adds an **Add task** entry to the circular quick-action menu, visible only to users granted `work_assignment.create`, and opens the assignment form directly.
+- Advances database compatibility to `0279_work_assignment_evidence`; migration is required from `1.66.164`.
+- Focused backend Work Assignments, compatibility, and migration tests passed; frontend ESLint, TypeScript, and production build passed.
+
+## 1.66.164 — 2026-11-05
+
+Status: self-contained Windows x64 Work Assignments workflow release built and verified.
+
+- Lets the assignment creator or an authorized Work Assignments manager edit any non-terminal saved task with optimistic version protection.
+- Supports editing task details, dates, KPI classification, type-specific context, clients, linked follow-up tickets, review requirement, and multiple Support engineers.
+- Queues an assignment email for every engineer on creation and for newly added engineers after editing, using the support-notification address when configured and the account email otherwise.
+- Includes a clickable authenticated task URL; opening it scrolls to and highlights the assigned task.
+- Moves **Copy live link** onto each task card and removes the detached task-number link panel.
+- Redesigns **My tasks** and **Created by me** as six-lane workflow boards with permission-aware drag-and-drop transitions.
+- Adds task/client search plus priority, task-type, engineer, and client filters across assignment views.
+- Adds a richer card design and task drill-down with schedule, progress, engineers, clients, type-specific details, linked records, and contextual actions.
+- Retains database compatibility at `0278_work_assignment_context`; no new migration is required from `1.66.163`.
+- Full release gates passed: Ruff, strict MyPy across 207 backend source files, 565 backend tests, frontend lint, 133 frontend tests, TypeScript, production frontend build, and PyInstaller runtime assembly.
+- Manifest version `1.66.164`, IIS `APP_VERSION`, database head `0278_work_assignment_context`, required migration and Work Assignments assets, standalone runtime help, ZIP CRC/readability, 2,110 entries, and forbidden backend configuration inspection passed.
+- Artifact: `releases/SupportHub-1.66.164.zip` (54,110,306 bytes), SHA-256 `39BFC19E6E3797E9E98AC2BC8FD22122C65A0C9FFF277BBD32AB2099F0460A01`.
+
+
+## 1.66.163 — 2026-11-04
+
+Status: self-contained Windows x64 work-assignment ticket-conversion release built and verified.
+
+- Adds an engineer-facing **Convert to ticket** action for assigned, non-terminal work assignments.
+- Opens the standard ticket form prefilled from the assignment title, instructions, first related client, task type, and type-specific context.
+- Creates the ticket and assignment conversion link atomically, then transfers KPI attribution from the assignment to the ticket to prevent duplicate credit.
+- Replaces the conversion action with a clickable converted-ticket link after success.
+- Retains database compatibility at `0278_work_assignment_context`; no additional migration is required from `1.66.162`.
+- Full release gates passed: Ruff, strict MyPy across 207 backend source files, 564 backend tests, frontend lint, 133 frontend tests, TypeScript, production frontend build, and PyInstaller runtime assembly.
+- Manifest version `1.66.163`, IIS `APP_VERSION`, database head `0278_work_assignment_context`, required migration and Work Assignments assets, standalone runtime help, ZIP CRC/readability, 2,110 entries, and forbidden backend configuration/cache inspection passed.
+- Artifact: `releases/SupportHub-1.66.163.zip` (54,101,571 bytes), SHA-256 `393FC381F9191C458969CC5DF4E013702CC34CC62CA9477F2EDB21EBEFED090C`.
+
+
+## 1.66.162 — 2026-11-04
+
+Status: self-contained Windows x64 release built successfully, then superseded by `1.66.163` before deployment because it does not expose task-to-ticket conversion in the UI. Do not deploy.
+
+- Includes the SQL Server-safe Work Assignments due-date ordering correction from `1.66.161`.
+- Loads all active clients in the assignment form through validated 200-row API pages instead of sending an invalid `limit=500` request or truncating the client list.
+- Adds task-type-specific fields, ticket search/linking, current planned date/time defaults, External KPI classification by default, and a Support-department-only engineer selector.
+- Advances database compatibility to `0278_work_assignment_context`; migration is required from `1.66.160` or `1.66.161`.
+- Full release verification and final artifact metadata will be recorded after the build completes.
+
+## 1.66.161 — 2026-11-04
+
+Status: self-contained Windows x64 SQL Server Work Assignments queue hotfix built and verified.
+
+- Corrects the Work Assignments due-date ordering expression for SQL Server.
+- Retains database compatibility at `0277_work_assignments`; no additional migration is required from `1.66.160`.
+- Adds SQL Server dialect regression coverage for the queue ordering.
+- Backend Ruff and strict MyPy passed across 207 source files; all 563 backend tests passed.
+- Frontend ESLint, all 133 frontend tests, TypeScript compilation, and the production build passed.
+- The packaged executable exposes `serve`, `migrate`, `seed`, `diagnose-db`, and `recover-admin`.
+- Manifest version `1.66.161`, IIS `APP_VERSION`, database head `0277_work_assignments`, required contents, ZIP CRC/readability, 2,109 entries, and forbidden-file inspection passed.
+- Final artifact: `releases/SupportHub-1.66.161.zip` (54,093,210 bytes).
+- SHA-256: `30FB131AF8E98B42AA69CEC3AA80333E2A95CE40C91E5B8853B28FB1B8D89823`.
+
+## 1.66.160 — 2026-11-03
+
+Status: self-contained Windows x64 Work Assignments and My Workspace release built and verified.
+
+- Adds My Workspace, unified attention, notification actions, responsive Tickets, and enhanced Saved Views.
+- Adds governed Work Assignments with multiple engineers, client scope, claiming, lifecycle audit, conversion links, live sharing, and weighted Engineer KPI attribution.
+- Preserves Support Now as the department operational dashboard and Support Assistant as the personal assistant/PWA.
+- Advances database compatibility to `0277_work_assignments`; packaged migration is required.
+- Backend Ruff and strict MyPy passed across 207 source files; all 562 backend tests passed.
+- Frontend ESLint, all 133 frontend tests, TypeScript compilation, and the production build passed.
+- The packaged executable exposes `serve`, `migrate`, `seed`, `diagnose-db`, and `recover-admin`.
+- Manifest version `1.66.160`, IIS `APP_VERSION`, database head `0277_work_assignments`, required contents, ZIP CRC/readability, 2,109 entries, and forbidden-file inspection passed.
+- Final artifact: `releases/SupportHub-1.66.160.zip` (54,093,900 bytes).
+- SHA-256: `DD7002C243052062BE8AF612681833E5879C1600386ED06EEC94B7CA7E5DE350`.
+
 ## 1.66.159 — 2026-10-26
 
 Status: self-contained Windows x64 Knowledge Base organization and downloads release built and verified.
@@ -4375,4 +4497,72 @@ Status: full self-contained Windows x64 deployment Word-report release built and
 - Manifest version, database head, packaged runtime, ZIP readability, and 2,082 archive entries were verified.
 - Final artifact: `releases/SupportHub-1.66.151.zip` (53,957,265 bytes; 2,082 entries).
 - SHA-256: `54084D915BE57B870E821F4D1900251E4399FA9F7FB1FEC32340C59D3C8F6FE8`.
+
+## UAT enhancement Phase 1 — 2026-11-20
+
+Status: implementation verified; not yet packaged or published.
+
+- Adds a governed UAT portfolio with Active, Blocked, Awaiting Client, Ready for Sign-off, and Completed summaries.
+- Adds exact attention signals, urgency-first ordering, responsive cycle cards, recommended primary actions, and six composable portfolio filters.
+- Retains the existing `uat.view` permission boundary and existing UAT models; no database migration is required.
+- Verification passed: 8 focused backend UAT tests, 2 focused frontend portfolio tests, Ruff, focused Mypy, TypeScript, focused ESLint, production frontend build, and scoped diff validation.
+- Packaging, release publication, and Phase 2 are intentionally deferred.
+
+## UAT enhancement Phase 2 — 2026-11-20
+
+Status: implementation verified; not yet packaged or published.
+
+- Adds guided internal and client-portal test execution with Previous/Next navigation and visible test position.
+- Keeps preconditions, ordered steps, expected/actual results, attempt history, comments, evidence, and result actions in the cycle workspace.
+- Restricts visible actions to governed next transitions and explains unavailable actions without bypassing backend validation.
+- Preserves per-test draft input for the browser session and adds compact attempt, comment, and evidence counts.
+- Retains the existing UAT schema and permission model; no database migration is required.
+- Verification passed: 8 focused backend UAT tests, 5 focused frontend UAT tests, Ruff, focused Mypy, TypeScript, focused ESLint, production frontend build, and scoped diff validation.
+- Packaging, release publication, and Phase 3 are intentionally deferred.
+
+## Active Incident overview actions — 2026-11-21
+
+Status: implementation verified; not yet packaged or published.
+
+- Limits the Overview Active incidents card and drill-down to non-terminal Incident tickets; Resolved, Closed, and Cancelled incidents are excluded.
+- Adds permission-aware Acknowledge and Resolve actions to the Overview drill-down.
+- Acknowledge uses the governed In Progress transition; Resolve requires resolution and root-cause summaries and retains assignment, permission, concurrency, workflow, SLA, notification, and audit controls.
+- No database migration is required.
+- Verification passed: focused service-management API regression, Ruff, focused Mypy, TypeScript, focused ESLint, production frontend build, and scoped diff validation.
+
+## UAT enhancement Phase 3 — 2026-11-21
+
+Status: implementation verified; not yet packaged, published, or applied to the live SQL Server database.
+
+- Adds structured UAT defect links from tickets to the originating cycle, test, and attempt, with indexed cycle/test/release discovery metadata.
+- Standardizes generated defect subjects, preserves governed prefilled context and duplicate prevention, and adds UAT Defect badges plus two-way ticket/UAT navigation.
+- Adds the Open UAT Defects quick view, cycle/release filters, and authorized search by UAT cycle code, test code, or release.
+- Advances database compatibility to `0282_uat_defect_links`; migration is required before deploying this implementation.
+- Clean SQLite migration and a disposable SQL Server schema-clone migration from `0281` to `0282` passed. The configured live `MillensysSupportHub` database remains at `0281` and was not modified.
+- Ruff, strict Mypy, focused backend regression/database checks, all 137 frontend tests, TypeScript, and the production frontend build passed. The full backend run produced 559 passes and 10 Windows temp-root setup errors; every affected selection then passed (11 tests) with a fresh temp root.
+- Packaging, release publication, live database migration, and Phase 4 are intentionally deferred.
+
+## UAT enhancement Phase 4 — 2026-11-21
+
+Status: implementation verified; not yet packaged or published.
+
+- Synchronizes governed ticket assignment and active work to UAT Fix in Progress, ticket resolution to Ready for Retest, and retest outcomes back to the linked ticket workflow context.
+- Keeps UAT passing and ticket reopening/closure explicit: ticket resolution never passes UAT, failed retests request a normal permitted continue/reopen action, and passed retests mark the ticket ready for normal closure.
+- Warns when a linked ticket closes before a successful retest while preserving the UAT state.
+- Adds paired audit evidence for the ticket and UAT test, deduplicated notifications, internal/portal active-fix retest guards, and ticket-detail readiness/warning messages.
+- No new migration is required; database compatibility remains `0282_uat_defect_links`. The configured live SQL Server database was not modified.
+- Ruff, strict Mypy, 16 focused backend UAT/ticket workflow tests, all 137 frontend tests, TypeScript, and the production frontend build passed.
+- Packaging, release publication, live database migration, and Phase 5 are intentionally deferred.
+
+## UAT enhancement Phase 5 — 2026-11-21
+
+Status: implementation verified; not yet packaged or published.
+
+- Adds a server-authoritative sign-off readiness checklist for mandatory, failed, blocked, incomplete, open-defect, and required-evidence conditions, with direct internal links to affected tests and tickets.
+- Adds blocking configuration warnings for unpublished or inactive portal windows, missing client testers/actions, and invalid client approvers.
+- Revalidates readiness when requesting and approving sign-off so changed conditions cannot be bypassed.
+- Adds scoped client-portal empty-state explanations without disclosing cycle identity or content outside the user's client and UAT role scope.
+- No new migration is required; database compatibility remains `0282_uat_defect_links`. The configured live SQL Server database was not modified.
+- Ruff, strict Mypy, 11 focused backend UAT tests, frontend lint with one pre-existing warning, all 137 frontend tests, TypeScript, and the production frontend build passed.
+- Packaging, publication, local IIS smoke testing, and section 15A.6 release gates are intentionally deferred.
 

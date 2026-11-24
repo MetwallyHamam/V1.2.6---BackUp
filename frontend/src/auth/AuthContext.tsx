@@ -17,6 +17,17 @@ import {
   storedRefreshToken,
   storedSessionExpiry,
 } from "../api/client";
+import { queryClient } from "../queryClient";
+
+const accountScopedStorageKeys = [
+  "support-hub-recent-pages-v1",
+  "support-hub-opened-page-tabs-v2",
+];
+
+function clearAccountScopedClientState() {
+  queryClient.clear();
+  accountScopedStorageKeys.forEach((key) => window.sessionStorage.removeItem(key));
+}
 
 export type ThemePreset =
   | "CLASSIC"
@@ -149,6 +160,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const expireSession = () => {
+      clearAccountScopedClientState();
       setUser(null);
       setPermissions([]);
       setInitializing(false);
@@ -165,6 +177,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     persistTokens(data);
     const response = await api.get<User>("/auth/me");
+    clearAccountScopedClientState();
     setUser(response.data);
     setPermissions(response.data.permissions);
     return response.data;
@@ -189,6 +202,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     clearStoredTokens();
     consumeReturnPath();
     consumeSessionEndReason();
+    clearAccountScopedClientState();
     setUser(null);
     setPermissions([]);
   }

@@ -1,0 +1,1 @@
+import{j as r,L as m}from"./vendor-BtUHExfG.js";import{ba as s}from"./mui-CrBvcj_X.js";function p({to:n,state:o,children:t,...i}){return r.jsx(s,{component:m,to:n,state:o,...i,children:t})}export{p as S};

@@ -1,0 +1,40 @@
+{
+  "metadata": {
+    "mode": "DRY_RUN_READ_ONLY",
+    "generated_at": "2026-11-24T08:52:52.200690+00:00",
+    "database_revision": "0292_unified_ops_hardening",
+    "automatic_changes": 0
+  },
+  "summary": {
+    "before_counts": {
+      "accounts": 0,
+      "organizations": 0,
+      "clients": 0,
+      "parent_clients": 0,
+      "child_clients": 0,
+      "branches": 0,
+      "projects": 0,
+      "clients_without_organization": 0
+    },
+    "proposed_classifications": {},
+    "project_reconciliation": {
+      "reconciled": 0,
+      "exceptions": 0
+    },
+    "exception_severity_counts": {},
+    "exception_code_counts": {},
+    "after_counts": {
+      "accounts": 0,
+      "organizations": 0,
+      "clients": 0,
+      "parent_clients": 0,
+      "child_clients": 0,
+      "branches": 0,
+      "projects": 0,
+      "clients_without_organization": 0
+    }
+  },
+  "client_proposals": [],
+  "project_reconciliation": [],
+  "exceptions": []
+}

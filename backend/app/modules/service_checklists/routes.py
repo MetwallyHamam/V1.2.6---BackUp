@@ -1229,9 +1229,7 @@ def delete_simple_item(
     return occurrence_read(db, row, detail=True)
 
 
-@router.patch(
-    "/occurrences/{occurrence_id}/items/{item_id}/details", response_model=OccurrenceRead
-)
+@router.patch("/occurrences/{occurrence_id}/items/{item_id}/details", response_model=OccurrenceRead)
 def update_item_details(
     occurrence_id: int,
     item_id: int,
@@ -1561,7 +1559,9 @@ def quick_complete_occurrence(
     }
     submitted_ids = {entry.item_id for entry in data.items}
     missing_required = [
-        item.title for item in stored_items.values() if item.is_required and item.id not in submitted_ids
+        item.title
+        for item in stored_items.values()
+        if item.is_required and item.id not in submitted_ids
     ]
     errors: list[dict[str, object]] = []
     follow_up_numbers: list[str] = []
@@ -1572,27 +1572,59 @@ def quick_complete_occurrence(
             continue
         note = entry.note.strip() if entry.note else None
         contact = entry.client_contact.strip() if entry.client_contact else None
-        evidence = db.get(ServiceChecklistEvidence, entry.evidence_id) if entry.evidence_id else None
+        evidence = (
+            db.get(ServiceChecklistEvidence, entry.evidence_id) if entry.evidence_id else None
+        )
         if evidence and evidence.occurrence_id != row.id:
             evidence = None
         if entry.choice == "DONE" and item.evidence_required:
             if item.evidence_type == "FILE" and not evidence:
-                errors.append({"item_id": item.id, "field": "evidence", "message": "Attach evidence."})
+                errors.append(
+                    {"item_id": item.id, "field": "evidence", "message": "Attach evidence."}
+                )
             elif item.evidence_type != "FILE" and not (entry.evidence_reference or note):
-                errors.append({"item_id": item.id, "field": "evidence", "message": "Enter evidence or a result note."})
+                errors.append(
+                    {
+                        "item_id": item.id,
+                        "field": "evidence",
+                        "message": "Enter evidence or a result note.",
+                    }
+                )
+        if entry.choice == "DONE" and not (entry.resource_path or "").strip():
+            errors.append(
+                {
+                    "item_id": item.id,
+                    "field": "resource_path",
+                    "message": "Enter the verified backup path or URL.",
+                }
+            )
         if entry.choice == "NEEDS_ATTENTION" and not note:
-            errors.append({"item_id": item.id, "field": "note", "message": "Enter a short attention note."})
+            errors.append(
+                {"item_id": item.id, "field": "note", "message": "Enter a short attention note."}
+            )
         if entry.choice == "CLIENT_ACTION":
-            if not contact:
-                errors.append({"item_id": item.id, "field": "client_contact", "message": "Enter the client contact."})
             if not note:
-                errors.append({"item_id": item.id, "field": "note", "message": "Enter the handoff note."})
+                errors.append(
+                    {
+                        "item_id": item.id,
+                        "field": "note",
+                        "message": "Enter a customer-responsibility comment.",
+                    }
+                )
             if not evidence:
-                errors.append({"item_id": item.id, "field": "evidence", "message": "Attach handoff evidence."})
+                errors.append(
+                    {
+                        "item_id": item.id,
+                        "field": "evidence",
+                        "message": "Attach a customer-responsibility image.",
+                    }
+                )
         item.resource_path = entry.resource_path.strip() if entry.resource_path else None
         item.check_date = entry.check_date
         item.result_note = note
-        item.evidence_reference = entry.evidence_reference or (evidence.original_filename if evidence else None)
+        item.evidence_reference = entry.evidence_reference or (
+            evidence.original_filename if evidence else None
+        )
         item.evidence_id = evidence.id if evidence else None
         item.client_contact = contact
     if missing_required:
@@ -1669,7 +1701,12 @@ def quick_complete_occurrence(
     )
     next_row = None
     template = db.get(ServiceChecklistTemplate, row.template_id)
-    if row.recurrence_days and template and template.is_active and template.schedule_mode == "SCHEDULED":
+    if (
+        row.recurrence_days
+        and template
+        and template.is_active
+        and template.schedule_mode == "SCHEDULED"
+    ):
         scheduled_at = row.scheduled_at + timedelta(days=row.recurrence_days)
         next_row = db.scalar(
             select(ServiceChecklistOccurrence).where(
@@ -2464,6 +2501,17 @@ def bulk_assign_schedules(
             ),
             actor,
             schedule_id=row.id,
+        )
+        db.add(
+            Notification(
+                recipient_user_id=assignee.id,
+                notification_type="SERVICE_CHECKLIST_ASSIGNED",
+                severity="INFO",
+                title=f"Checklist assigned: {customer.name}",
+                message=f"{template.name} is ready for action.",
+                deep_link="/service-checklists?view=mine",
+                deduplication_key=f"checklist-assigned:{occurrence.id}:user:{assignee.id}",
+            )
         )
         row.next_generate_at += timedelta(days=data.interval_days)
         audit(

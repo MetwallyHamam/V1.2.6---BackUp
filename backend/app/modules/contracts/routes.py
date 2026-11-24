@@ -123,6 +123,7 @@ from app.modules.iam.models import AuditLog, Department, User
 from app.modules.iam.service import effective_permissions
 from app.modules.notifications.models import Notification
 from app.modules.tickets.models import Ticket, TicketType
+from app.modules.tickets.service import ensure_ticket_access
 from app.modules.visits.models import (
     ClientVisitEntitlement,
     ClientVisitOccurrence,
@@ -369,6 +370,8 @@ def validate_contract_approval_group(db: Session, group_id: int | None) -> None:
 
 @router.get("/contracts/{contract_id}/contacts", response_model=list[ContactRead])
 def contract_contacts(contract_id: int, db: Session = Depends(get_db), actor: User = Depends(require_permission("contract.view"))) -> list[Contact]:
+    if actor.user_type == "CLIENT_PORTAL":
+        raise NotFoundError("Contract does not exist.")
     contract = db.get(Contract, contract_id)
     if not contract:
         raise NotFoundError()
@@ -383,6 +386,8 @@ def contract_contacts(contract_id: int, db: Session = Depends(get_db), actor: Us
 
 @router.get("/contracts/{contract_id}/branches", response_model=list[BranchRead])
 def contract_branches(contract_id: int, db: Session = Depends(get_db), actor: User = Depends(require_permission("contract.view"))) -> list[Branch]:
+    if actor.user_type == "CLIENT_PORTAL":
+        raise NotFoundError("Contract does not exist.")
     contract = db.get(Contract, contract_id)
     if not contract:
         raise NotFoundError()
@@ -2236,6 +2241,8 @@ def get_contract(
     db: Session = Depends(get_db),
     actor: User = Depends(require_permission("contract.view")),
 ) -> Contract:
+    if actor.user_type == "CLIENT_PORTAL":
+        raise NotFoundError("Contract does not exist.")
     contract = db.get(Contract, contract_id)
     if not contract:
         raise NotFoundError()
@@ -2252,6 +2259,8 @@ def page_contract_clients(
     db: Session = Depends(get_db),
     actor: User = Depends(require_permission("contract.view")),
 ) -> dict[str, object]:
+    if actor.user_type == "CLIENT_PORTAL":
+        raise NotFoundError("Contract does not exist.")
     contract = db.get(Contract, contract_id)
     if not contract:
         raise NotFoundError()
@@ -2288,6 +2297,8 @@ def list_contract_clients(
     db: Session = Depends(get_db),
     actor: User = Depends(require_permission("contract.view")),
 ) -> list[Client]:
+    if actor.user_type == "CLIENT_PORTAL":
+        raise NotFoundError("Contract does not exist.")
     contract = db.get(Contract, contract_id)
     if not contract:
         raise NotFoundError()
@@ -4090,11 +4101,7 @@ def ticket_sla(
     if ticket_type and ticket_type.code == "CHANGE_REQUEST":
         return []
     if actor.user_type == "CLIENT_PORTAL":
-        access = effective_permissions(db, actor)
-        if ticket.client_id not in access.client_scope_ids or (
-            access.branch_scope_ids and ticket.branch_id not in access.branch_scope_ids
-        ):
-            raise NotFoundError("Ticket does not exist.")
+        ensure_ticket_access(db, actor, ticket)
     return list(
         db.scalars(
             select(TicketSlaClock)
@@ -4117,9 +4124,7 @@ def ticket_sla_shadow_comparison(
     if not ticket:
         raise NotFoundError("Ticket does not exist.")
     if actor.user_type == "CLIENT_PORTAL":
-        access = effective_permissions(db, actor)
-        if ticket.client_id not in access.client_scope_ids:
-            raise NotFoundError("Ticket does not exist.")
+        ensure_ticket_access(db, actor, ticket)
     return db.scalar(select(SlaShadowComparison).where(SlaShadowComparison.ticket_id == ticket_id))
 
 

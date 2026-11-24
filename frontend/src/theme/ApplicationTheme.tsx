@@ -487,6 +487,14 @@ export function ApplicationTheme({ children }: { children: ReactNode }) {
                 backgroundColor: colors.nav,
                 borderColor: colors.border,
               },
+              paperAnchorRight: ({ theme }) => ({
+                top: 56,
+                height: "calc(100% - 56px)",
+                [theme.breakpoints.up("sm")]: {
+                  top: 64,
+                  height: "calc(100% - 64px)",
+                },
+              }),
             },
           },
           MuiTableCell: {

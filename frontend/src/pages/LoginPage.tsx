@@ -60,11 +60,12 @@ const ambientPulse = keyframes`
 `;
 
 export function loginDestination(
-  user: { require_password_change: boolean; default_page: string },
+  user: { require_password_change: boolean; default_page: string; user_type?: "EMPLOYEE" | "CLIENT_PORTAL" },
   state: LoginNavigationState | null,
   savedReturnPath: string | null,
 ) {
   if (user.require_password_change) return "/change-password";
+  if (user.user_type === "CLIENT_PORTAL") return "/portal";
   const landingPages: Record<string, string> = {
     home: "/home",
     "my-workspace": "/my-workspace",

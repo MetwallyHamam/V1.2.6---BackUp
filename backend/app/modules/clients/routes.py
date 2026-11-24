@@ -37,6 +37,7 @@ from app.modules.clients.models import (
     DeploymentIssueType,
     Environment,
     InstallationComponent,
+    Organization,
     Product,
     ProductModule,
     ServiceCatalogItem,
@@ -61,6 +62,8 @@ from app.modules.clients.schemas import (
     ClientAccessRead,
     ClientAccessRevealResponse,
     ClientAccessUpdate,
+    ClientBulkCountryAssign,
+    ClientBulkCountryAssignResult,
     ClientCreate,
     ClientHierarchyNode,
     ClientHierarchyRead,
@@ -399,6 +402,8 @@ def search_clients_page(
     account_status: Literal["ACTIVE", "INACTIVE", "ALL"] | None = None,
     status_id: int | None = None,
     country_id: int | None = None,
+    missing_region: bool = False,
+    missing_access: bool = False,
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
@@ -416,6 +421,14 @@ def search_clients_page(
             ClientLocation.country_id == country_id
         )
         filters.append(or_(Client.country_id == country_id, Client.id.in_(clients_with_location)))
+    if missing_region:
+        filters.append(Client.country_id.is_(None) & or_(Client.zone.is_(None), Client.zone == ""))
+    if missing_access:
+        active_access = select(ClientAccessCredential.id).where(
+            ClientAccessCredential.client_id == Client.id,
+            ClientAccessCredential.is_active.in_([True]),
+        )
+        filters.append(~active_access.exists())
     if search:
         term = f"%{search.strip()}%"
         filters.append(or_(Client.code.like(term), Client.name.like(term)))
@@ -424,6 +437,37 @@ def search_clients_page(
         db.scalars(select(Client).where(*filters).order_by(Client.name).offset(offset).limit(limit))
     )
     return ClientPageRead(items=items, total=total, limit=limit, offset=offset)
+
+
+@router.post("/bulk-assign-country", response_model=ClientBulkCountryAssignResult)
+def bulk_assign_client_country(
+    data: ClientBulkCountryAssign,
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_permission("client.manage")),
+) -> ClientBulkCountryAssignResult:
+    country = db.get(Country, data.country_id)
+    if not country or not country.is_active:
+        raise NotFoundError("Select an active country.")
+    requested_ids = list(dict.fromkeys(data.client_ids))
+    clients = list(db.scalars(select(Client).where(Client.id.in_(requested_ids))))
+    found_ids = {item.id for item in clients}
+    missing_ids = [client_id for client_id in requested_ids if client_id not in found_ids]
+    if missing_ids:
+        raise NotFoundError(f"Clients do not exist: {', '.join(map(str, missing_ids))}.")
+    for item in clients:
+        previous_country_id = item.country_id
+        item.country_id = country.id
+        item.country = country.name
+        audit(
+            db,
+            actor.id,
+            "Client",
+            item.id,
+            "client.country_bulk_assigned",
+            {"previous_country_id": previous_country_id, "country_id": country.id},
+        )
+    db.commit()
+    return ClientBulkCountryAssignResult(updated_count=len(clients), client_ids=requested_ids)
 
 
 @router.get("/metrics/inactive")
@@ -499,6 +543,8 @@ def create_client(
     actor: User = Depends(require_permission("client.manage")),
 ) -> Client:
     validate_parent_change(db, None, data.parent_client_id)
+    if data.organization_id is not None and not db.get(Organization, data.organization_id):
+        raise NotFoundError("Organization does not exist.")
     if not db.get(ClientStatus, data.status_id):
         raise NotFoundError("Client status does not exist.")
     if data.owner_department_id is not None:
@@ -634,6 +680,9 @@ def update_client(
     old_path = " > ".join(item.name for item in get_client_path(db, client.id))
     if "parent_client_id" in changes:
         validate_parent_change(db, client.id, changes["parent_client_id"])
+    if "organization_id" in changes and changes["organization_id"] is not None:
+        if not db.get(Organization, changes["organization_id"]):
+            raise NotFoundError("Organization does not exist.")
     if "status_id" in changes and not db.get(ClientStatus, changes["status_id"]):
         raise NotFoundError("Client status does not exist.")
     if "owner_department_id" in changes:
@@ -924,6 +973,12 @@ def create_client_access(
 ) -> ClientAccessCredential:
     if not db.get(Client, client_id):
         raise NotFoundError()
+    if data.branch_id is not None:
+        branch = db.get(Branch, data.branch_id)
+        if not branch or branch.client_id != client_id:
+            raise ConflictError(
+                "INVALID_BRANCH", "The access branch does not belong to this client."
+            )
     values = data.model_dump(exclude={"password"})
     item = ClientAccessCredential(
         client_id=client_id,
@@ -970,6 +1025,12 @@ def update_client_access(
     item = _client_access(db, client_id, access_id)
     changes = data.model_dump(exclude_unset=True)
     password = changes.pop("password", None)
+    if "branch_id" in changes and changes["branch_id"] is not None:
+        branch = db.get(Branch, changes["branch_id"])
+        if not branch or branch.client_id != client_id:
+            raise ConflictError(
+                "INVALID_BRANCH", "The access branch does not belong to this client."
+            )
     if password is not None:
         item.password_ciphertext = encrypt_password(password) if password else None
     for key, value in changes.items():
@@ -1763,7 +1824,9 @@ def list_deployment_issue_types(
     return list(db.scalars(statement.order_by(DeploymentIssueType.name)))
 
 
-@catalog_router.post("/deployment-issue-types", response_model=DeploymentIssueTypeRead, status_code=201)
+@catalog_router.post(
+    "/deployment-issue-types", response_model=DeploymentIssueTypeRead, status_code=201
+)
 def create_deployment_issue_type(
     data: DeploymentIssueTypeCreate,
     db: Session = Depends(get_db),
@@ -1775,14 +1838,25 @@ def create_deployment_issue_type(
         db.execute(update(DeploymentIssueType).values(is_default=False))
     item = DeploymentIssueType(code="PENDING", **values)
     add_with_generated_code(db, item, requested_code, "DIT")
-    commit_or_conflict(db, "DUPLICATE_DEPLOYMENT_ISSUE_TYPE", "That deployment issue type already exists.")
+    commit_or_conflict(
+        db, "DUPLICATE_DEPLOYMENT_ISSUE_TYPE", "That deployment issue type already exists."
+    )
     db.refresh(item)
-    audit(db, actor.id, "DeploymentIssueType", item.id, "deployment_issue_type.created", data.model_dump())
+    audit(
+        db,
+        actor.id,
+        "DeploymentIssueType",
+        item.id,
+        "deployment_issue_type.created",
+        data.model_dump(),
+    )
     db.commit()
     return item
 
 
-@catalog_router.patch("/deployment-issue-types/{issue_type_id}", response_model=DeploymentIssueTypeRead)
+@catalog_router.patch(
+    "/deployment-issue-types/{issue_type_id}", response_model=DeploymentIssueTypeRead
+)
 def update_deployment_issue_type(
     issue_type_id: int,
     data: DeploymentIssueTypeUpdate,
@@ -1794,7 +1868,11 @@ def update_deployment_issue_type(
         raise NotFoundError("Deployment issue type does not exist.")
     changes = data.model_dump(exclude_unset=True)
     if changes.get("is_default"):
-        db.execute(update(DeploymentIssueType).where(DeploymentIssueType.id != item.id).values(is_default=False))
+        db.execute(
+            update(DeploymentIssueType)
+            .where(DeploymentIssueType.id != item.id)
+            .values(is_default=False)
+        )
     for field, value in changes.items():
         setattr(item, field, value)
     audit(db, actor.id, "DeploymentIssueType", item.id, "deployment_issue_type.updated", changes)

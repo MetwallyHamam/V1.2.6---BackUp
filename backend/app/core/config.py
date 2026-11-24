@@ -28,6 +28,10 @@ class Settings(BaseSettings):
     attachment_storage_path: str = "./storage/attachments"
     attachment_max_bytes: int = Field(default=8_388_608, ge=1024, le=52_428_800)
     database_backup_path: str = "../backups"
+    maintenance_backup_path: str = "../backups/application"
+    maintenance_application_paths: str = ".,../frontend"
+    maintenance_scheduler_enabled: bool = True
+    maintenance_scheduler_interval_seconds: int = Field(default=60, ge=15, le=3600)
     error_log_enabled: bool = True
     error_log_path: str = "./logs/errors"
     error_log_timezone: str = "Africa/Cairo"

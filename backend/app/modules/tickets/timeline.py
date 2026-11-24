@@ -91,10 +91,15 @@ def ticket_timeline(
                 "created_at": comment.created_at,
             }
         )
+    attachment_statement = select(TicketAttachment).where(
+        TicketAttachment.ticket_id == ticket.id
+    )
+    if not include_internal:
+        attachment_statement = attachment_statement.where(
+            TicketAttachment.portal_visible.in_([True])
+        )
     for attachment in db.scalars(
-        select(TicketAttachment)
-        .where(TicketAttachment.ticket_id == ticket.id)
-        .order_by(TicketAttachment.created_at)
+        attachment_statement.order_by(TicketAttachment.created_at)
     ):
         events.append(
             {
@@ -103,7 +108,7 @@ def ticket_timeline(
                 "title": "Attachment uploaded",
                 "description": attachment.original_filename,
                 "actor_name": actor_name(db, attachment.uploaded_by_user_id),
-                "is_internal": False,
+                "is_internal": not attachment.portal_visible,
                 "created_at": attachment.created_at,
             }
         )

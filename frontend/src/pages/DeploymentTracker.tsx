@@ -19,6 +19,8 @@ import {
   Typography,
 } from "@mui/material";
 import { Edit, Menu as MenuIcon } from "@mui/icons-material";
+import { alpha } from "@mui/material/styles";
+import type { Theme } from "@mui/material/styles";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FormEvent, useEffect, useState } from "react";
 import { api, apiErrorMessage } from "../api/client";
@@ -200,6 +202,25 @@ const workflowTargets: Record<string, string[]> = {
   CLOSED: ["REOPENED", "CLOSED"],
   REOPENED: ["REOPENED", "INVESTIGATION", "IN_PROGRESS", "PENDING", "RESOLVED"],
 };
+
+const issueStatusColor = (theme: Theme, status: string) =>
+  status === "OPEN"
+    ? theme.palette.warning.main
+    : status === "IN_PROGRESS"
+      ? theme.palette.primary.main
+      : ["PENDING", "PENDING_IMPLEMENTATION"].includes(status)
+        ? theme.palette.warning.dark
+        : status === "RESOLVED"
+          ? theme.palette.success.main
+          : status === "DELIVERED"
+            ? theme.palette.info.main
+            : theme.palette.grey[theme.palette.mode === "dark" ? 400 : 600];
+
+const issueStatusSurface = (theme: Theme, status: string, card = false) =>
+  alpha(
+    issueStatusColor(theme, status),
+    theme.palette.mode === "dark" ? (card ? 0.14 : 0.2) : card ? 0.035 : 0.07,
+  );
 
 export function DeploymentTracker({ portal = false }: { portal?: boolean }) {
   const { user, hasPermission } = useAuth();
@@ -1179,41 +1200,20 @@ export function DeploymentTracker({ portal = false }: { portal?: boolean }) {
                     }}
                     onDoubleClick={status === "OPEN" ? openIssueForm : undefined}
                     title={status === "OPEN" ? "Double-click to add a new issue" : undefined}
-                    sx={{
+                    sx={(theme) => ({
                       p: 1.25,
                       width: 320,
                       minWidth: 0,
                       flex: "0 0 320px",
                       overflow: "hidden",
                       borderTop: "4px solid",
-                      borderTopColor:
-                        status === "OPEN"
-                          ? "warning.main"
-                          : status === "IN_PROGRESS"
-                            ? "primary.main"
-                            : ["PENDING", "PENDING_IMPLEMENTATION"].includes(status)
-                              ? "warning.dark"
-                              : status === "RESOLVED"
-                                ? "success.main"
-                                : status === "DELIVERED"
-                                  ? "info.main"
-                                : "grey.600",
-                      backgroundColor:
-                        status === "OPEN"
-                          ? "#fff7ed"
-                          : status === "IN_PROGRESS"
-                            ? "#eff6ff"
-                            : ["PENDING", "PENDING_IMPLEMENTATION"].includes(status)
-                              ? "#fffbeb"
-                              : status === "RESOLVED"
-                                ? "#f0fdf4"
-                                : status === "DELIVERED"
-                                  ? "#ecfeff"
-                                : "#f3f4f6",
+                      borderTopColor: issueStatusColor(theme, status),
+                      backgroundColor: issueStatusSurface(theme, status),
+                      color: "text.primary",
                       outline: dragOverStatus === status ? "3px dashed" : "none",
                       outlineColor: "primary.main",
                       outlineOffset: -4,
-                    }}
+                    })}
                   >
                     <Typography fontWeight={800} variant="body2" noWrap>
                       {status.replaceAll("_", " ")} ·{" "}
@@ -1259,7 +1259,7 @@ export function DeploymentTracker({ portal = false }: { portal?: boolean }) {
                               setDragOverStatus("");
                             }}
                             onDoubleClick={(event) => event.stopPropagation()}
-                            sx={{
+                            sx={(theme) => ({
                               p: 1,
                               flex: "0 0 auto",
                               flexShrink: 0,
@@ -1271,32 +1271,11 @@ export function DeploymentTracker({ portal = false }: { portal?: boolean }) {
                               cursor: portal ? "default" : "grab",
                               opacity: draggedIssueId === issue.id ? 0.58 : 1,
                               borderLeft: "4px solid",
-                              borderLeftColor:
-                                status === "OPEN"
-                                  ? "warning.main"
-                                  : status === "IN_PROGRESS"
-                                    ? "primary.main"
-                                    : ["PENDING", "PENDING_IMPLEMENTATION"].includes(status)
-                                      ? "warning.dark"
-                                      : status === "RESOLVED"
-                                        ? "success.main"
-                                        : status === "DELIVERED"
-                                          ? "info.main"
-                                        : "grey.600",
-                              backgroundColor:
-                                status === "OPEN"
-                                  ? "#fffbf5"
-                                  : status === "IN_PROGRESS"
-                                    ? "#f7faff"
-                                    : ["PENDING", "PENDING_IMPLEMENTATION"].includes(status)
-                                      ? "#fffdf5"
-                                      : status === "RESOLVED"
-                                        ? "#f7fef9"
-                                        : status === "DELIVERED"
-                                          ? "#f0fdff"
-                                        : "#fafafa",
+                              borderLeftColor: issueStatusColor(theme, status),
+                              backgroundColor: issueStatusSurface(theme, status, true),
+                              color: "text.primary",
                               boxShadow: 1,
-                            }}
+                            })}
                           >
                             <Stack
                               direction="row"

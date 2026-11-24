@@ -1,0 +1,423 @@
+﻿severity,code,entity_type,entity_id,name,detail,required_action
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,1,MILLENSYS,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,2,UHIA - Ismaalia,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,3,Dar Al Ashaa -  Smouha,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,4,Dar Al Ashaa- Tramsy,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,5,Dar Al Ashaa- Borg El-khair,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,6,Dar Al Ashaa- Agamy,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,7,Dar Al Ashaa Master,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,8,Badr University Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,9,Dr. Ken C,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,10,South Africa,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,11,Black Mountain Mine,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,12,Capital Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,13,I-MEDIC,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,14,KSA-BTECH,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,15,Assema Scan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,16,Rozzik Scan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,17,Alfa Scan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,18,Nova Scan - Nova Lab,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,19,Tiba Scan Biba,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,20,GDR (Teleradiology Project),Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,21,Ahmed Farid,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,22,Dar Al-Ashe3a  Bagour,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,23,Dar Al-Ashe3a  Ashmoon,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,24,Dar Al Ashe3a Tala (Monofia),Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,25,Gamma Scan Wasta,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,26,Balsam Group (Al Khagy Hosp.),Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,27,Gamma Scan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,28,El-Eman Scan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,29,Rakhawy Scan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,30,CRC (???? ??????????? ??????),Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,31,Mawada Scan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,32,Shorouk scan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,33,Al Houda Medcial Center,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,34,Dar ElTeb,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,35,Al Tayseer,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,36,Makkah Park,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,37,Egypt Air Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,38,Giza Scan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,39,Makkah Scan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,40,Yellow Med-teleradiology,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,41,El Masria & Horia,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,42,ELahram Scan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,43,Masara Scan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,44,Demiana Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,45,Great Tomas,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,46,Wel Care,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,47,EMG (???? ????? ???????),Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,48,Tabarak Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,49,Dr. yahia clinic,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,50,Dar Sohag Vision Tools,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,51,Al Masa,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,52,Afaq,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,53,Master Scan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,54,Sky Scan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,55,Al Salam international Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,56,Pleura Scan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,57,Egy Heart,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,58,Reaya Scan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,59,Al Safwa,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,60,Masr Al Mahaba,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,61,Neom (Siemens),Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,62,Aswan Evanglican Mission,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,63,Nafadi R. Center,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,64,Macca Center,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,65,Rab3a Center,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,66,Al Zohery Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,67,Al Atheer Medical Center,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,68,Beirut_Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,69,Dr. Tedlaoui,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,70,Mostafa Mahmoud ( El Safa ),Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,71,Trabuls -Libya-,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,72,Harley_Street,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,73,Ekhtyar Afdal -Libya-,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,74,El-Hamd Center,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,75,Sohag El-Howeg Scan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,76,Al-safwa Sohag,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,77,Procare,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,78,Ottman,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,79,Aldurrah Hospital shebeen,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,80,Aman Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,81,Italy Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,82,Amr Zayed,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,83,Matrya Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,84,Al MatareyaScan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,85,Radar Aswan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,86,Wadi L Nile Awsem,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,87,FirstScan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,88,Cardio Canal,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,89,Osama Dawood,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,90,Byet El-Ash3a,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,91,Hamdy El-Sayed,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,92,Care Scan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,93,Zaytoon,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,94,Al-Rahma,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,95,Al-Borg Scan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,96,Fakous MRI,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,97,Ibn Hayan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,98,Haifu,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,99,Generation,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,100,Misr International,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,101,RIDC,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,102,Assema Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,103,Fardous Scan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,104,Boshy Scan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,105,Qalaa Scan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,106,Manaret al teb,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,107,City Scan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,108,Qena Scan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,109,Hermal Scan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,110,Al Hayat Scan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,111,Aman Bani Suif,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,112,Hossania sharkia,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,113,Air Force Medical Center,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,114,Petrol Medical Center -Makram-,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,115,Al Razi,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,116,Liver Institute,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,117,First Scan Mitghamr,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,118,BMC British,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,119,Mansheyet El Bakry Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,120,Asia Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,121,Alraqy University Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,122,Al Aliaa Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,123,Police Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,124,Banha hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,125,Al- safa Luxor,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,127,Dar Elhekma sohag,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,128,Al-Amal R. Center,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,129,Rashid Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,130,Al Ain al_Garya,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,131,Beltagy Scan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,132,Salem_X,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,133,Arab Contractors Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,134,Sohag Uni. Hosp.,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,135,Nile Scan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,136,Asuyt Uni. Hosp.,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,137,Esna Hosptal,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,138,Zagazig Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,139,Al Moalmen Hospital-Cathview,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,140,Ain Shams Univerisity hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,141,Mansoura University,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,142,RoyalCath Center,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,143,MRC,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,144,Kawkab Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,145,Medical technology,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,146,Sant Mary Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,147,Mounira Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,148,Sadr Abaseya,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,149,Matrouh Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,150,Amjad El-Maddah -Syria-,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,151,Tiba Scan  Bany sweef,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,152,Tiba Scan El-Fashn,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,153,TIba Scan Samosta,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,154,Shifa Al Orman,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,155,Smouha scan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,156,Omega Scan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,157,Al Sadiq Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,158,siemens,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,159,Philips,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,160,Al Salam Hospital -Endo-,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,161,DAF,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,162,Nairobi Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,163,Sohag General,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,164,UHIA Support,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,165,Al-Aml Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,166,Dar Elfouad,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,167,Hurghada Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,168,AL Nozha Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,169,Wadi Elnatroon,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,170,TechMed -South Africa-,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,171,South America -Brazil-,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,172,BTHDC,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,173,UHIA PortSaid,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,174,Taiba Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,175,UHIA Esmalia,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,176,UHIA Suez,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,177,UHIA Luxor,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,178,UHIA Aswan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,179,UHIA South Sinai,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,180,Kobry El Qobba Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,181,Egypt scan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,182,Tiba Alwasta,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,183,Total Health - USA -,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,184,Hesham Jordan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,185,Bedayat Hospital and Lavida Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,186,Cleopatra Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,187,Moulay Ismail Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,188,Reliance Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,189,Dr Belimen,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,190,Louran Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,191,El Helal Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,192,sporting hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,193,Cairo Scan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,194,Iraq,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,195,Andalusia Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,196,Algeria Millensys Support,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,197,Al-horya scan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,198,New Cairo hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,199,Al-Minshawi General Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,200,Nasser Institute hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,201,Dream Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,202,LTD,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,203,Coptic Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,204,Mary Morcos Medical Center,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,205,El-Barq Scan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,206,Ain-Shams hospital university,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,207,Al-Nada scan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,208,Kinia Support Team,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,209,Alex Scan Maiami,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,210,Mary Markos Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,211,Hospious,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,212,Alfa Lab - Al Shefa Clinic,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,213,Al masria scan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,214,Nariman Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,215,Al Talaba Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,216,Al Ameriya General Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,217,Gamal Hamada Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,218,Republic General Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,219,Ras El Tin General Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,220,Kafr El Zayat General Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,221,Damanhour Chest Diseases Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,222,Pediatrics -Children Medicin-,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,223,Dar Elashaa Alex.,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,224,Alshifa,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,225,Andalosia Alex.,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,226,Lady Scan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,227,Dr. Ali Abd Elkreem,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,228,Shark El-Madina Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,229,Mustafa Elnagar Specialized Hospital for Heart Diseases and Surgeries,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,230,Alex University,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,231,Om Elkora ( Tanta ),Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,232,Heart and Chest Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,233,Smouha International Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,234,Alexandria Hospital for Kidney and Urology,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,235,Algomhoria Scan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,236,El-Madina Scan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,237,Armed Forces Alex. Hospitals,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,238,Ibrahim Obaid,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,239,Asnan Scan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,240,Nile Cardiac Center,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,241,Egypt Hearts Center,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,242,Al-Hadra University Hospital ( Nariman ),Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,243,Gamal Abdel Nasser Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,244,Damanhour Teaching Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,245,Heliopolis Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,246,Capital Scan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,247,Capital Hospital 'Dokki',Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,248,Icon Dynamics -Greece,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,249,Progress Center for Medical Imaging -Libya-,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,250,Union scan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,251,Electromedica,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,254,Tanta Scan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,255,Seha Scan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,256,Time -Syria-,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,257,centre hospitalier universitaire Yalgado Ouedraogo -Burkina Faso-,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,258,El Salam PortSaid -MiPrint-,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,259,New Capital Governmental Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,260,Elite -Lebanon -,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,261,Dr Bouguelaa,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,262,Smart Scan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,263,Tiba Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,264,Dr Othmani,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,265,HER,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,266,Alex,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,267,Amex -Austria,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,268,Bentria,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,269,Dr Nour,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,270,Cim Aures,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,271,Mutuelle,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,272,Tkout,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,273,Dr Khelif,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,274,Dr Ouali,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,275,CDM Rouane,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,276,Dr Amrane,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,277,Clinique Moula,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,278,Clinique Eldjazair,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,279,Dr.Emad Clinic,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,280,NSH,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,281,Mustafa Mahmoud,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,282,Gold Clinic,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,283,Misr Oroba Clinic,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,284,Dar souhag Al Ashaa,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,285,Fayoum university hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,286,Gama Scan - Yaman -,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,287,URO Scan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,288,RayLab,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,289,Egy Scan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,290,Sakhaa hospital -imp-,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,291,Biodun Pariola,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,292,Active Care,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,293,Dar Elorouba Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,294,El Shrouk Damietta,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,295,El-Bohy Scan -Imp-,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,296,El-Nour Scan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,297,AL-Dowaly Specilized Hospital -Yaman-,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,298,Dr Abdelsalam,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,299,Al-ahly medical center,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,300,Al Safa,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,301,Petrol Medical Center,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,302,Petrol Medical Center -Tayaran-,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,303,Military DJIB Hospital -Djibouti-,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,304,Tripoli - Lebanon,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,305,Hajja Scan Center - Yaman,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,306,El Sedeeq Clinic,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,307,Mansoura Specialized Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,308,El-Tahawy scan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,309,Minya hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,310,Al-youm El wahd hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,311,Alhaya Scan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,312,Alsayidat Aleadhra ( Zaytoon ) Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,313,Quantum Medical - Syria,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,314,CDIM - Mauritanie,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,315,South America - Venezuela,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,316,TechMed-Mauritania,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,317,International Support Sites,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,318,Yaman's customer,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,319,Mauritanie's customer,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,320,Easy Telerad ( Dr Anangwe),Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,321,RUNH (Neama Hospital),Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,322,Alayman Scan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,323,OutSpan Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,324,Children Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,325,Nile Badrawy Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,326,Al Nour Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,327,Dr Aouabdia,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,328,Al Alameen Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,329,potential client,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,330,IT,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,331,Biomedical Equipment Corp | USA,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,332,Arab Organization for industry Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,333,El Sheikh Zayed Spec. Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,334,El Shorouk Domiate,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,335,Al Bohy Scan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,336,Al Barq Scan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,337,Sakhaa Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,338,Dr. Mtango Clinic -USA-,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,339,TMT,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,340,South America Support Team,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,341,Al Nasr hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,342,Ain El garia Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,343,Agimed | Argentina,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,344,El Kindy,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,345,Menoufia University Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,346,Talal jordon,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,347,HSR,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,348,Advanced Lybia,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,349,Sono Scan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,350,Techno Scan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,351,Bourqina Faso,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,352,Fouad Centre,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,353,PMC Suez,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,354,El Kheir & El Baraka,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,355,Mohamed abo Hafeda,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,356,Bekhazzi,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,357,Saint Louis,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,358,Sigma Scan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,359,Saint Therese,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,360,Fayoum Oncology Center - Fayoum,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,361,Mesrata,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,362,Dar Elhekma (Nasr city),Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,363,New Heart,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,364,Al-Germaniyya Hospital  (Aswan),Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,365,Tarablus,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,366,Seha Scan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,367,Agfa -Lebnon-,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,368,Khalil,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,369,Hopitech - Lebanon,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,370,Nada shikh Zayed Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,371,Suez Canal University Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,372,Resonance Imaging Diagnostic Center IRDC,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,373,RadCare,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,374,Public Hosp. Boumordes,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,375,Prime Clinic,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,376,PMC,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,377,PIC,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,378,Nasr city Hosp.(Rab3a),Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,379,MTI,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,380,Mid-Tab,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,381,Mega Scan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,382,MarMorcos,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,383,LAB MED,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,384,IRC,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,385,HIO (15 Hospital),Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,387,Joztaf tito  -Hermel-,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,388,GOTHI,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,389,Freedom Center,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,390,FOC,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,391,El Ghandoor Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,392,Dr.Zerhouni,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,393,Dr. Faroon,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,394,Dr.Bougadia,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,395,Dr .El-Razy,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,396,CRC - TRC,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,397,UHIA - ??????,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,398,CareMid,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,399,PPC,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,400,Al-Shorouk Radiology Center,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,401,Al-Rowad Hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,402,Alex Scan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,403,Alex pediatric center,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,404,ACU,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,405,ABC & El-Nada,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,406,Zohairy hospital,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,407,private in Egypt,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,408,UHIA - ???? ?????,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,409,UHIA - ???????,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,410,PT-Modern,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,411,Ibn-Seraj,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,412,UHIA - ??????,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,413,UHIA - ????,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,416,Platform -NEW-,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,420,عميل جديد,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,422,UHIA,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,424,MILLENSYS TEST,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,425,Cic (Monofia),Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,426,Syria Scan -Syria,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,427,Medico Scan -Syria,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,428,Seha Scan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,429,Seha Scan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,430,Fayoum Oncology Center - الفيوم للأورام,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,431,Seha Scan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,432,Seha Scan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.
+HIGH,CLIENT_WITHOUT_ORGANIZATION,CLIENT,433,Seha Scan,Client is not linked to the Account/Organization hierarchy.,Select an Organization after business-owner review.

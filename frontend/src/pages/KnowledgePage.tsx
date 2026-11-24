@@ -1,14 +1,18 @@
 import {
   Add,
+  Close,
+  Clear,
   Delete,
   Download,
   Edit,
   ExpandMore,
+  FilterAlt,
   History,
   Link,
   MenuBook,
   OpenInNew,
   Publish,
+  Search,
   Settings,
   Unpublished,
   UploadFile,
@@ -22,11 +26,14 @@ import {
   Button,
   Chip,
   CircularProgress,
+  Collapse,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
+  Drawer,
   Grid,
+  IconButton,
   MenuItem,
   Paper,
   Stack,
@@ -129,6 +136,7 @@ export function KnowledgePage() {
     resolveKnowledgeSection(searchParams.get("section"), canViewTraining),
   );
   const [search, setSearch] = useState("");
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState("");
   const [downloadCategoryFilter, setDownloadCategoryFilter] = useState("");
   const [categoryManagerOpen, setCategoryManagerOpen] = useState(false);
@@ -501,23 +509,52 @@ export function KnowledgePage() {
       data: articlePayload(event.currentTarget),
     });
   }
+  const activeFilterCount = [
+    categoryFilter,
+    downloadCategoryFilter,
+    productFilter,
+    moduleFilter,
+    clientFilter,
+  ].filter(Boolean).length;
+  const clearFilters = () => {
+    setCategoryFilter("");
+    setDownloadCategoryFilter("");
+    setProductFilter("");
+    setModuleFilter("");
+    setClientFilter("");
+  };
   return (
     <Paper
+      elevation={0}
       sx={{
-        p: { xs: 1.5, sm: 3 },
-        maxWidth: 1000,
+        p: { xs: 1, sm: 2 },
+        width: "100%",
         minWidth: 0,
         overflow: "hidden",
+        bgcolor: "transparent",
       }}
     >
+      <Box
+        sx={{
+          p: { xs: 2, md: 3 },
+          borderRadius: 3,
+          color: "common.white",
+          background: (theme) =>
+            `linear-gradient(125deg, ${theme.palette.primary.dark} 0%, ${theme.palette.primary.main} 58%, ${theme.palette.info.main} 140%)`,
+          boxShadow: (theme) => `0 14px 36px ${theme.palette.primary.main}2b`,
+        }}
+      >
       <Stack
         direction={{ xs: "column", md: "row" }}
         spacing={2}
-        alignItems={{ md: "flex-start" }}
+        alignItems={{ md: "center" }}
       >
         <div style={{ flex: 1 }}>
-          <Typography variant="h4">{t("knowledge.title")}</Typography>
-          <Typography color="text.secondary">
+          <Stack direction="row" alignItems="center" spacing={1.25}>
+            <MenuBook sx={{ fontSize: 34 }} />
+            <Typography variant="h4" fontWeight={800}>{t("knowledge.title")}</Typography>
+          </Stack>
+          <Typography sx={{ mt: 0.5, color: "rgba(255,255,255,.78)" }}>
             {t(administer ? "knowledge.adminSubtitle" : "knowledge.subtitle")}
           </Typography>
         </div>
@@ -528,13 +565,33 @@ export function KnowledgePage() {
               label={t("knowledge.search")}
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              sx={{ width: { xs: "100%", md: 260 } }}
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <Search fontSize="small" sx={{ mr: 0.75, color: "text.secondary" }} />
+                  ),
+                },
+              }}
+              sx={{
+                width: { xs: "100%", md: 390 },
+                "& .MuiOutlinedInput-root": {
+                  bgcolor: "background.paper",
+                  borderRadius: 2.5,
+                },
+              }}
             />
             {hasPermission("knowledge.create") && (
               <Button
                 variant="contained"
                 startIcon={<Add />}
-                sx={{ whiteSpace: "nowrap", flexShrink: 0 }}
+                sx={{
+                  whiteSpace: "nowrap",
+                  flexShrink: 0,
+                  bgcolor: "common.white",
+                  color: "primary.dark",
+                  fontWeight: 800,
+                  "&:hover": { bgcolor: "grey.100" },
+                }}
                 onClick={() => {
                   setNewContentType(section === "downloads" ? "DOWNLOAD" : "ARTICLE");
                   setOpen(true);
@@ -546,14 +603,66 @@ export function KnowledgePage() {
           </>
         )}
       </Stack>
+      {(section === "articles" || section === "downloads") && query.data && (
+        <Stack direction="row" spacing={1} mt={2} useFlexGap flexWrap="wrap">
+          <Chip
+            sx={{ bgcolor: "rgba(255,255,255,.16)", color: "common.white", fontWeight: 700 }}
+            label={t("knowledge.resultsCount", { count: query.data.length })}
+          />
+          <Chip
+            sx={{ bgcolor: "rgba(255,255,255,.16)", color: "common.white" }}
+            label={`${t("knowledge.statuses.PUBLISHED", { defaultValue: "Published" })}: ${query.data.filter((item) => item.status === "PUBLISHED").length}`}
+          />
+          <Chip
+            sx={{ bgcolor: "rgba(255,255,255,.16)", color: "common.white" }}
+            label={`${t("knowledge.filters.category")}: ${new Set(query.data.map((item) => section === "downloads" ? item.download_category_id : item.category_id ?? item.category)).size}`}
+          />
+        </Stack>
+      )}
+      </Box>
       {(section === "articles" || section === "downloads") && !portalUser && (
-        <Stack
-          direction={{ xs: "column", sm: "row" }}
-          spacing={1}
-          mt={2}
-          useFlexGap
-          flexWrap="wrap"
+        <Paper
+          elevation={0}
+          sx={{ mt: 2, p: 1.25, border: 1, borderColor: "divider", borderRadius: 2.5 }}
         >
+          <Stack direction="row" alignItems="center" gap={1}>
+            <Button
+              startIcon={<FilterAlt />}
+              endIcon={<ExpandMore sx={{ transform: filtersOpen ? "rotate(180deg)" : "none", transition: "transform .2s" }} />}
+              onClick={() => setFiltersOpen((value) => !value)}
+              aria-expanded={filtersOpen}
+              sx={{ fontWeight: 750, textTransform: "none" }}
+            >
+              {t(
+                filtersOpen
+                  ? "knowledge.hideFilters"
+                  : "knowledge.showFilters",
+              )}
+            </Button>
+            {activeFilterCount > 0 && (
+              <Chip
+                size="small"
+                color="primary"
+                label={t("knowledge.activeFiltersCount", {
+                  count: activeFilterCount,
+                })}
+              />
+            )}
+            <span style={{ flex: 1 }} />
+            {activeFilterCount > 0 && (
+              <Button size="small" startIcon={<Clear />} onClick={clearFilters}>
+                {t("knowledge.clearFilters")}
+              </Button>
+            )}
+          </Stack>
+          <Collapse in={filtersOpen}>
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              spacing={1}
+              mt={1.5}
+              useFlexGap
+              flexWrap="wrap"
+            >
           <TextField
             select
             size="small"
@@ -654,7 +763,9 @@ export function KnowledgePage() {
               </option>
             ))}
           </TextField>
-        </Stack>
+            </Stack>
+          </Collapse>
+        </Paper>
       )}
       <Tabs
         variant="scrollable"
@@ -668,7 +779,30 @@ export function KnowledgePage() {
           else next.delete("section");
           setSearchParams(next, { replace: true });
         }}
-        sx={{ mt: 2, borderBottom: 1, borderColor: "divider" }}
+        sx={{
+          mt: 2,
+          p: 0.5,
+          minHeight: 48,
+          bgcolor: "background.paper",
+          border: 1,
+          borderColor: "divider",
+          borderRadius: 2.5,
+          "& .MuiTabs-indicator": { display: "none" },
+          "& .MuiTab-root": {
+            minHeight: 38,
+            borderRadius: 2,
+            fontWeight: 750,
+            textTransform: "none",
+            "&.Mui-selected": {
+              bgcolor: "primary.main",
+              color: "primary.contrastText",
+              WebkitTextFillColor: "currentColor",
+              "& .MuiTab-iconWrapper": {
+                color: "inherit",
+              },
+            },
+          },
+        }}
       >
         <Tab value="articles" label={t("knowledge.articlesTab")} />
         <Tab
@@ -698,12 +832,32 @@ export function KnowledgePage() {
               {t(section === "downloads" ? "knowledge.downloadsLoadFailed" : "knowledge.articlesLoadFailed")}
             </Alert>
           )}
+          {query.isLoading && (
+            <Stack alignItems="center" py={6} gap={1.5}>
+              <CircularProgress size={30} />
+              <Typography color="text.secondary">
+                {t("knowledge.loadingContent")}
+              </Typography>
+            </Stack>
+          )}
           {query.data?.length === 0 && (
             <Alert severity="info" sx={{ mt: 3 }}>
               {t(section === "downloads" ? "knowledge.noDownloads" : "knowledge.noArticles")}
             </Alert>
           )}
-          <Stack spacing={1.25} mt={3}>
+          {query.data && (
+            <Stack direction="row" justifyContent="space-between" alignItems="center" mt={2.5}>
+              <Typography variant="subtitle2" color="text.secondary">
+                {t("knowledge.resultsCount", { count: query.data.length })}
+              </Typography>
+              {(search || activeFilterCount > 0) && (
+                <Button size="small" startIcon={<Clear />} onClick={() => { setSearch(""); clearFilters(); }}>
+                  {t("knowledge.clearSearchFilters")}
+                </Button>
+              )}
+            </Stack>
+          )}
+          <Stack spacing={1.25} mt={1.5}>
             {Object.entries(
               (query.data ?? []).reduce<Record<string, Article[]>>((groups, item) => {
                 const key = section === "downloads"
@@ -729,21 +883,45 @@ export function KnowledgePage() {
                   sx={{
                     border: 1,
                     borderColor: "divider",
-                    borderRadius: "12px !important",
+                    borderRadius: "16px !important",
+                    overflow: "hidden",
+                    boxShadow: "0 5px 18px rgba(15, 45, 65, .06)",
                     "&:before": { display: "none" },
                   }}
                 >
-                  <AccordionSummary expandIcon={<ExpandMore />}>
+                  <AccordionSummary
+                    expandIcon={<ExpandMore />}
+                    sx={{
+                      minHeight: 62,
+                      bgcolor: "action.hover",
+                      borderBottom: 1,
+                      borderColor: "divider",
+                      "&.Mui-expanded": { minHeight: 62 },
+                    }}
+                  >
                     <Stack direction="row" alignItems="center" spacing={1} width="100%">
-                      <Typography variant="h6" flex={1}>{categoryName}</Typography>
+                      <Box
+                        sx={{
+                          width: 36,
+                          height: 36,
+                          display: "grid",
+                          placeItems: "center",
+                          borderRadius: 2,
+                          bgcolor: "primary.main",
+                          color: "primary.contrastText",
+                        }}
+                      >
+                        {section === "downloads" ? <Download fontSize="small" /> : <MenuBook fontSize="small" />}
+                      </Box>
+                      <Typography variant="h6" fontWeight={800} flex={1}>{categoryName}</Typography>
                       <Chip
                         size="small"
                         label={t("knowledge.articleCount", { count: items.length })}
                       />
                     </Stack>
                   </AccordionSummary>
-                  <AccordionDetails sx={{ pt: 0 }}>
-                    <Stack spacing={1}>
+                  <AccordionDetails sx={{ p: { xs: 1, sm: 1.5 }, bgcolor: "background.default" }}>
+                    <Grid container spacing={1.5}>
             {(
               section === "articles" && categoryName === "Tickets Knowledge Base"
                 ? Object.entries(
@@ -756,16 +934,37 @@ export function KnowledgePage() {
                 : [["all", items] as [string, Article[]]]
             ).map(([productKey, productItems]) => {
               const cards = productItems.map((item) => (
-              <Paper variant="outlined" sx={{ p: 2, bgcolor: "background.default" }} key={item.id}>
+              <Grid key={item.id} size={{ xs: 12, xl: 6 }}>
+              <Paper
+                variant="outlined"
+                sx={{
+                  p: 2,
+                  height: "100%",
+                  display: "flex",
+                  flexDirection: "column",
+                  bgcolor: "background.paper",
+                  borderRadius: 2.5,
+                  transition: "transform .18s ease, box-shadow .18s ease, border-color .18s ease",
+                  "&:hover": {
+                    transform: "translateY(-2px)",
+                    boxShadow: "0 10px 24px rgba(15, 45, 65, .10)",
+                    borderColor: "primary.light",
+                  },
+                }}
+              >
                 <Stack
-                  direction={{ xs: "column", sm: "row" }}
-                  spacing={1}
-                  alignItems={{ sm: "center" }}
+                  spacing={1.25}
+                  height="100%"
                 >
                   <div style={{ flex: 1 }}>
-                    <Typography variant="h6">{item.title}</Typography>
-                    <Typography>{item.summary}</Typography>
-                    <Stack direction="row" spacing={1} mt={1}>
+                    <Typography variant="h6" fontWeight={800} lineHeight={1.3}>{item.title}</Typography>
+                    <Typography
+                      color="text.secondary"
+                      sx={{ mt: 0.75, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}
+                    >
+                      {item.summary}
+                    </Typography>
+                    <Stack direction="row" spacing={0.75} mt={1.25} useFlexGap flexWrap="wrap">
                       <Chip
                         size="small"
                         label={t(`knowledge.statuses.${item.status}`, {
@@ -789,7 +988,8 @@ export function KnowledgePage() {
                       />
                     </Stack>
                   </div>
-                  <Button size="small" onClick={() => setSelected(item)}>
+                  <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap" pt={0.75} sx={{ borderTop: 1, borderColor: "divider" }}>
+                  <Button size="small" variant="contained" onClick={() => setSelected(item)}>
                     {t(item.content_type === "DOWNLOAD" ? "knowledge.openDownload" : "knowledge.viewDetails")}
                   </Button>
                   <Button
@@ -842,8 +1042,10 @@ export function KnowledgePage() {
                       {t("knowledge.delete")}
                     </Button>
                   )}
+                  </Stack>
                 </Stack>
               </Paper>
+              </Grid>
               ));
               if (productKey === "all") return cards;
               const productName = productKey === "none"
@@ -871,12 +1073,12 @@ export function KnowledgePage() {
                     </Stack>
                   </AccordionSummary>
                   <AccordionDetails sx={{ pt: 0 }}>
-                    <Stack spacing={1}>{cards}</Stack>
+                    <Grid container spacing={1.5}>{cards}</Grid>
                   </AccordionDetails>
                 </Accordion>
               );
             })}
-                    </Stack>
+                    </Grid>
                   </AccordionDetails>
                 </Accordion>
                 );
@@ -1631,15 +1833,49 @@ export function KnowledgePage() {
           </DialogActions>
         </form>
       </Dialog>
-      <Dialog
+      <Drawer
+        anchor="right"
         open={Boolean(selected)}
         onClose={() => setSelected(null)}
-        fullWidth
-        maxWidth="lg"
+        slotProps={{
+          paper: {
+            sx: {
+              width: { xs: "100%", sm: "min(680px, 50vw)" },
+              maxWidth: "100%",
+              top: { xs: 48, sm: 52 },
+              height: { xs: "calc(100% - 48px)", sm: "calc(100% - 52px)" },
+              bgcolor: "background.default",
+              overflow: "hidden",
+            },
+          },
+        }}
       >
-        <DialogTitle>{selected?.title}</DialogTitle>
-        <DialogContent dividers>
-          <Stack direction="row" spacing={1} mb={2}>
+        <Box
+          sx={{
+            position: "sticky",
+            top: 0,
+            zIndex: 2,
+            px: { xs: 2, sm: 3 },
+            py: 2,
+            bgcolor: "background.paper",
+            borderBottom: 1,
+            borderColor: "divider",
+          }}
+        >
+          <Stack direction="row" alignItems="flex-start" gap={1.5}>
+            <Box flex={1} minWidth={0}>
+              <Typography variant="overline" color="primary.main" fontWeight={800}>
+                {selected?.category ?? t("knowledge.uncategorized")}
+              </Typography>
+              <Typography variant="h5" fontWeight={850} lineHeight={1.25}>
+                {selected?.title}
+              </Typography>
+            </Box>
+            <IconButton onClick={() => setSelected(null)} aria-label={t("knowledge.close")}>
+              <Close />
+            </IconButton>
+          </Stack>
+          <Stack direction="row" spacing={1} mt={1.5} useFlexGap flexWrap="wrap">
             <Chip
               size="small"
               label={t(`knowledge.statuses.${selected?.status}`, {
@@ -1665,27 +1901,30 @@ export function KnowledgePage() {
               )}
             />
           </Stack>
-          <Grid container spacing={3}>
-            <Grid size={{ xs: 12, md: 8 }}>
+        </Box>
+        <Box sx={{ px: { xs: 2, sm: 3 }, py: 3, flex: 1, overflowY: "auto" }}>
+          <Stack spacing={3}>
+            <Paper variant="outlined" sx={{ p: 2.25, borderRadius: 2.5 }}>
               <Typography variant="subtitle1" fontWeight={700}>
                 {t("knowledge.fields.summary")}
               </Typography>
-              <Typography color="text.secondary" gutterBottom>
+              <Typography color="text.secondary" sx={{ mt: 0.75, lineHeight: 1.7 }}>
                 {selected?.summary}
               </Typography>
+            </Paper>
+            <Box>
               <Typography variant="subtitle1" fontWeight={700} sx={{ mt: 2 }}>
                 {t("knowledge.procedure")}
               </Typography>
-              <Typography sx={{ whiteSpace: "pre-wrap", lineHeight: 1.75 }}>
+              <Typography sx={{ whiteSpace: "pre-wrap", lineHeight: 1.85, mt: 1, overflowWrap: "anywhere" }}>
                 {selected?.body}
               </Typography>
               <Typography variant="subtitle1" fontWeight={700} sx={{ mt: 2 }}>
                 {t("knowledge.fields.tags")}
               </Typography>
               <Typography>{selected?.tags || t("knowledge.noTags")}</Typography>
-            </Grid>
-            <Grid size={{ xs: 12, md: 4 }}>
-              <Paper variant="outlined" sx={{ p: 2 }}>
+            </Box>
+              <Paper variant="outlined" sx={{ p: 2, borderRadius: 2.5 }}>
                 <Stack direction="row" alignItems="center" mb={1}>
                   <Typography variant="h6" flexGrow={1}>
                     {t("knowledge.tools")}
@@ -1721,9 +1960,9 @@ export function KnowledgePage() {
                     variant="outlined"
                     sx={{ p: 1.25, my: 1 }}
                   >
-                    <Typography fontWeight={700}>{resource.name}</Typography>
+                    <Typography fontWeight={700} sx={{ overflowWrap: "anywhere" }}>{resource.name}</Typography>
                     {resource.description && (
-                      <Typography variant="body2" color="text.secondary">
+                      <Typography variant="body2" color="text.secondary" sx={{ overflowWrap: "anywhere" }}>
                         {resource.description}
                       </Typography>
                     )}
@@ -1761,10 +2000,14 @@ export function KnowledgePage() {
                   </Paper>
                 ))}
               </Paper>
-            </Grid>
-          </Grid>
-        </DialogContent>
-        <DialogActions>
+          </Stack>
+        </Box>
+        <Stack
+          direction="row"
+          justifyContent="flex-end"
+          gap={1}
+          sx={{ position: "sticky", bottom: 0, p: 1.5, bgcolor: "background.paper", borderTop: 1, borderColor: "divider" }}
+        >
           {selected && hasPermission("knowledge.create") && (
             <Button
               startIcon={<Edit />}
@@ -1779,8 +2022,8 @@ export function KnowledgePage() {
           <Button onClick={() => setSelected(null)}>
             {t("knowledge.close")}
           </Button>
-        </DialogActions>
-      </Dialog>
+        </Stack>
+      </Drawer>
       <Dialog
         open={resourceOpen === "URL"}
         onClose={() => setResourceOpen(null)}

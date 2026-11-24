@@ -84,11 +84,22 @@ export function ServiceChecklistsPage() {
   const initialView = new URLSearchParams(window.location.search).get("view");
   const { hasPermission } = useAuth();
   const canManage = hasPermission("service_checklist.template.manage");
+  const canMonitor =
+    hasPermission("service_checklist.view_team") ||
+    hasPermission("service_checklist.view_all") ||
+    hasPermission("service_checklist.report.view") ||
+    hasPermission("service_checklist.schedule.manage");
+  const canConfigure =
+    canManage || hasPermission("service_checklist.schedule.manage");
   const cache = useQueryClient();
   const [draft, setDraft] = useState<Draft | null>(null);
   const [error, setError] = useState("");
-  const [tab, setTab] = useState(
-    initialView === "mine" ? 1 : initialView === "configuration" ? 2 : 0,
+  const [tab, setTab] = useState<"mine" | "monitor" | "configuration">(
+    initialView === "configuration" && canConfigure
+      ? "configuration"
+      : initialView === "monitor" && canMonitor
+        ? "monitor"
+        : "mine",
   );
   const templates = useQuery({
     queryKey: ["service-checklist-templates"],
@@ -187,8 +198,7 @@ export function ServiceChecklistsPage() {
               Service Checklists
             </Typography>
             <Typography color="text.secondary">
-              Design controlled recurring service procedures, ownership, and
-              customer-facing evidence.
+              Open a client, record the result, and complete the checklist.
             </Typography>
           </Box>
           {canManage && (
@@ -216,18 +226,13 @@ export function ServiceChecklistsPage() {
         variant="scrollable"
         allowScrollButtonsMobile
       >
-        <Tab label="Checklist Monitor" />
-        <Tab label="My Checklists" />
-        <Tab label="Configuration" />
+        <Tab value="mine" label="My Work" />
+        {canMonitor && <Tab value="monitor" label="Monitoring Dashboard" />}
+        {canConfigure && <Tab value="configuration" label="Administration" />}
       </Tabs>
-      {tab === 0 && <SimpleChecklistWorkspace monitor />}
-      {tab === 1 && (
-        <>
-          <SimpleChecklistWorkspace />
-          <ServiceChecklistSchedulePanel templates={templates.data ?? []} />
-        </>
-      )}
-      {tab === 2 && (
+      {tab === "mine" && <SimpleChecklistWorkspace />}
+      {tab === "monitor" && canMonitor && <SimpleChecklistWorkspace monitor />}
+      {tab === "configuration" && canConfigure && (
         <>
           <ServiceChecklistAssignments templates={templates.data ?? []} />
           <ServiceChecklistSchedulePanel templates={templates.data ?? []} />

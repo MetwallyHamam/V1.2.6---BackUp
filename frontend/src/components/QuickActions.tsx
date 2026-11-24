@@ -1,5 +1,6 @@
 import {
   Add,
+  AddTask,
   Assistant,
   ConfirmationNumber,
   Description,
@@ -56,7 +57,11 @@ const buttonSize = 56;
 const buttonMargin = 8;
 function clamp(value: number) { return Math.min(1, Math.max(0, value)); }
 
-export function QuickActions() {
+export function QuickActions({
+  externalNavigation = false,
+}: {
+  externalNavigation?: boolean;
+} = {}) {
   const theme = useTheme();
   const mobile = useMediaQuery(theme.breakpoints.down("md"));
   const navigate = useNavigate();
@@ -78,6 +83,16 @@ export function QuickActions() {
   const [ticketFormKey, setTicketFormKey] = useState(0);
   const [operationType, setOperationType] = useState<string | null>(null);
   const preferenceKey = user ? `supporthub-quick-actions-${user.id}` : null;
+  const goTo = (path: string) => {
+    if (externalNavigation) {
+      window.open(
+        `${import.meta.env.BASE_URL}${path.replace(/^\//, "")}`,
+        "support-hub",
+      );
+      return;
+    }
+    navigate(path);
+  };
   useEffect(() => {
     if (!preferenceKey) { setPreferences(defaultPreferences); setDraftPosition(null); return; }
     try {
@@ -146,7 +161,7 @@ export function QuickActions() {
         cache.invalidateQueries({ queryKey: ["visit-planner"] }),
         cache.invalidateQueries({ queryKey: ["my-field-visits"] }),
       ]);
-      navigate("/field-visits");
+      goTo("/field-visits");
     },
     onError: (reason) =>
       setError(
@@ -161,6 +176,15 @@ export function QuickActions() {
     createVisit.mutate(event.currentTarget);
   };
   const actions = [
+    hasPermission("work_assignment.create")
+      ? {
+          key: "work-assignment",
+          name: "Add task",
+          icon: <AddTask />,
+          color: "#2e7d32",
+          run: () => goTo("/work-assignments?create=1"),
+        }
+      : null,
     hasPermission("ticket.create")
       ? {
           key: "ticket",
@@ -202,7 +226,8 @@ export function QuickActions() {
           name: "Support Assistant",
           icon: <Assistant />,
           color: "#00897b",
-          run: () => navigate("/support-workspace"),
+          run: () =>
+            externalNavigation ? setAnchor(null) : navigate("/support-workspace"),
         }
       : null,
     ...(operationTypes.data ?? [])

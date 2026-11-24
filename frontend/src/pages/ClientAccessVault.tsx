@@ -35,6 +35,8 @@ import { useAuth } from "../auth/AuthContext";
 
 type Access = {
   id: number;
+  branch_id: number | null;
+  branch_name: string | null;
   access_type: string;
   label: string;
   server_or_address: string | null;
@@ -43,6 +45,7 @@ type Access = {
   has_password: boolean;
   is_active: boolean;
 };
+type Branch = { id: number; name: string; is_active: boolean };
 const TYPES = ["SERVER", "VPN", "ANYDESK", "SYSTEM_ADMIN", "OTHER"];
 
 export function ClientAccessVault({ clientId }: { clientId: string }) {
@@ -53,12 +56,37 @@ export function ClientAccessVault({ clientId }: { clientId: string }) {
   const editMode = searchParams.get("access_mode") === "edit";
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Access | null>(null);
+  const [branchId, setBranchId] = useState<number | "">("");
+  const [addingBranch, setAddingBranch] = useState(false);
+  const [newBranchName, setNewBranchName] = useState("");
   const [revealed, setRevealed] = useState<Record<number, string>>({});
   const records = useQuery({
     queryKey: ["client-access", clientId],
     queryFn: async () =>
       (await api.get<Access[]>(`/clients/${clientId}/access`)).data,
     enabled: hasPermission("client_access.view"),
+  });
+  const branches = useQuery({
+    queryKey: ["client-branches", clientId],
+    queryFn: async () =>
+      (await api.get<Branch[]>(`/clients/${clientId}/branches`)).data,
+    enabled: hasPermission("client_access.view"),
+  });
+  const createBranch = useMutation({
+    mutationFn: async () =>
+      (
+        await api.post<Branch>(`/clients/${clientId}/branches`, {
+          name: newBranchName.trim(),
+        })
+      ).data,
+    onSuccess: async (branch) => {
+      setBranchId(branch.id);
+      setNewBranchName("");
+      setAddingBranch(false);
+      await queryClient.invalidateQueries({
+        queryKey: ["client-branches", clientId],
+      });
+    },
   });
   useEffect(() => {
     if (editMode && !hasPermission("client_access.manage")) {
@@ -75,6 +103,8 @@ export function ClientAccessVault({ clientId }: { clientId: string }) {
     onSuccess: async () => {
       setOpen(false);
       setEditing(null);
+      setBranchId("");
+      setAddingBranch(false);
       await queryClient.invalidateQueries({
         queryKey: ["client-access", clientId],
       });
@@ -110,6 +140,7 @@ export function ClientAccessVault({ clientId }: { clientId: string }) {
     event.preventDefault();
     const values = Object.fromEntries(new FormData(event.currentTarget));
     const payload: Record<string, unknown> = {
+      branch_id: branchId || null,
       access_type: values.access_type,
       label: String(values.label).trim(),
       server_or_address: String(values.server_or_address).trim() || null,
@@ -135,7 +166,12 @@ export function ClientAccessVault({ clientId }: { clientId: string }) {
           <Button
             variant="contained"
             startIcon={<Add />}
-            onClick={() => setOpen(true)}
+            onClick={() => {
+              setEditing(null);
+              setBranchId("");
+              setAddingBranch(false);
+              setOpen(true);
+            }}
           >
             {t("clientAccess.add")}
           </Button>
@@ -160,6 +196,7 @@ export function ClientAccessVault({ clientId }: { clientId: string }) {
               {(
                 [
                   "type",
+                  "branch",
                   "label",
                   "username",
                   "password",
@@ -183,6 +220,14 @@ export function ClientAccessVault({ clientId }: { clientId: string }) {
                   {t(`clientAccess.types.${item.access_type}`, {
                     defaultValue: item.access_type,
                   })}
+                </TableCell>
+                <TableCell>
+                  <Chip
+                    size="small"
+                    variant="outlined"
+                    color={item.branch_id ? "primary" : "default"}
+                    label={item.branch_name ?? t("clientAccess.allBranches")}
+                  />
                 </TableCell>
                 <TableCell>
                   {item.label}
@@ -272,6 +317,7 @@ export function ClientAccessVault({ clientId }: { clientId: string }) {
                       aria-label={t("clientAccess.edit")}
                       onClick={() => {
                         setEditing(item);
+                        setBranchId(item.branch_id ?? "");
                         setOpen(true);
                       }}
                     >
@@ -289,6 +335,8 @@ export function ClientAccessVault({ clientId }: { clientId: string }) {
         onClose={() => {
           setOpen(false);
           setEditing(null);
+          setBranchId("");
+          setAddingBranch(false);
         }}
         fullWidth
         maxWidth="sm"
@@ -298,6 +346,55 @@ export function ClientAccessVault({ clientId }: { clientId: string }) {
             {t(editing ? "clientAccess.edit" : "clientAccess.addTitle")}
           </DialogTitle>
           <DialogContent>
+            <TextField
+              select
+              label={t("clientAccess.branchScope")}
+              value={branchId}
+              onChange={(event) =>
+                setBranchId(event.target.value ? Number(event.target.value) : "")
+              }
+              helperText={t("clientAccess.branchScopeHelp")}
+              fullWidth
+              margin="normal"
+            >
+              <MenuItem value="">{t("clientAccess.allBranches")}</MenuItem>
+              {branches.data?.filter((branch) => branch.is_active).map((branch) => (
+                <MenuItem key={branch.id} value={branch.id}>
+                  {branch.name}
+                </MenuItem>
+              ))}
+            </TextField>
+            {!addingBranch ? (
+              <Button
+                size="small"
+                startIcon={<Add />}
+                onClick={() => setAddingBranch(true)}
+              >
+                {t("clientAccess.addBranch")}
+              </Button>
+            ) : (
+              <Stack direction={{ xs: "column", sm: "row" }} gap={1} alignItems={{ sm: "center" }}>
+                <TextField
+                  size="small"
+                  label={t("clientAccess.newBranchName")}
+                  value={newBranchName}
+                  onChange={(event) => setNewBranchName(event.target.value)}
+                  fullWidth
+                  autoFocus
+                />
+                <Button
+                  variant="outlined"
+                  disabled={newBranchName.trim().length < 2 || createBranch.isPending}
+                  onClick={() => createBranch.mutate()}
+                  sx={{ whiteSpace: "nowrap" }}
+                >
+                  {t("clientAccess.createBranch")}
+                </Button>
+                <Button onClick={() => { setAddingBranch(false); setNewBranchName(""); }}>
+                  {t("clientAccess.cancel")}
+                </Button>
+              </Stack>
+            )}
             <TextField
               select
               name="access_type"
@@ -375,6 +472,8 @@ export function ClientAccessVault({ clientId }: { clientId: string }) {
               onClick={() => {
                 setOpen(false);
                 setEditing(null);
+                setBranchId("");
+                setAddingBranch(false);
               }}
             >
               {t("clientAccess.cancel")}

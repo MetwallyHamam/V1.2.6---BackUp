@@ -1,6 +1,7 @@
 import {
   AccountTree,
   Assessment,
+  AssignmentTurnedIn,
   AccountBalance,
   ArrowDropDown,
   Business,
@@ -23,6 +24,8 @@ import {
   ReportProblem,
   Security,
   Storage,
+  SettingsBackupRestore,
+  SettingsSuggest,
   UploadFile,
   Warning,
   WorkHistory,
@@ -82,11 +85,12 @@ import { supportedLanguages, type SupportedLanguage } from "../i18n/config";
 import { PageContextHeader } from "../components/PageContextHeader";
 import { QuickActions } from "../components/QuickActions";
 import { NewsAnnouncementDialog } from "../components/NewsAnnouncementDialog";
-import { resolveTicketsNavigationPath } from "../utils/ticketNavigation";
 import { useAttention } from "../components/AttentionCenter";
+import { ProjectManagementLayout } from "./ProjectManagementLayout";
 
 const drawerWidth = 272;
 const collapsedDrawerWidth = 72;
+const secondaryDrawerWidth = 248;
 
 type NavigationItem = {
   label: string;
@@ -110,6 +114,14 @@ type MentionNotification = {
 };
 
 export function AppLayout() {
+  const { hasPermission } = useAuth();
+  const projectManager = hasPermission("project.portfolio.view")
+    && hasPermission("project.manage.assigned")
+    && !hasPermission("project.manage");
+  return projectManager ? <ProjectManagementLayout /> : <SupportHubLayout />;
+}
+
+function SupportHubLayout() {
   const theme = useTheme();
   const mobile = useMediaQuery(theme.breakpoints.down("md"));
   const navigate = useNavigate();
@@ -125,7 +137,33 @@ export function AppLayout() {
   } = useAuth();
   const { i18n, t } = useTranslation();
   const [profileAnchor, setProfileAnchor] = useState<HTMLElement | null>(null);
+  const [navigationMenuAnchor, setNavigationMenuAnchor] =
+    useState<HTMLElement | null>(null);
+  const [navigationMenuSection, setNavigationMenuSection] = useState<
+    string | null
+  >(null);
   const [reportsAnchor, setReportsAnchor] = useState<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (!navigationMenuAnchor) return;
+
+    const closeNavigationMenuOnClickAway = (event: PointerEvent) => {
+      const target = event.target as Element | null;
+      if (
+        target?.closest(
+          "[data-header-navigation-trigger], #header-navigation-menu",
+        )
+      ) {
+        return;
+      }
+      setNavigationMenuAnchor(null);
+      setNavigationMenuSection(null);
+    };
+
+    document.addEventListener("pointerdown", closeNavigationMenuOnClickAway);
+    return () =>
+      document.removeEventListener("pointerdown", closeNavigationMenuOnClickAway);
+  }, [navigationMenuAnchor]);
   const [languageAnchor, setLanguageAnchor] = useState<HTMLElement | null>(
     null,
   );
@@ -162,6 +200,11 @@ export function AppLayout() {
   const [expandedNavigationSections, setExpandedNavigationSections] = useState<
     Set<string>
   >(() => new Set());
+  const [navigationSearch, setNavigationSearch] = useState("");
+  const [savedViewNavigationSearch, setSavedViewNavigationSearch] =
+    useState("");
+  const [showAllSavedViews, setShowAllSavedViews] = useState(false);
+  const initializedNavigationUserRef = useRef<number | null>(null);
   const compactNavigation = !mobile && navigationCollapsed;
   const previousUnread = useRef<number | null>(null);
   const previousLatestNotificationId = useRef<number | null>(null);
@@ -238,14 +281,14 @@ export function AppLayout() {
       queryClient.invalidateQueries({ queryKey: ["notifications"] }),
   });
   const personalSavedViews = useQuery({
-    queryKey: ["saved-views", "preferences"],
+    queryKey: ["saved-views"],
     queryFn: async () =>
       (
         await api.get<
           Array<{ id: number; name: string; owner_user_id: number }>
         >("/saved-views")
       ).data,
-    enabled: preferencesOpen,
+    enabled: Boolean(user),
   });
   const saveProfilePreferences = useMutation({
     mutationFn: async () => {
@@ -481,6 +524,13 @@ export function AppLayout() {
           visible: true,
         },
         {
+          label: "Work Assignments",
+          path: "/work-assignments",
+          icon: <AssignmentTurnedIn />,
+          color: "#5e35b1",
+          visible: true,
+        },
+        {
           label: t("navigation.home"),
           path: "/home",
           icon: <Dashboard />,
@@ -507,13 +557,6 @@ export function AppLayout() {
           icon: <Notifications />,
           color: "#c62828",
           visible: true,
-        },
-        {
-          label: t("navigation.savedViews"),
-          path: "/saved-views",
-          icon: <ManageSearch />,
-          color: "#455a64",
-          visible: canViewTickets,
         },
       ],
     },
@@ -604,6 +647,25 @@ export function AppLayout() {
           visible: hasPermission("client.view"),
         },
         {
+          label: t("navigation.customerStructure"),
+          path: "/customer-structure",
+          icon: <AccountTree />,
+          color: "#00695c",
+          visible:
+            hasPermission("customer_structure.policy.view") ||
+            hasPermission("client.view"),
+        },
+        {
+          label: t("navigation.companyOperationsSetup", { defaultValue: "Company Operations Setup" }),
+          path: "/company-operations-setup",
+          icon: <SettingsSuggest />,
+          color: "#5e35b1",
+          visible:
+            hasPermission("customer_structure.policy.view") ||
+            hasPermission("client.manage") ||
+            hasPermission("project.manage"),
+        },
+        {
           label: t("navigation.customerSuccess"),
           path: "/customer-success",
           icon: <Insights />,
@@ -661,6 +723,41 @@ export function AppLayout() {
           visible:
             hasPermission("onboarding.view.own") ||
             hasPermission("onboarding.progress.view.department"),
+        },
+        {
+          label: t("navigation.projects"),
+          path: "/projects",
+          icon: <AccountTree />,
+          color: "#3949ab",
+          visible: hasPermission("project.portfolio.view"),
+        },
+        {
+          label: t("navigation.projectAnalytics", { defaultValue: "Project Analytics" }),
+          path: "/project-analytics",
+          icon: <Insights />,
+          color: "#5e35b1",
+          visible: hasPermission("analytics.project.view"),
+        },
+        {
+          label: t("navigation.implementationIntake", { defaultValue: "Implementation Intake" }),
+          path: "/implementation-intake",
+          icon: <AssignmentTurnedIn />,
+          color: "#00796b",
+          visible: hasPermission("project.assignment.respond"),
+        },
+        {
+          label: t("navigation.implementationAnalytics", { defaultValue: "Implementation Analytics" }),
+          path: "/implementation-analytics",
+          icon: <Assessment />,
+          color: "#ef6c00",
+          visible: hasPermission("analytics.implementation.view"),
+        },
+        {
+          label: t("navigation.supportReadiness", { defaultValue: "Support Readiness" }),
+          path: "/support-readiness",
+          icon: <FactCheck />,
+          color: "#00838f",
+          visible: hasPermission("analytics.support_readiness.view"),
         },
         {
           label: t("navigation.projectHandovers"),
@@ -783,6 +880,13 @@ export function AppLayout() {
           visible: hasPermission("configuration.manage"),
         },
         {
+          label: "System Maintenance",
+          path: "/maintenance",
+          icon: <SettingsBackupRestore />,
+          color: "#2e7d32",
+          visible: hasPermission("maintenance.view"),
+        },
+        {
           label: t("navigation.agentKpiReport"),
           path: "/dashboard?report=agents",
           icon: <Assessment />,
@@ -873,6 +977,17 @@ export function AppLayout() {
 
   const sections =
     user?.user_type === "CLIENT_PORTAL" ? portalSections : employeeSections;
+  useEffect(() => {
+    if (!user || initializedNavigationUserRef.current === user.id) return;
+    setExpandedNavigationSections(
+      new Set(
+        sections
+          .filter((section) => section.items.some((item) => item.visible))
+          .map((section) => section.label),
+      ),
+    );
+    initializedNavigationUserRef.current = user.id;
+  }, [sections, user]);
   const isSelected = (path: string) => {
     const [pathname, query = ""] = path.split("?");
     const pathnameMatches =
@@ -887,6 +1002,7 @@ export function AppLayout() {
       ([key, value]) => current.get(key) === value,
     );
   };
+  const isChildSelected = (path: string) => Boolean(path) && false;
   const toggleNavigation = () => {
     setNavigationCollapsed((current) => {
       const next = !current;
@@ -917,7 +1033,8 @@ export function AppLayout() {
   })();
   const contextualPathname = contextualParentPath.split("?")[0];
   const matchesContext = (item: NavigationItem) =>
-    item.visible && item.path.split("?")[0] === contextualPathname;
+    item.visible &&
+    item.path.split("?")[0] === contextualPathname;
   const activeSection =
     sections.find((section) => section.items.some(matchesContext)) ??
     sections.find((section) =>
@@ -930,16 +1047,6 @@ export function AppLayout() {
     ) ??
     activeSection?.items.find(matchesContext) ??
     activeSection?.items.find((item) => item.visible && isSelected(item.path));
-  const contextLinks = (activeSection?.items ?? [])
-    .filter((item) => item.visible)
-    .map((item) => ({
-      label: item.label,
-      path: item.path,
-      selected:
-        item.path === contextualParentPath ||
-        (matchesContext(item) && item === activeItem),
-    }));
-
   useEffect(() => {
     if (!activeSectionLabel) return;
     setExpandedNavigationSections((current) => {
@@ -959,6 +1066,29 @@ export function AppLayout() {
     });
   };
 
+  // Legacy contextual-navigation values are kept empty while the old markup is
+  // removed in a follow-up cleanup. The second sidebar is permanently disabled.
+  const secondaryNavigationOpen = false;
+  const secondaryNavigationItem = sections
+    .flatMap((section) => section.items)
+    .find(() => false);
+  const secondaryNavigationChildren: Array<{ path: string; label: string }> = [];
+  const ticketNavigationChildren: Array<{ path: string; label: string }> = [];
+  const ticketWorkflowChildren: Array<{ path: string; label: string }> = [];
+  const filteredSavedViews = (personalSavedViews.data ?? []).filter((view) =>
+    view.name
+      .toLocaleLowerCase()
+      .includes(savedViewNavigationSearch.trim().toLocaleLowerCase()),
+  );
+  const visibleSavedViews =
+    showAllSavedViews || savedViewNavigationSearch.trim()
+      ? filteredSavedViews
+      : filteredSavedViews.slice(0, 8);
+  const openHeaderNavigationSection = sections.find(
+    (section) => section.label === navigationMenuSection,
+  );
+
+
   return (
     <Box sx={{ display: "flex" }}>
       <AppBar position="fixed" sx={{ zIndex: 1300 }}>
@@ -976,13 +1106,113 @@ export function AppLayout() {
             variant="h6"
             noWrap
             sx={{
-              flexGrow: 1,
+              flexGrow: mobile ? 1 : 0,
+              flexShrink: 0,
               marginInlineStart: mobile ? 1 : 0,
               fontSize: { xs: "1rem", sm: "1.25rem" },
+              marginInlineEnd: { md: 1.5 },
             }}
           >
             Millensys Support Hub
           </Typography>
+          {!mobile && (
+            <>
+              <Box
+                component="nav"
+                aria-label="Main navigation sections"
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  flexGrow: 1,
+                  minWidth: 0,
+                  overflowX: "auto",
+                  scrollbarWidth: "none",
+                  "&::-webkit-scrollbar": { display: "none" },
+                }}
+              >
+                {sections.map((section) => {
+                  const visibleItems = section.items.filter(
+                    (item) => item.visible,
+                  );
+                  if (!visibleItems.length) return null;
+                  const menuOpen = navigationMenuSection === section.label;
+                  return (
+                    <Button
+                      key={section.label}
+                      data-header-navigation-trigger
+                      color="inherit"
+                      endIcon={<ArrowDropDown />}
+                      onClick={(event) => {
+                        if (menuOpen) {
+                          setNavigationMenuSection(null);
+                          setNavigationMenuAnchor(null);
+                          return;
+                        }
+                        setNavigationMenuSection(section.label);
+                        setNavigationMenuAnchor(event.currentTarget);
+                      }}
+                      aria-haspopup="menu"
+                      aria-expanded={menuOpen}
+                      sx={{
+                        flexShrink: 0,
+                        px: 1,
+                        minWidth: 0,
+                        textTransform: "none",
+                        fontWeight:
+                          activeSectionLabel === section.label ? 900 : 650,
+                        bgcolor:
+                          activeSectionLabel === section.label
+                            ? "rgba(255,255,255,0.12)"
+                            : "transparent",
+                      }}
+                    >
+                      {section.label}
+                    </Button>
+                  );
+                })}
+              </Box>
+              <Menu
+                id="header-navigation-menu"
+                anchorEl={navigationMenuAnchor}
+                open={Boolean(navigationMenuAnchor && openHeaderNavigationSection)}
+                hideBackdrop
+                sx={{ pointerEvents: "none" }}
+                onClose={() => {
+                  setNavigationMenuAnchor(null);
+                  setNavigationMenuSection(null);
+                }}
+                slotProps={{
+                  paper: {
+                    sx: {
+                      width: 320,
+                      maxHeight: "calc(100vh - 96px)",
+                      pointerEvents: "auto",
+                    },
+                  },
+                }}
+              >
+                {openHeaderNavigationSection?.items
+                  .filter((item) => item.visible)
+                  .map((item) => (
+                    <MenuItem
+                      key={item.path}
+                      selected={isSelected(item.path)}
+                      onClick={() => {
+                        setNavigationMenuAnchor(null);
+                        setNavigationMenuSection(null);
+                        navigate(item.path);
+                      }}
+                      sx={{ minHeight: 40 }}
+                    >
+                      <ListItemIcon sx={{ color: item.color }}>
+                        {item.icon}
+                      </ListItemIcon>
+                      <ListItemText primary={item.label} />
+                    </MenuItem>
+                  ))}
+              </Menu>
+            </>
+          )}
           {!mobile && user?.user_type !== "CLIENT_PORTAL" && canViewReports && (
             <>
               <Button
@@ -1202,9 +1432,30 @@ export function AppLayout() {
             </Tooltip>
           </Box>
         )}
+        {!compactNavigation && (
+          <TextField
+            size="small"
+            fullWidth
+            value={navigationSearch}
+            onChange={(event) => setNavigationSearch(event.target.value)}
+            placeholder="Search navigation"
+            inputProps={{ "aria-label": "Search navigation" }}
+            sx={{ px: 1.5, pb: 1 }}
+          />
+        )}
         <Box sx={{ overflowY: "auto", pb: 2 }}>
           {sections.map((section, index) => {
-            const visibleItems = section.items.filter((item) => item.visible);
+            const normalizedNavigationSearch = navigationSearch
+              .trim()
+              .toLocaleLowerCase();
+            const visibleItems = section.items.filter(
+              (item) =>
+                item.visible &&
+                (!normalizedNavigationSearch ||
+                  item.label
+                    .toLocaleLowerCase()
+                    .includes(normalizedNavigationSearch)),
+            );
             if (!visibleItems.length) return null;
             const sectionExpanded = expandedNavigationSections.has(section.label);
             return (
@@ -1247,72 +1498,71 @@ export function AppLayout() {
                 )}
                 <Collapse
                   id={`navigation-section-${index}`}
-                  in={compactNavigation || sectionExpanded}
+                  in={
+                    compactNavigation ||
+                    sectionExpanded ||
+                    Boolean(normalizedNavigationSearch)
+                  }
                   timeout="auto"
                   unmountOnExit={!compactNavigation}
                 >
                   <List dense disablePadding sx={{ pb: 0.5 }}>
-                  {visibleItems.map((item) => (
-                    <Tooltip
-                      key={item.path}
-                      title={compactNavigation ? item.label : ""}
-                      placement={
-                        i18n.resolvedLanguage === "ar" ? "left" : "right"
-                      }
-                    >
-                      <ListItemButton
-                        component={RouterLink}
-                        to={item.path}
-                        selected={isSelected(item.path)}
-                        onClick={(event) => {
-                          setMobileNavigationOpen(false);
-                          if (item.path !== "/tickets") return;
-                          event.preventDefault();
-                          navigate(
-                            resolveTicketsNavigationPath(
-                              location.pathname,
-                              location.search,
-                            ),
-                          );
-                        }}
-                        aria-label={item.label}
-                        sx={{
-                          mx: 1,
-                          my: 0.25,
-                          borderRadius: 1.5,
-                          minHeight: 40,
-                          justifyContent: compactNavigation
-                            ? "center"
-                            : "initial",
-                          px: compactNavigation ? 1.5 : 2,
-                          color: "text.secondary",
-                          "&.Mui-selected": {
-                            bgcolor: "action.selected",
-                            color: "primary.main",
-                          },
-                          "&.Mui-selected .MuiListItemText-primary": {
-                            fontWeight: 800,
-                          },
-                          "&.Mui-selected:hover": {
-                            bgcolor: "action.selected",
-                          },
-                        }}
-                      >
-                        <ListItemIcon
-                          sx={{
-                            minWidth: compactNavigation ? 0 : 40,
-                            justifyContent: "center",
-                            color: item.color,
-                          }}
+                  {visibleItems.map((item) => {
+                    return (
+                      <Box key={item.path}>
+                        <Tooltip
+                          title={compactNavigation ? item.label : ""}
+                          placement={
+                            i18n.resolvedLanguage === "ar" ? "left" : "right"
+                          }
                         >
-                          {item.icon}
-                        </ListItemIcon>
-                        {!compactNavigation && (
-                          <ListItemText primary={item.label} />
-                        )}
-                      </ListItemButton>
-                    </Tooltip>
-                  ))}
+                          <ListItemButton
+                            component={RouterLink}
+                            to={item.path}
+                            selected={isSelected(item.path)}
+                            onClick={() => {
+                              setMobileNavigationOpen(false);
+                            }}
+                            aria-label={item.label}
+                            sx={{
+                              mx: 1,
+                              my: 0.25,
+                              borderRadius: 1.5,
+                              minHeight: 40,
+                              justifyContent: compactNavigation
+                                ? "center"
+                                : "initial",
+                              px: compactNavigation ? 1.5 : 2,
+                              color: "text.secondary",
+                              "&.Mui-selected": {
+                                bgcolor: "action.selected",
+                                color: "primary.main",
+                              },
+                              "&.Mui-selected .MuiListItemText-primary": {
+                                fontWeight: 800,
+                              },
+                              "&.Mui-selected:hover": {
+                                bgcolor: "action.selected",
+                              },
+                            }}
+                          >
+                            <ListItemIcon
+                              sx={{
+                                minWidth: compactNavigation ? 0 : 40,
+                                justifyContent: "center",
+                                color: item.color,
+                              }}
+                            >
+                              {item.icon}
+                            </ListItemIcon>
+                            {!compactNavigation && (
+                              <ListItemText primary={item.label} />
+                            )}
+                          </ListItemButton>
+                        </Tooltip>
+                      </Box>
+                    );
+                  })}
                   </List>
                 </Collapse>
               </Box>
@@ -1320,8 +1570,175 @@ export function AppLayout() {
           })}
         </Box>
       </Drawer>
+      {secondaryNavigationOpen && secondaryNavigationItem && (
+        <Drawer
+          variant="permanent"
+          sx={{
+            width: secondaryDrawerWidth,
+            flexShrink: 0,
+            "& .MuiDrawer-paper": {
+              width: secondaryDrawerWidth,
+              boxSizing: "border-box",
+              borderInlineStart: 0,
+              left:
+                theme.direction === "ltr"
+                  ? compactNavigation
+                    ? collapsedDrawerWidth
+                    : drawerWidth
+                  : "auto",
+              right:
+                theme.direction === "rtl"
+                  ? compactNavigation
+                    ? collapsedDrawerWidth
+                    : drawerWidth
+                  : "auto",
+              bgcolor: "background.default",
+            },
+          }}
+        >
+          <Toolbar />
+          <Box sx={{ px: 2, pt: 2, pb: 1 }}>
+            <Typography variant="overline" color="text.secondary">
+              Navigation
+            </Typography>
+            <Typography variant="h6" sx={{ fontWeight: 800 }}>
+              {secondaryNavigationItem.label}
+            </Typography>
+          </Box>
+          <Divider />
+          <List dense sx={{ px: 1, py: 1.5 }}>
+            {secondaryNavigationItem.path === "/tickets" && (
+              <>
+                <Typography
+                  variant="overline"
+                  color="text.secondary"
+                  sx={{ display: "block", px: 2, pb: 0.5 }}
+                >
+                  Tickets
+                </Typography>
+                {ticketNavigationChildren.map((child) => (
+                  <ListItemButton
+                    key={child.path}
+                    component={RouterLink}
+                    to={child.path}
+                    selected={isChildSelected(child.path)}
+                    sx={{ mb: 0.5, borderRadius: 1.5 }}
+                  >
+                    <ListItemIcon
+                      sx={{ minWidth: 38, color: secondaryNavigationItem.color }}
+                    >
+                      {secondaryNavigationItem.icon}
+                    </ListItemIcon>
+                    <ListItemText primary={child.label} />
+                  </ListItemButton>
+                ))}
+                <Typography
+                  variant="overline"
+                  color="text.secondary"
+                  sx={{ display: "block", px: 2, pt: 1.5, pb: 0.5 }}
+                >
+                  {t("navigation.savedViews")}
+                </Typography>
+                {(personalSavedViews.data?.length ?? 0) > 8 && (
+                  <TextField
+                    size="small"
+                    fullWidth
+                    placeholder="Search saved views"
+                    value={savedViewNavigationSearch}
+                    onChange={(event) =>
+                      setSavedViewNavigationSearch(event.target.value)
+                    }
+                    sx={{ px: 1, pb: 1 }}
+                  />
+                )}
+                {personalSavedViews.isLoading && (
+                  <Typography variant="body2" color="text.secondary" sx={{ px: 2, py: 1 }}>
+                    Loading saved views…
+                  </Typography>
+                )}
+                {!personalSavedViews.isLoading &&
+                  !personalSavedViews.data?.length && (
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ px: 2, py: 1 }}
+                    >
+                      No saved views
+                    </Typography>
+                  )}
+                {visibleSavedViews.map((view) => {
+                  const savedViewPath = `/tickets?saved_view_id=${view.id}`;
+                  return (
+                    <ListItemButton
+                      key={`saved-view-${view.id}`}
+                      component={RouterLink}
+                      to={savedViewPath}
+                      selected={isChildSelected(savedViewPath)}
+                      sx={{ mb: 0.5, borderRadius: 1.5, px: 2 }}
+                    >
+                      <ListItemText
+                        primary={`${view.name}${view.id === user?.default_saved_view_id ? " ★" : ""}`}
+                        primaryTypographyProps={{ noWrap: true }}
+                      />
+                    </ListItemButton>
+                  );
+                })}
+                {!savedViewNavigationSearch.trim() &&
+                  filteredSavedViews.length > 8 && (
+                    <Button
+                      size="small"
+                      onClick={() => setShowAllSavedViews((current) => !current)}
+                      sx={{ mx: 1, mb: 0.5 }}
+                    >
+                      {showAllSavedViews ? "Show less" : "Show all"}
+                    </Button>
+                  )}
+                <Typography
+                  variant="overline"
+                  color="text.secondary"
+                  sx={{ display: "block", px: 2, pt: 1.5, pb: 0.5 }}
+                >
+                  Workflows
+                </Typography>
+                {ticketWorkflowChildren.map((child) => (
+                  <ListItemButton
+                    key={child.path}
+                    component={RouterLink}
+                    to={child.path}
+                    selected={isChildSelected(child.path)}
+                    sx={{ mb: 0.5, borderRadius: 1.5, px: 2 }}
+                  >
+                    <ListItemText primary={child.label} />
+                  </ListItemButton>
+                ))}
+              </>
+            )}
+            {secondaryNavigationItem.path !== "/tickets" &&
+              secondaryNavigationChildren.map((child) => (
+              <ListItemButton
+                key={child.path}
+                component={RouterLink}
+                to={child.path}
+                selected={isChildSelected(child.path)}
+                sx={{ mb: 0.5, borderRadius: 1.5, px: 2 }}
+              >
+                <ListItemText primary={child.label} />
+              </ListItemButton>
+              ))}
+          </List>
+        </Drawer>
+      )}
       <Box
         component="main"
+        onClick={() => {
+          if (!mobile && !navigationCollapsed) {
+            setNavigationCollapsed(true);
+            window.localStorage.setItem(
+              "support-hub-navigation-collapsed",
+              "true",
+            );
+          }
+        }}
         sx={{
           flexGrow: 1,
           p: { xs: 1.5, sm: 2, md: 3 },
@@ -1334,10 +1751,8 @@ export function AppLayout() {
           activeSection &&
           activeItem && (
             <PageContextHeader
-              area={activeSection.label}
               homeLabel={t("navigation.home")}
               title={activeItem.label}
-              links={location.pathname === "/tickets" ? [] : contextLinks}
             />
           )}
         <Outlet />

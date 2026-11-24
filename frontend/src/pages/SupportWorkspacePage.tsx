@@ -63,10 +63,16 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import {
+  useLocation,
+  useNavigate,
+  useSearchParams,
+  type NavigateOptions,
+} from "react-router-dom";
 import { api } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import { TicketSendActionsDialog } from "../components/TicketSendActions";
+import { QuickActions } from "../components/QuickActions";
 import { OperationPanels } from "../components/HomeOperations";
 import { TechnicalText } from "../components/TechnicalText";
 import { playNotificationSound } from "../utils/notificationSound";
@@ -284,7 +290,12 @@ function slaText(
 }
 
 export function SupportWorkspacePage() {
-  const isIndependentWindow = window.name === "support-assistant";
+  const location = useLocation();
+  const isIndependentWindow =
+    window.name === "support-assistant" ||
+    location.pathname.endsWith("/support-assistant-app") ||
+    (typeof window.matchMedia === "function" &&
+      window.matchMedia("(display-mode: standalone)").matches);
   const theme = useTheme();
   const mobile = useMediaQuery(theme.breakpoints.down("sm"));
   const { t, i18n } = useTranslation();
@@ -1197,15 +1208,25 @@ export function SupportWorkspacePage() {
   };
   const openIndependent = () =>
     window.open(
-      `${import.meta.env.BASE_URL}support-workspace`,
+      `${import.meta.env.BASE_URL}support-assistant-app`,
       "support-assistant",
       "popup=yes,width=520,height=820,resizable=yes,scrollbars=yes",
     );
   const openSupportHub = () =>
     window.open(import.meta.env.BASE_URL, "support-hub");
+  const openSupportHubPath = (path: string, options?: NavigateOptions) => {
+    if (isIndependentWindow) {
+      window.open(
+        `${import.meta.env.BASE_URL}${path.replace(/^\//, "")}`,
+        "support-hub",
+      );
+      return;
+    }
+    navigate(path, options);
+  };
   const openAction = (ticket: TicketCard, action: string) => {
     setMenu(null);
-    navigate(`/tickets/${ticket.id}?action=${encodeURIComponent(action)}`, {
+    openSupportHubPath(`/tickets/${ticket.id}?action=${encodeURIComponent(action)}`, {
       state: {
         returnTo: `/support-workspace?tab=${module}${activeCustomTab ? `&custom=${activeCustomTab.id}` : ""}`,
       },
@@ -1227,8 +1248,8 @@ export function SupportWorkspacePage() {
       window.alert("The caller does not have a valid WhatsApp number.");
     }
   };
-  const openTicket = (ticketId: number) =>
-    navigate(`/tickets/${ticketId}`, {
+  const openFullTicket = (ticketId: number) =>
+    openSupportHubPath(`/tickets/${ticketId}`, {
       state: {
         returnTo: `/support-workspace?tab=${module}${activeCustomTab ? `&custom=${activeCustomTab.id}` : ""}`,
       },
@@ -1479,7 +1500,9 @@ export function SupportWorkspacePage() {
                 color="error"
                 variant="outlined"
                 size="small"
-                onClick={() => navigate(`/major-incidents/${incident.id}`)}
+                onClick={() =>
+                  openSupportHubPath(`/major-incidents/${incident.id}`)
+                }
               >
                 <TechnicalText>{incident.major_incident_number}</TechnicalText>
                 &nbsp;· {incident.severity} ·{" "}
@@ -1579,7 +1602,7 @@ export function SupportWorkspacePage() {
           <MenuItem
             onClick={() => {
               if (menu)
-                navigate(`/tickets/create?copy_from=${menu.ticket.id}`, {
+                openSupportHubPath(`/tickets/create?copy_from=${menu.ticket.id}`, {
                   state: {
                     returnTo: `/support-workspace?tab=${module}`,
                   },
@@ -2565,6 +2588,22 @@ export function SupportWorkspacePage() {
           )}
         </Stack>
       )}
+      {module === "queue" && (
+        <Alert
+          severity="info"
+          action={
+            <Button
+              size="small"
+              onClick={() => openSupportHubPath("/work-assignments")}
+            >
+              Open task queue
+            </Button>
+          }
+          sx={{ mb: 1.5 }}
+        >
+          Manager-assigned and shared team tasks are available with your support queue.
+        </Alert>
+      )}
       {active.isLoading && (
         <Box
           sx={{
@@ -2693,9 +2732,17 @@ export function SupportWorkspacePage() {
                     ticket,
                   });
                 }}
-                onDoubleClick={() => openTicket(ticket.id)}
+                onClick={(event) => {
+                  if (
+                    (event.target as HTMLElement).closest(
+                      "button,a,input,textarea,select,[role='menuitem']",
+                    )
+                  )
+                    return;
+                  setSelectedTicket(ticket);
+                }}
                 onKeyDown={(event) => {
-                  if (event.key === "Enter") openTicket(ticket.id);
+                  if (event.key === "Enter") setSelectedTicket(ticket);
                   if (
                     event.key === "ContextMenu" ||
                     (event.shiftKey && event.key === "F10")
@@ -3113,7 +3160,10 @@ export function SupportWorkspacePage() {
                       </Button>
                     )}
                   {!queueCard && !mineCard && (
-                    <Button size="small" onClick={() => openTicket(ticket.id)}>
+                    <Button
+                      size="small"
+                      onClick={() => setSelectedTicket(ticket)}
+                    >
                       {t("supportWorkspace.openTicket")}
                     </Button>
                   )}
@@ -3323,9 +3373,11 @@ export function SupportWorkspacePage() {
             <Stack direction="row" gap={1} flexWrap="wrap">
               <Button
                 variant="contained"
-                onClick={() => openTicket(selectedTicket.id)}
+                onClick={() => openFullTicket(selectedTicket.id)}
               >
-                {t("supportWorkspace.openTicket")}
+                {t("supportWorkspace.openInSupportHub", {
+                  defaultValue: "Open in SupportHub",
+                })}
               </Button>
               {module === "queue" && canClaim && (
                 <Button
@@ -3386,9 +3438,11 @@ export function SupportWorkspacePage() {
             <Button
               size="small"
               variant="contained"
-              onClick={() => openTicket(selectedTicket.id)}
+              onClick={() => openFullTicket(selectedTicket.id)}
             >
-              {t("supportWorkspace.openTicket")}
+              {t("supportWorkspace.openInSupportHub", {
+                defaultValue: "Open in SupportHub",
+              })}
             </Button>
             {module === "queue" && canClaim && (
               <Button
@@ -3435,6 +3489,7 @@ export function SupportWorkspacePage() {
           </Stack>
         </Paper>
       )}
+      {isIndependentWindow && <QuickActions externalNavigation />}
       <Menu
         anchorReference="anchorPosition"
         anchorPosition={menu?.position}
@@ -3493,7 +3548,7 @@ export function SupportWorkspacePage() {
               const id = menu?.ticket.id;
               setMenu(null);
               if (id)
-                navigate(`/tickets/create?copy_from=${id}`, {
+                openSupportHubPath(`/tickets/create?copy_from=${id}`, {
                   state: { returnTo: `/support-workspace?tab=${module}` },
                 });
             }}
@@ -3511,7 +3566,7 @@ export function SupportWorkspacePage() {
         </MenuItem>
         <MenuItem
           onClick={() => {
-            if (menu) openTicket(menu.ticket.id);
+            if (menu) setSelectedTicket(menu.ticket);
             setMenu(null);
           }}
         >
@@ -3527,7 +3582,7 @@ export function SupportWorkspacePage() {
             onClick={() => {
               const id = menu?.ticket.id;
               setMenu(null);
-              if (id) navigate(`/tickets/${id}?action=flag`);
+              if (id) openSupportHubPath(`/tickets/${id}?action=flag`);
             }}
           >
             Add ticket flag
@@ -3574,7 +3629,8 @@ export function SupportWorkspacePage() {
                 onClick={() => {
                   const id = menu?.ticket.id;
                   setMenu(null);
-                  if (id) navigate(`/tickets/create?copy_from=${id}`);
+                  if (id)
+                    openSupportHubPath(`/tickets/create?copy_from=${id}`);
                 }}
               >
                 Copy to new ticket
@@ -3600,7 +3656,7 @@ export function SupportWorkspacePage() {
                 onClick={() => {
                   const id = menu?.ticket.id;
                   setMenu(null);
-                  if (id) navigate(`/tickets/${id}?action=flag`);
+                  if (id) openSupportHubPath(`/tickets/${id}?action=flag`);
                 }}
               >
                 Add ticket flag
@@ -3777,7 +3833,7 @@ export function SupportWorkspacePage() {
             </MenuItem>
             <MenuItem
               onClick={() => {
-                if (menu) openTicket(menu.ticket.id);
+                if (menu) setSelectedTicket(menu.ticket);
                 setMenu(null);
               }}
             >

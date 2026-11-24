@@ -80,6 +80,63 @@ def test_native_itop_import_previews_and_creates_confirmed_relationships(
     assert len(list(database.scalars(select(TicketComment).where(TicketComment.ticket_id == ticket.id)))) == 2
 
 
+def test_itop_import_can_skip_invalid_rows_with_exact_excel_row_evidence(
+    client: TestClient, admin_headers: dict[str, str], database: Session
+) -> None:
+    headers = [
+        "Ref", "Title", "Organization->Name", "Organization->Code", "Caller->Full name",
+        "Caller->Email", "Agent->Full name", "Agent->Email", "Agent->Employee number",
+        "Start date", "Assignment date", "Resolution date", "Close date", "Last update",
+        "Status", "Priority", "Impact", "Urgency", "Description", "Solution", "Public log",
+        "Private log", "Team->Name", "id (Primary Key)",
+    ]
+    valid = [
+        "R-SKIP-VALID", "Valid ITOP row", "Partial Import Client", "PIC-1", "Valid Caller",
+        "", "", "", "", "2026-10-01 08:00:00", "", "", "", "",
+        "Assigned", "Medium", "Medium", "Medium", "Valid row", "", "", "", "", "99101",
+    ]
+    invalid = [
+        "R-SKIP-INVALID", "Formula ITOP row", "Partial Import Client", "PIC-1",
+        '=HYPERLINK("http://invalid","Caller")', "", "", "", "",
+        "2026-10-01 08:00:00", "", "", "", "", "Assigned", "Medium", "Medium",
+        "Medium", "Invalid row", "", "", "", "", "99102",
+    ]
+    book = Workbook(); sheet = book.active; sheet.append(headers); sheet.append(valid); sheet.append(invalid)
+    output = io.BytesIO(); book.save(output)
+    staged = client.post(
+        "/api/v1/imports/ITOP_TICKETS/upload", headers=admin_headers,
+        files={"workbook": ("itop-partial.xlsx", output.getvalue(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+    )
+    assert staged.status_code == 201, staged.text
+    assert staged.json()["status"] == "VALIDATION_FAILED"
+    assert staged.json()["valid_rows"] == 1 and staged.json()["invalid_rows"] == 1
+    job_id = staged.json()["id"]
+    errors = client.get(f"/api/v1/imports/{job_id}/errors", headers=admin_headers)
+    assert errors.status_code == 200
+    assert any(
+        row["row_number"] == 3
+        and row["column_name"] == "Caller->Full name"
+        and row["error_code"] == "FORMULA_REJECTED"
+        for row in errors.json()
+    )
+    rejected = client.post(
+        f"/api/v1/imports/{job_id}/confirm", headers=admin_headers,
+        json={"reason": "Partial migration without acknowledgement"},
+    )
+    assert rejected.status_code == 409
+    confirmed = client.post(
+        f"/api/v1/imports/{job_id}/confirm", headers=admin_headers,
+        json={"reason": "Approved valid rows only", "skip_invalid_rows": True,
+              "create_missing_clients": True, "create_missing_callers": True},
+    )
+    assert confirmed.status_code == 200, confirmed.text
+    refreshed = client.get(f"/api/v1/imports/{job_id}", headers=admin_headers)
+    assert refreshed.json()["status"] == "COMPLETED_WITH_SKIPS"
+    assert refreshed.json()["inserted_rows"] == 1
+    assert database.scalar(select(Ticket).where(Ticket.ticket_number == "R-SKIP-VALID")) is not None
+    assert database.scalar(select(Ticket).where(Ticket.ticket_number == "R-SKIP-INVALID")) is None
+
+
 def test_external_user_request_import_matches_organization_to_client_name(
     client: TestClient, admin_headers: dict[str, str], database: Session
 ) -> None:

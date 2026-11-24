@@ -40,7 +40,7 @@ def test_compatibility_rejects_outdated_revision() -> None:
     assert result.compatible is False
     assert result.status == "MIGRATION_REQUIRED"
     assert result.current_revision == "0049_dynamic_contract_sla"
-    assert EXPECTED_DATABASE_REVISION == "0274_ticket_knowledge_category"
+    assert EXPECTED_DATABASE_REVISION == "0295_project_lifecycle"
 
 
 def test_incompatible_database_blocks_business_routes_with_controlled_error() -> None:

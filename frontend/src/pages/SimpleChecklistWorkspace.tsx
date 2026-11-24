@@ -1,4 +1,4 @@
-import { Add, Delete, GridView, Save, ViewKanban } from "@mui/icons-material";
+import { GridView, Save, ViewKanban } from "@mui/icons-material";
 import {
   Alert,
   Box,
@@ -171,7 +171,9 @@ export function SimpleChecklistWorkspace({ monitor }: { monitor?: boolean }) {
   const defaultLayout = (() => {
     try { return JSON.parse(window.localStorage.getItem(layoutKey) || window.localStorage.getItem(`${layoutKey}-default`) || "null") as { layout: "GRID" | "LANES"; groupBy: "STATUS" | "ENGINEER" } | null; } catch { return null; }
   })();
-  const [layout, setLayout] = useState<"GRID" | "LANES">(defaultLayout?.layout ?? (monitor ? "LANES" : "GRID"));
+  const [layout, setLayout] = useState<"GRID" | "LANES">(
+    monitor ? (defaultLayout?.layout ?? "LANES") : "GRID",
+  );
   const [groupBy, setGroupBy] = useState<"STATUS" | "ENGINEER">(defaultLayout?.groupBy ?? "STATUS");
   const [selected, setSelected] = useState<Occurrence | null>(null);
   const [historySchedule, setHistorySchedule] = useState<Schedule | null>(null);
@@ -197,7 +199,7 @@ export function SimpleChecklistWorkspace({ monitor }: { monitor?: boolean }) {
           params: monitor ? undefined : { scope: "mine" },
         })
       ).data,
-    refetchInterval: 60_000,
+    refetchInterval: 10_000,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: "always",
   });
@@ -234,7 +236,9 @@ export function SimpleChecklistWorkspace({ monitor }: { monitor?: boolean }) {
           ? "CLIENT_RESPONSIBILITY"
           : item.state === "NEED_ATTENTION"
             ? "NEED_ATTENTION"
-            : "COMPLETE",
+            : ["COMPLETE", "COMPLETED"].includes(item.state)
+              ? "COMPLETE"
+              : "PENDING",
         resource_path: item.resource_path ?? "",
         check_date: (item.check_date ?? new Date().toISOString()).slice(0, 10),
         client_contact: "",
@@ -398,56 +402,6 @@ export function SimpleChecklistWorkspace({ monitor }: { monitor?: boolean }) {
       setError(
         apiErrorMessage(cause, "The checklist event could not be saved."),
       ),
-  });
-  const taskRow = useMutation({
-    mutationFn: async ({ item, remove }: { item: DraftItem; remove?: boolean }) => {
-      if (!selected || !detail.data) return;
-      if (remove) {
-        return (
-          await api.delete<Occurrence>(
-            `/service-checklists/occurrences/${selected.id}/items/${item.id}`,
-            { params: { expected_version: detail.data.version } },
-          )
-        ).data;
-      }
-      return (
-        await api.patch<Occurrence>(
-          `/service-checklists/occurrences/${selected.id}/items/${item.id}/details`,
-          {
-            version: detail.data.version,
-            resource_type: item.resource_type,
-            title: item.title.trim(),
-            resource_path: item.resource_path.trim() || null,
-            check_date: item.check_date,
-          },
-        )
-      ).data;
-    },
-    onSuccess: async (event) => {
-      if (!event) return;
-      cache.setQueryData(["service-checklist-event", event.id], event);
-      setSelected(event);
-      localStorage.removeItem(`supporthub-checklist-draft-${event.id}`);
-      setDraftItems(
-        (event.items ?? []).map((item) => ({
-          ...item,
-          resource_path: item.resource_path ?? "",
-          check_date: (item.check_date ?? new Date().toISOString()).slice(0, 10),
-          client_contact: "",
-          result_note: "",
-          evidence_file: null,
-          create_follow_up_ticket: false,
-        })),
-      );
-      await cache.invalidateQueries({
-        queryKey: ["service-checklist-event", event.id],
-      });
-      await cache.invalidateQueries({
-        queryKey: ["service-checklist-schedules"],
-      });
-    },
-    onError: (cause) =>
-      setError(apiErrorMessage(cause, "The checklist task could not be changed.")),
   });
   const reminder = useMutation({
     mutationFn: async (scheduleIds: number[]) =>
@@ -613,7 +567,7 @@ export function SimpleChecklistWorkspace({ monitor }: { monitor?: boolean }) {
         role="button"
         tabIndex={0}
         aria-label={`Open ${schedule.client_name} ${schedule.template_name}`}
-        onClick={() => openHistory(schedule)}
+        onClick={() => void openLatest(schedule)}
         onContextMenu={(event) => {
           event.preventDefault();
           setCardMenu({
@@ -625,7 +579,7 @@ export function SimpleChecklistWorkspace({ monitor }: { monitor?: boolean }) {
         onKeyDown={(event) => {
           if (event.key === "Enter" || event.key === " ") {
             event.preventDefault();
-            openHistory(schedule);
+            void openLatest(schedule);
           }
         }}
         variant="outlined"
@@ -744,13 +698,14 @@ export function SimpleChecklistWorkspace({ monitor }: { monitor?: boolean }) {
           {!monitor && (
             <Button
               size="small"
-              startIcon={<Add />}
+              variant="contained"
+              disabled={!schedule.last_occurrence_id}
               onClick={(event) => {
                 event.stopPropagation();
-                addEvent.mutate(schedule.id);
+                void openLatest(schedule);
               }}
             >
-              Add event
+              Open checklist
             </Button>
           )}
         </Stack>
@@ -770,7 +725,7 @@ export function SimpleChecklistWorkspace({ monitor }: { monitor?: boolean }) {
           {message}
         </Alert>
       )}
-      <Paper
+      {monitor && <Paper
         variant="outlined"
         sx={{ p: 1.25 }}
         aria-label="Checklist status color legend"
@@ -788,7 +743,7 @@ export function SimpleChecklistWorkspace({ monitor }: { monitor?: boolean }) {
             />
           ))}
         </Stack>
-      </Paper>
+      </Paper>}
       <Stack direction={{ xs: "column", md: "row" }} gap={1}>
         {(
           [
@@ -914,7 +869,7 @@ export function SimpleChecklistWorkspace({ monitor }: { monitor?: boolean }) {
           </Stack>
         </Paper>
       )}
-      <Stack direction={{ xs: "column", sm: "row" }} justifyContent="flex-end" gap={1}>
+      {monitor && <Stack direction={{ xs: "column", sm: "row" }} justifyContent="flex-end" gap={1}>
           <TextField
             select
             size="small"
@@ -952,7 +907,7 @@ export function SimpleChecklistWorkspace({ monitor }: { monitor?: boolean }) {
             window.localStorage.setItem(layoutKey, JSON.stringify({ layout, groupBy }));
             setMessage("This is now your default checklist layout.");
           }}>Set as default</Button>
-        </Stack>
+        </Stack>}
       {schedules.isLoading && <LinearProgress />}
       {!visible.length && !schedules.isLoading && (
         <Alert severity="info">No checklist assignments match this view.</Alert>
@@ -1027,11 +982,11 @@ export function SimpleChecklistWorkspace({ monitor }: { monitor?: boolean }) {
                     hover
                     key={schedule.id}
                     tabIndex={0}
-                    onClick={() => openHistory(schedule)}
+                    onClick={() => void openLatest(schedule)}
                     onKeyDown={(event) => {
                       if (event.key === "Enter" || event.key === " ") {
                         event.preventDefault();
-                        openHistory(schedule);
+                        void openLatest(schedule);
                       }
                     }}
                     sx={{
@@ -1088,20 +1043,21 @@ export function SimpleChecklistWorkspace({ monitor }: { monitor?: boolean }) {
                       {!monitor ? (
                         <Button
                           size="small"
-                          startIcon={<Add />}
+                          variant="contained"
+                          disabled={!schedule.last_occurrence_id}
                           onClick={(event) => {
                             event.stopPropagation();
-                            addEvent.mutate(schedule.id);
+                            void openLatest(schedule);
                           }}
                         >
-                          Add event
+                          Open checklist
                         </Button>
                       ) : (
                         <Button
                           size="small"
                           onClick={(event) => {
                             event.stopPropagation();
-                            openHistory(schedule);
+                            void openLatest(schedule);
                           }}
                         >
                           Open
@@ -1287,12 +1243,7 @@ export function SimpleChecklistWorkspace({ monitor }: { monitor?: boolean }) {
                   label={`Due ${new Date(detail.data.due_at).toLocaleString()}`}
                 />
               </Stack>
-              {!monitor && (
-                <Stack direction={{ xs: "column", sm: "row" }} gap={1} alignItems={{ sm: "center" }}>
-                  <Typography fontWeight={800}>Detailed review</Typography>
-                  <Button sx={{ ml: { sm: "auto" } }} onClick={() => setDraftItems((items) => items.map((item) => ({ ...item, state: "COMPLETE" })))}>Mark all as Done</Button>
-                </Stack>
-              )}
+              {!monitor && <Typography fontWeight={800}>Choose one result for every task</Typography>}
               {(draftItems.length
                 ? draftItems
                 : (detail.data.items ?? []).map((item) => ({
@@ -1329,38 +1280,7 @@ export function SimpleChecklistWorkspace({ monitor }: { monitor?: boolean }) {
                 return (
                   <Paper key={item.id} variant="outlined" sx={{ p: 1.5 }}>
                     <Stack spacing={1}>
-                      <Stack direction={{ xs: "column", sm: "row" }} gap={1} alignItems={{ sm: "center" }}>
-                        <TextField
-                          size="small"
-                          fullWidth
-                          required
-                          label="Task"
-                          value={item.title}
-                          onChange={(event) => update({ title: event.target.value })}
-                        />
-                        {!monitor && detail.data?.status !== "COMPLETED" && (
-                          <>
-                            <Button
-                              startIcon={<Save />}
-                              disabled={taskRow.isPending || item.title.trim().length < 2}
-                              onClick={() => taskRow.mutate({ item })}
-                            >
-                              Save task
-                            </Button>
-                            <Button
-                              color="error"
-                              startIcon={<Delete />}
-                              disabled={taskRow.isPending}
-                              onClick={() => {
-                                if (window.confirm(`Delete task “${item.title}”?`))
-                                  taskRow.mutate({ item, remove: true });
-                              }}
-                            >
-                              Delete
-                            </Button>
-                          </>
-                        )}
-                      </Stack>
+                      <Typography fontWeight={850}>{item.title}</Typography>
                       <Stack direction={{ xs: "column", md: "row" }} gap={1}>
                         <TextField
                           select
@@ -1380,24 +1300,15 @@ export function SimpleChecklistWorkspace({ monitor }: { monitor?: boolean }) {
                           }
                           sx={{ minWidth: 180 }}
                         >
-                          <MenuItem value="COMPLETE">Done</MenuItem>
+                          <MenuItem value="PENDING" disabled>Select action</MenuItem>
+                          <MenuItem value="COMPLETE">Complete</MenuItem>
                           <MenuItem value="NEED_ATTENTION">
-                            Needs Attention
+                            Not completed
                           </MenuItem>
                           <MenuItem value="CLIENT_RESPONSIBILITY">
-                            Client Action
+                            Customer responsibility
                           </MenuItem>
                         </TextField>
-                        <TextField
-                          size="small"
-                          fullWidth
-                          label="Path or URL"
-                          value={item.resource_path}
-                          onChange={(event) =>
-                            update({ resource_path: event.target.value })
-                          }
-                          helperText="The previous event path is reused; change it when needed."
-                        />
                         <TextField
                           size="small"
                           type="date"
@@ -1409,71 +1320,43 @@ export function SimpleChecklistWorkspace({ monitor }: { monitor?: boolean }) {
                           slotProps={{ inputLabel: { shrink: true } }}
                         />
                       </Stack>
-                      {(item.evidence_required ||
-                        item.state === "CLIENT_RESPONSIBILITY") && (
+                      {item.state === "COMPLETE" && (
+                        <TextField
+                          size="small"
+                          fullWidth
+                          required
+                          label="Verified backup path or URL"
+                          value={item.resource_path}
+                          onChange={(event) => update({ resource_path: event.target.value })}
+                          helperText="Enter the path or URL you checked."
+                        />
+                      )}
+                      {item.state === "CLIENT_RESPONSIBILITY" && (
                         <Stack direction={{ xs: "column", md: "row" }} gap={1}>
-                          {item.evidence_type === "FILE" ||
-                          item.state === "CLIENT_RESPONSIBILITY" ? (
-                            <Button component="label" variant="outlined">
-                              {item.evidence_file?.name ??
-                                "Choose evidence file"}
-                              <input
-                                hidden
-                                type="file"
-                                onChange={(event) =>
-                                  update({
-                                    evidence_file:
-                                      event.target.files?.[0] ?? null,
-                                  })
-                                }
-                              />
-                            </Button>
-                          ) : null}
-                          {item.state === "CLIENT_RESPONSIBILITY" && (
-                            <TextField
-                              size="small"
-                              required
-                              label="Client contact"
-                              value={item.client_contact ?? ""}
-                              onChange={(event) =>
-                                update({ client_contact: event.target.value })
-                              }
-                            />
-                          )}
-                          {item.state === "NEED_ATTENTION" && (
-                            <FormControlLabel
-                              control={<Checkbox checked={Boolean(item.create_follow_up_ticket)} onChange={(event) => update({ create_follow_up_ticket: event.target.checked })} />}
-                              label="Create follow-up ticket"
-                            />
-                          )}
+                          <Button component="label" variant="outlined">
+                            {item.evidence_file?.name ?? "Attach image"}
+                            <input hidden type="file" accept="image/*" onChange={(event) => update({ evidence_file: event.target.files?.[0] ?? null })} />
+                          </Button>
                           <TextField
                             size="small"
                             fullWidth
                             required
-                            label={
-                              item.state === "CLIENT_RESPONSIBILITY"
-                                ? "Handoff note"
-                                : "Evidence or result note"
-                            }
+                            label="Customer responsibility comment"
                             value={item.result_note ?? ""}
-                            onChange={(event) =>
-                              update({ result_note: event.target.value })
-                            }
+                            onChange={(event) => update({ result_note: event.target.value })}
                           />
+                        </Stack>
+                      )}
+                      {item.state === "NEED_ATTENTION" && (
+                        <Stack direction={{ xs: "column", md: "row" }} gap={1}>
+                          <TextField size="small" fullWidth required label="Reason not completed" value={item.result_note ?? ""} onChange={(event) => update({ result_note: event.target.value })} />
+                          <FormControlLabel control={<Checkbox checked={Boolean(item.create_follow_up_ticket)} onChange={(event) => update({ create_follow_up_ticket: event.target.checked })} />} label="Create follow-up ticket" />
                         </Stack>
                       )}
                     </Stack>
                   </Paper>
                 );
               })}
-              {!monitor && (
-                <Paper variant="outlined" sx={{ p: 1.5 }}>
-                  <Stack spacing={1.5}>
-                    <TextField required label="Service provided" value={serviceProvided} onChange={(event) => setServiceProvided(event.target.value)} />
-                    <TextField required multiline minRows={2} label="Client-visible summary" value={clientSummary} onChange={(event) => setClientSummary(event.target.value)} />
-                  </Stack>
-                </Paper>
-              )}
             </Stack>
           )}
         </DialogContent>
@@ -1489,17 +1372,11 @@ export function SimpleChecklistWorkspace({ monitor }: { monitor?: boolean }) {
           {!monitor && detail.data?.status !== "COMPLETED" && (
             <>
               <Button
-                disabled={save.isPending}
-                onClick={() => save.mutate({ complete: false })}
-              >
-                Save Draft
-              </Button>
-              <Button
                 variant="contained"
-                disabled={save.isPending}
+                disabled={save.isPending || draftItems.some(item => item.state === "PENDING")}
                 onClick={() => save.mutate({ complete: true })}
               >
-                Save &amp; Complete Checklist
+                Complete Checklist
               </Button>
             </>
           )}

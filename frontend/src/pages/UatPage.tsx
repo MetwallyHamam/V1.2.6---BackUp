@@ -17,7 +17,8 @@ import {
 } from "@mui/material";
 import { ExpandMore } from "@mui/icons-material";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { api, apiErrorMessage } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import { UatCycleReview } from "./UatCycleReview";
@@ -83,6 +84,8 @@ type CycleTest = {
   test_result: string;
   attempt_count: number;
   retest_count: number;
+  comment_count: number;
+  evidence_count: number;
   due_date: string | null;
   priority: string;
   linked_ticket_id: number | null;
@@ -168,6 +171,7 @@ type DefectDraft = {
   urgency: string;
   entitlement_override_reason?: string;
 };
+type ExecutionDraft = { result: "PASS" | "FAIL" | "BLOCKED"; actualResult: string; comment: string; failureReason: string; blockingReason: string; severity: string; failureCategory: string };
 const blankCase = () => ({
   code: "",
   title: "",
@@ -193,6 +197,7 @@ const statuses = [
 export function UatPage() {
   const { hasPermission, user } = useAuth();
   const cache = useQueryClient();
+  const [searchParams] = useSearchParams();
   const [tab, setTab] = useState(0);
   const [setupView, setSetupView] = useState<"templates" | "cases">(
     "templates",
@@ -268,6 +273,44 @@ export function UatPage() {
       setError(apiErrorMessage(cause, "The UAT action failed.")),
   });
   const selected = cycles.data?.find((cycle) => cycle.id === selectedCycle);
+  const executionIndex = selected?.tests.findIndex((test) => test.id === selectedTest) ?? -1;
+  useEffect(() => {
+    if (selectedTest === null) return;
+    window.sessionStorage.setItem(`uat-execution-draft:${selectedTest}`, JSON.stringify({ result, actualResult, comment, failureReason, blockingReason, severity, failureCategory }));
+  }, [selectedTest, result, actualResult, comment, failureReason, blockingReason, severity, failureCategory]);
+  const saveExecutionDraft = () => {
+    if (selectedTest === null) return;
+    window.sessionStorage.setItem(`uat-execution-draft:${selectedTest}`, JSON.stringify({ result, actualResult, comment, failureReason, blockingReason, severity, failureCategory }));
+  };
+  const openExecution = (testId: number, quickResult?: "PASS" | "FAIL" | "BLOCKED") => {
+    saveExecutionDraft();
+    const saved = window.sessionStorage.getItem(`uat-execution-draft:${testId}`);
+    let draft: ExecutionDraft | null = null;
+    try { draft = saved ? JSON.parse(saved) as ExecutionDraft : null; } catch { window.sessionStorage.removeItem(`uat-execution-draft:${testId}`); }
+    setSelectedTest(testId);
+    setResult(quickResult ?? draft?.result ?? "PASS");
+    setActualResult(draft?.actualResult ?? "");
+    setComment(draft?.comment ?? "");
+    setFailureReason(draft?.failureReason ?? "");
+    setBlockingReason(draft?.blockingReason ?? "");
+    setSeverity(draft?.severity ?? "MEDIUM");
+    setFailureCategory(draft?.failureCategory ?? "Software Bug");
+    setDefectDraft(null);
+  };
+  useEffect(() => {
+    const cycleId = Number(searchParams.get("cycle_id") || 0);
+    const testId = Number(searchParams.get("test_id") || 0);
+    if (!cycleId || !cycles.data?.some((cycle) => cycle.id === cycleId)) return;
+    setSelectedCycle(cycleId);
+    setTab(1);
+    if (testId && cycles.data.find((cycle) => cycle.id === cycleId)?.tests.some((test) => test.id === testId)) {
+      openExecution(testId);
+    }
+  }, [cycles.data, searchParams]);
+  const closeExecution = () => {
+    saveExecutionDraft();
+    setSelectedTest(null);
+  };
   const execute = (event: FormEvent) => {
     event.preventDefault();
     if (selectedTest === null) return;
@@ -572,15 +615,9 @@ export function UatPage() {
                 products={metadata.data?.products ?? []}
                 modules={metadata.data?.modules ?? []}
                 canManage={hasPermission("uat.cycle.manage")}
-                onSelectTest={setSelectedTest}
+                onSelectTest={openExecution}
                 onQuickResult={(testId, quickResult) => {
-                  setSelectedTest(testId);
-                  setResult(quickResult);
-                  setActualResult("");
-                  setFailureReason("");
-                  setBlockingReason("");
-                  setComment("");
-                  setDefectDraft(null);
+                  openExecution(testId, quickResult);
                 }}
               />
               <Accordion
@@ -621,7 +658,7 @@ export function UatPage() {
               <Drawer
                 anchor="right"
                 open={selectedTest !== null}
-                onClose={() => setSelectedTest(null)}
+                onClose={closeExecution}
               >
                 <Box sx={{ width: { xs: "100vw", sm: 560 }, p: 2 }}>
                   <Stack
@@ -630,9 +667,16 @@ export function UatPage() {
                     alignItems="center"
                     sx={{ mb: 1 }}
                   >
-                    <Typography variant="h6">Test action</Typography>
-                    <Button onClick={() => setSelectedTest(null)}>Close</Button>
+                    <Box><Typography variant="h6">Guided test execution</Typography><Typography variant="caption" color="text.secondary">Draft input is kept for this browser session.</Typography></Box>
+                    <Button onClick={closeExecution}>Close</Button>
                   </Stack>
+                  {selectedTest !== null && executionIndex >= 0 && (
+                    <Stack direction="row" alignItems="center" justifyContent="space-between" gap={1} sx={{ mb: 2 }}>
+                      <Button disabled={executionIndex === 0} onClick={() => openExecution(selected.tests[executionIndex - 1].id)}>Previous test</Button>
+                      <Typography fontWeight={800}>Test {executionIndex + 1} of {selected.tests.length}</Typography>
+                      <Button disabled={executionIndex === selected.tests.length - 1} onClick={() => openExecution(selected.tests[executionIndex + 1].id)}>Next test</Button>
+                    </Stack>
+                  )}
                   <Stack spacing={1}>
                     {selected.tests
                       .filter((test) => test.id === selectedTest)
@@ -643,14 +687,7 @@ export function UatPage() {
                               <Typography fontWeight={700}>
                                 {test.snapshot.code} · {test.snapshot.title}
                               </Typography>
-                              <Typography variant="body2">
-                                {test.snapshot.expected_result}
-                              </Typography>
-                              <Typography variant="caption">
-                                {test.snapshot.steps
-                                  .map((step) => step.action)
-                                  .join(" → ")}
-                              </Typography>
+                              <Typography variant="body2" color="text.secondary">Priority {test.priority} · {test.attempt_count} attempts · {test.evidence_count} evidence · {test.comment_count} comments</Typography>
                             </Box>
                             <Stack direction="row" gap={1} alignItems="center">
                               <Chip
@@ -678,6 +715,15 @@ export function UatPage() {
                           </Stack>
                           {selectedTest === test.id && (
                             <Stack spacing={1} sx={{ mt: 2 }}>
+                              <Paper variant="outlined" sx={{ p: 1.5 }}>
+                                <Typography variant="subtitle2">Preconditions</Typography>
+                                <Typography variant="body2" color={test.snapshot.preconditions ? "text.primary" : "text.secondary"}>{test.snapshot.preconditions || "No preconditions specified."}</Typography>
+                              </Paper>
+                              <Paper variant="outlined" sx={{ p: 1.5 }}>
+                                <Typography variant="subtitle2">Test steps</Typography>
+                                <Stack component="ol" spacing={1} sx={{ pl: 2.5, mb: 0 }}>{test.snapshot.steps.map((step, index) => <Box component="li" key={`${index}-${step.action}`}><Typography variant="body2" fontWeight={700}>{step.action}</Typography><Typography variant="caption" color="text.secondary">Expected: {step.expected_result}</Typography></Box>)}</Stack>
+                              </Paper>
+                              <Alert severity="info"><strong>Expected result:</strong> {test.snapshot.expected_result}</Alert>
                               <Typography variant="subtitle2">
                                 Attempt history · {test.retest_count} retests
                               </Typography>
@@ -731,6 +777,11 @@ export function UatPage() {
                                     Unblock test
                                   </Button>
                                 )}
+                              {selected.status !== "ACTIVE" && <Alert severity="info">Activate this cycle before recording a test result.</Alert>}
+                              {test.test_result === "PASS" && <Alert severity="success">This test passed. No further result action is available in this milestone.</Alert>}
+                              {test.workflow_status === "BLOCKED" && !hasPermission("uat.cycle.manage") && <Alert severity="warning">A UAT manager must unblock this test before another attempt.</Alert>}
+                              {test.workflow_status === "NEEDS_INVESTIGATION" && <Alert severity="warning">The failure must be investigated, linked to a defect, or returned to Ready by a coordinator.</Alert>}
+                              {["WAITING_FIX", "FIX_IN_PROGRESS"].includes(test.workflow_status) && test.linked_ticket_id && <Alert severity="info">Retesting becomes available after the linked defect is resolved.</Alert>}
                               {selected.status === "ACTIVE" &&
                                 test.test_result !== "PASS" &&
                                 !["BLOCKED", "NEEDS_INVESTIGATION"].includes(
@@ -864,7 +915,7 @@ export function UatPage() {
                                     onClick={() => loadDefectDraft(test.id)}
                                     sx={{ alignSelf: "flex-start" }}
                                   >
-                                    Review defect ticket
+                                    Create UAT Defect Ticket
                                   </Button>
                                 )}
                               {defectDraft &&
@@ -962,7 +1013,7 @@ export function UatPage() {
                                         variant="contained"
                                         disabled={action.isPending}
                                       >
-                                        Create and link ticket
+                                        Create UAT Defect Ticket
                                       </Button>
                                       <Button
                                         onClick={() => setDefectDraft(null)}

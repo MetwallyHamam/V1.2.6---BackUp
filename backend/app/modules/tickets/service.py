@@ -81,6 +81,7 @@ from app.modules.tickets.schemas import (
     TicketTransition,
 )
 from app.modules.tickets.workflow import validate_transition
+from app.modules.uat.models import UatDefectLink
 
 SLA_EXEMPT_TICKET_TYPE_CODES = {"CHANGE_REQUEST"}
 
@@ -851,6 +852,7 @@ def apply_ticket_filters(
     source_channel: str | None = None,
     sla_state: str | None = None,
     open_only: bool = False,
+    include_pending_approval_in_open: bool = False,
     unassigned_only: bool = False,
     strictly_unassigned_only: bool = False,
     due_soon: bool = False,
@@ -894,6 +896,11 @@ def apply_ticket_filters(
                 func.lower(Ticket.ticket_number).like(term),
                 func.lower(Ticket.subject).like(term),
                 Ticket.client_id.in_(matching_client_ids),
+                Ticket.id.in_(select(UatDefectLink.ticket_id).where(or_(
+                    func.lower(UatDefectLink.cycle_code).like(term),
+                    func.lower(UatDefectLink.test_code).like(term),
+                    func.lower(UatDefectLink.release_version).like(term),
+                ))),
             )
         )
     if ticket_number and (normalized_ticket_number := ticket_number.strip().lower()):
@@ -1024,8 +1031,11 @@ def apply_ticket_filters(
             )
         )
     if open_only:
+        if not include_pending_approval_in_open:
+            statement = statement.where(
+                func.coalesce(Ticket.entitlement_status, "") != "PENDING_APPROVAL"
+            )
         statement = statement.where(
-            func.coalesce(Ticket.entitlement_status, "") != "PENDING_APPROVAL",
             Ticket.status_id.in_(
                 select(TicketStatus.id).where(
                     TicketStatus.code.in_(
@@ -1205,9 +1215,9 @@ def validate_ticket_context(
 
 def create_ticket(
     db: Session, data: TicketCreate, actor: User, *, allow_controlled_assignment: bool = False,
-    commit: bool = True,
+    commit: bool = True, enforce_configured_required_fields: bool = True,
 ) -> Ticket:
-    if actor.user_type == "EMPLOYEE":
+    if actor.user_type == "EMPLOYEE" and enforce_configured_required_fields:
         validate_required_ticket_fields(db, data)
     ticket_type = db.get(TicketType, data.ticket_type_id)
     client = db.get(Client, data.client_id)
@@ -2282,10 +2292,9 @@ def transition_ticket(
             to_status_code="CLOSED",
             source=source,
         )
-    if target.code in {"RESOLVED", "CLOSED"}:
-        from app.modules.uat.service import mark_retests_ready
+    from app.modules.uat.service import sync_ticket_to_uat
 
-        mark_retests_ready(db, ticket, actor)
+    sync_ticket_to_uat(db, ticket, actor, target_status_code=effective_target_code)
     from app.modules.uat.deployment_ticket_sync import sync_ticket_to_issue
 
     sync_ticket_to_issue(

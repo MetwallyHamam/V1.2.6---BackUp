@@ -1,14 +1,17 @@
+from datetime import timedelta
+
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.clock import server_now
 from app.modules.clients.models import Client, ClientStatus
 from app.modules.iam.models import Profile, User, UserClientScope, UserProfile
 from app.modules.iam.security import hash_password
 from app.modules.notifications.models import Notification
 from app.modules.tickets.models import Ticket
-from app.modules.uat.models import UatCycleTest, UatTestAttempt
-from app.modules.uat.service import mark_retests_ready
+from app.modules.uat.models import UatCycle, UatCycleTest, UatDefectLink, UatTestAttempt
+from app.modules.uat.service import sync_ticket_to_uat
 
 
 def test_create_uat_in_one_form_generates_identity_and_assigns_multiple_templates(
@@ -68,6 +71,8 @@ def test_create_uat_in_one_form_generates_identity_and_assigns_multiple_template
     assert payload["coordinator_user_ids"] == [admin.id]
     assert payload["client_tester_user_ids"] == [client_engineer.id]
     assert len(payload["tests"]) == 2
+    assert {test["comment_count"] for test in payload["tests"]} == {0}
+    assert {test["evidence_count"] for test in payload["tests"]} == {0}
     assert {test["owner_user_id"] for test in payload["tests"]} == {admin.id}
     assert {test["client_tester_user_id"] for test in payload["tests"]} == {client_engineer.id}
     assert [test["display_order"] for test in payload["tests"]] == [1, 2]
@@ -196,11 +201,51 @@ def test_failed_test_links_one_ticket_and_retests_after_resolution(client: TestC
     assert failed.status_code == 201, failed.text
     draft = client.get(f"/api/v1/uat/cycle-tests/{test_id}/defect-ticket-draft", headers=admin_headers)
     assert draft.status_code == 200, draft.text
+    assert draft.json()["subject"] == "[UAT][Release 1.0] Search fails — DEFECT-1"
+    assert "Attempt: 1" in draft.json()["description"]
+    assert "Client-safe evidence: None" in draft.json()["description"]
     assert "Search service errors" in draft.json()["description"]
     linked = client.post(f"/api/v1/uat/cycle-tests/{test_id}/defect-ticket", headers=admin_headers, json=draft.json())
     assert linked.status_code == 201, linked.text
     ticket_id = linked.json()["ticket_id"]
     assert database.get(Ticket, ticket_id)
+    defect_link = database.scalar(select(UatDefectLink).where(UatDefectLink.ticket_id == ticket_id))
+    assert defect_link
+    assert defect_link.cycle_id == cycle_id
+    assert defect_link.cycle_test_id == test_id
+    assert defect_link.attempt_id == failed.json()["id"]
+    assert defect_link.cycle_code == "DEFECT-CYCLE"
+    assert defect_link.test_code == "DEFECT-1"
+    assert defect_link.release_version == "1.0"
+    ticket = database.get(Ticket, ticket_id)
+    assert ticket
+    original_entitlement_status = ticket.entitlement_status
+    ticket.entitlement_status = "PENDING_APPROVAL"
+    database.commit()
+    uat_open = client.get(
+        "/api/v1/tickets?uat_defect_only=true&open_only=true",
+        headers=admin_headers,
+    )
+    assert uat_open.status_code == 200, uat_open.text
+    assert ticket_id in {row["id"] for row in uat_open.json()}
+    normal_open = client.get("/api/v1/tickets?open_only=true", headers=admin_headers)
+    assert normal_open.status_code == 200, normal_open.text
+    assert ticket_id not in {row["id"] for row in normal_open.json()}
+    ticket.entitlement_status = original_entitlement_status
+    database.commit()
+    ticket_detail = client.get(f"/api/v1/tickets/{ticket_id}", headers=admin_headers)
+    assert ticket_detail.status_code == 200, ticket_detail.text
+    assert ticket_detail.json()["is_uat_defect"] is True
+    assert ticket_detail.json()["uat_cycle_test_id"] == test_id
+    for query in (
+        "uat_defect_only=true&uat_cycle_code=DEFECT-CYCLE&uat_release_version=1.0",
+        "search=DEFECT-CYCLE",
+        "search=DEFECT-1",
+        "search=1.0",
+    ):
+        discovered = client.get(f"/api/v1/tickets?{query}", headers=admin_headers)
+        assert discovered.status_code == 200, discovered.text
+        assert ticket_id in {row["id"] for row in discovered.json()}
     assert database.scalar(select(Notification.id).where(Notification.notification_type == "UAT_TICKET_CREATED"))
     dashboard = client.get(f"/api/v1/uat/cycles/{cycle_id}/dashboard", headers=admin_headers)
     assert dashboard.status_code == 200, dashboard.text
@@ -211,18 +256,51 @@ def test_failed_test_links_one_ticket_and_retests_after_resolution(client: TestC
     assert client.post(f"/api/v1/uat/cycle-tests/{test_id}/attempts", headers=admin_headers, json={"result": "PASS", "actual_result": "Works"}).status_code == 409
     ticket = database.get(Ticket, ticket_id)
     assert ticket
-    mark_retests_ready(database, ticket, admin)
+    assigned = client.post(f"/api/v1/tickets/{ticket_id}/assignment", headers=admin_headers, json={
+        "assigned_user_id": admin.id, "reason": "Phase 4 UAT fix", "version": ticket.version,
+    })
+    assert assigned.status_code == 200, assigned.text
+    database.expire_all()
+    ticket = database.get(Ticket, ticket_id)
+    assert ticket
+    test = database.get(UatCycleTest, test_id)
+    assert test and test.workflow_status == "FIX_IN_PROGRESS"
+    sync_ticket_to_uat(database, ticket, admin, target_status_code="IN_PROGRESS")
+    database.commit()
+    assert test.workflow_status == "FIX_IN_PROGRESS"
+    sync_ticket_to_uat(database, ticket, admin, target_status_code="RESOLVED")
     database.commit()
     test = database.get(UatCycleTest, test_id)
     assert test and test.workflow_status == "READY_FOR_RETEST"
     assert database.scalar(select(Notification.id).where(Notification.notification_type == "UAT_TICKET_RESOLVED"))
+    resolved_notice_count = len(list(database.scalars(select(Notification.id).where(Notification.notification_type == "UAT_TICKET_RESOLVED"))))
+    sync_ticket_to_uat(database, ticket, admin, target_status_code="RESOLVED")
+    database.commit()
+    assert len(list(database.scalars(select(Notification.id).where(Notification.notification_type == "UAT_TICKET_RESOLVED")))) == resolved_notice_count
+    sync_ticket_to_uat(database, ticket, admin, target_status_code="CLOSED")
+    database.commit()
+    assert test.workflow_status == "READY_FOR_RETEST"
+    assert database.scalar(select(Notification.id).where(Notification.notification_type == "UAT_TICKET_CLOSED_BEFORE_PASS"))
+    failed_retest = client.post(f"/api/v1/uat/cycle-tests/{test_id}/attempts", headers=admin_headers, json={
+        "result": "FAIL", "actual_result": "Still empty", "failure_reason": "Fix incomplete", "severity": "HIGH",
+    })
+    assert failed_retest.status_code == 201, failed_retest.text
+    assert failed_retest.json()["workflow_status"] == "WAITING_FIX"
+    assert database.scalar(select(Notification.id).where(Notification.notification_type == "UAT_RETEST_FAILED_TICKET_ACTION"))
+    sync_ticket_to_uat(database, ticket, admin, target_status_code="REOPENED")
+    database.commit()
+    assert test.workflow_status == "FIX_IN_PROGRESS"
+    sync_ticket_to_uat(database, ticket, admin, target_status_code="RESOLVED")
+    database.commit()
+    assert test.workflow_status == "READY_FOR_RETEST"
     passed = client.post(f"/api/v1/uat/cycle-tests/{test_id}/attempts", headers=admin_headers, json={"result": "PASS", "actual_result": "Results appear"})
     assert passed.status_code == 201, passed.text
     database.expire_all()
     test = database.get(UatCycleTest, test_id)
-    assert test and test.retest_count == 1 and test.test_result == "PASS"
+    assert test and test.retest_count == 2 and test.test_result == "PASS"
     assert database.scalar(select(Notification.id).where(Notification.notification_type == "UAT_RETEST_PASS"))
-    assert len(list(database.scalars(select(UatTestAttempt).where(UatTestAttempt.cycle_test_id == test_id)))) == 2
+    assert database.scalar(select(Notification.id).where(Notification.notification_type == "UAT_TICKET_READY_FOR_CLOSURE"))
+    assert len(list(database.scalars(select(UatTestAttempt).where(UatTestAttempt.cycle_test_id == test_id)))) == 3
 
 
 def test_blocked_attempt_and_adding_tests_to_active_cycle(client: TestClient, admin_headers: dict[str, str], database: Session) -> None:
@@ -330,12 +408,44 @@ def test_signoff_requires_ready_cycle_and_separate_decision_maker(client: TestCl
     cycle_id = cycle.json()["id"]
     test_id = cycle.json()["tests"][0]["id"]
     assert client.post(f"/api/v1/uat/cycles/{cycle_id}/activate", headers=admin_headers).status_code == 200
+    cycle_row = database.get(UatCycle, cycle_id)
+    assert cycle_row
+    cycle_row.allow_client_testing = True
+    database.commit()
     request_url = f"/api/v1/uat/cycles/{cycle_id}/signoff/request"
-    assert client.post(request_url, headers=admin_headers, json={}).status_code == 409
+    not_ready = client.post(request_url, headers=admin_headers, json={})
+    assert not_ready.status_code == 409
+    assert not_ready.json()["error"]["details"]["checks"]
+    readiness = client.get(f"/api/v1/uat/cycles/{cycle_id}/signoff", headers=admin_headers)
+    assert readiness.status_code == 200, readiness.text
+    assert readiness.json()["current_summary"]["ready"] is False
+    assert next(
+        check
+        for check in readiness.json()["current_summary"]["checks"]
+        if check["code"] == "MANDATORY_TESTS"
+    )["test_ids"] == [test_id]
+    warning_codes = {
+        item["code"]
+        for item in readiness.json()["current_summary"]["configuration_warnings"]
+    }
+    assert {"PORTAL_NOT_PUBLISHED", "NO_CLIENT_TESTER", "NO_CLIENT_RESULT_ACTION"} <= warning_codes
+    cycle_row.portal_visible = True
+    cycle_row.client_access_end_at = server_now() - timedelta(days=1)
+    database.commit()
+    expired_readiness = client.get(f"/api/v1/uat/cycles/{cycle_id}/signoff", headers=admin_headers)
+    assert "PORTAL_ACCESS_EXPIRED" in {
+        item["code"]
+        for item in expired_readiness.json()["current_summary"]["configuration_warnings"]
+    }
+    cycle_row.allow_client_testing = False
+    cycle_row.portal_visible = False
+    cycle_row.client_access_end_at = None
+    database.commit()
     assert client.post(f"/api/v1/uat/cycle-tests/{test_id}/attempts", headers=admin_headers, json={"result": "PASS", "actual_result": "Accepted"}).status_code == 201
     requested = client.post(request_url, headers=admin_headers, json={"comment": "Ready for review"})
     assert requested.status_code == 201, requested.text
     assert requested.json()["summary_snapshot"]["mandatory_incomplete"] == 0
+    assert requested.json()["summary_snapshot"]["ready"] is True
     assert client.post(request_url, headers=admin_headers, json={}).status_code == 409
     assert client.post(f"/api/v1/uat/cycles/{cycle_id}/tests", headers=admin_headers, json={"test_case_ids": [case.json()["id"]]}).status_code == 409
     assert client.post(f"/api/v1/uat/cycles/{cycle_id}/signoff/approve", headers=admin_headers, json={}).status_code == 403

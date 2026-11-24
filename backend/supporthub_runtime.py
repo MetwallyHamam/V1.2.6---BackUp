@@ -23,7 +23,11 @@ def load_web_config_environment(root: Path) -> None:
     document = ElementTree.parse(config_path)
     for item in document.findall(".//environmentVariable"):
         name, value = item.get("name"), item.get("value")
-        if name and value is not None:
+        # Deployment templates intentionally keep unresolved secrets as
+        # REPLACE_* markers.  Treating those markers as real environment
+        # values masks a valid .env/host secret and fails later with a much
+        # less useful database-URL or secret validation error.
+        if name and value is not None and not value.startswith("REPLACE_"):
             os.environ.setdefault(name, value)
 
 

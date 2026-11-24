@@ -72,6 +72,12 @@ function notifyApiError(error: AxiosError) {
   // Presence is best-effort background telemetry. A transient heartbeat
   // failure must never interrupt the user's current workflow with a toast.
   if (error.config?.url?.includes("/auth/presence")) return;
+  const notificationSuppressed = (
+    error.config as
+      | (InternalAxiosRequestConfig & { suppressErrorNotification?: boolean })
+      | undefined
+  )?.suppressErrorNotification;
+  if (notificationSuppressed) return;
   const accessAware = (
     error.config as
       | (InternalAxiosRequestConfig & { suppressAccessError?: boolean })

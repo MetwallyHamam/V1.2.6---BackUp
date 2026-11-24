@@ -28,6 +28,7 @@ from app.modules.complaints.routes import router as complaints_router
 from app.modules.configuration.feature_routes import router as feature_policy_router
 from app.modules.configuration.routes import router as configuration_router
 from app.modules.contracts.routes import router as contracts_router
+from app.modules.customer_structure.routes import router as customer_structure_router
 from app.modules.customer_success.routes import router as customer_success_router
 from app.modules.dashboards.management import router as management_dashboards_router
 from app.modules.dashboards.routes import router as dashboards_router
@@ -50,12 +51,20 @@ from app.modules.internal_operations.routes import router as internal_operations
 from app.modules.knowledge_base.routes import router as knowledge_router
 from app.modules.kpis.routes import router as kpis_router
 from app.modules.local_ai.routes import router as local_ai_router
+from app.modules.maintenance.routes import router as maintenance_router
+from app.modules.maintenance.scheduler import run_maintenance_scheduler
 from app.modules.news.routes import router as news_router
 from app.modules.notifications.routes import router as notifications_router
 from app.modules.onboarding.routes import router as onboarding_router
 from app.modules.outlook_email.routes import router as outlook_email_router
 from app.modules.pre_tickets.routes import router as pre_tickets_router
 from app.modules.project_handovers.routes import router as project_handovers_router
+from app.modules.projects.analytics_routes import router as project_analytics_router
+from app.modules.projects.collaboration_routes import router as project_collaboration_router
+from app.modules.projects.execution_routes import router as project_execution_router
+from app.modules.projects.handover_routes import router as project_support_handover_router
+from app.modules.projects.routes import router as projects_router
+from app.modules.projects.template_routes import router as project_templates_router
 from app.modules.reports.client_profile import router as client_profile_reports_router
 from app.modules.reports.dynamic_routes import router as dynamic_reports_router
 from app.modules.reports.operational import router as operational_reports_router
@@ -89,6 +98,8 @@ from app.modules.uat.saved_view_routes import router as uat_saved_view_router
 from app.modules.uat.share_routes import internal_router as uat_share_router
 from app.modules.uat.share_routes import public_router as uat_public_share_router
 from app.modules.visits.routes import router as visits_router
+from app.modules.work_assignments.routes import public_router as work_assignments_public_router
+from app.modules.work_assignments.routes import router as work_assignments_router
 
 logger = logging.getLogger(__name__)
 
@@ -136,12 +147,19 @@ def create_app(settings_override: Settings | None = None) -> FastAPI:
             if settings.escalation_scheduler_enabled
             else None
         )
+        maintenance_scheduler_task = (
+            asyncio.create_task(run_maintenance_scheduler(settings, stop_event))
+            if settings.maintenance_scheduler_enabled and compatibility.compatible
+            else None
+        )
         try:
             yield
         finally:
+            stop_event.set()
             if scheduler_task:
-                stop_event.set()
                 await scheduler_task
+            if maintenance_scheduler_task:
+                await maintenance_scheduler_task
 
     app = FastAPI(title=settings.app_name, version=settings.app_version, lifespan=lifespan)
     app.add_middleware(
@@ -361,6 +379,7 @@ def create_app(settings_override: Settings | None = None) -> FastAPI:
     app.include_router(access_requests_router, prefix="/api/v1")
     app.include_router(clients_router, prefix="/api/v1")
     app.include_router(catalog_router, prefix="/api/v1")
+    app.include_router(customer_structure_router, prefix="/api/v1")
     app.include_router(tickets_router, prefix="/api/v1")
     app.include_router(local_ai_router, prefix="/api/v1")
     app.include_router(news_router, prefix="/api/v1")
@@ -393,11 +412,20 @@ def create_app(settings_override: Settings | None = None) -> FastAPI:
     app.include_router(vendor_integrations_router, prefix="/api/v1")
     app.include_router(internal_operations_router, prefix="/api/v1")
     app.include_router(project_handovers_router, prefix="/api/v1")
+    app.include_router(projects_router, prefix="/api/v1")
+    app.include_router(project_templates_router, prefix="/api/v1")
+    app.include_router(project_execution_router, prefix="/api/v1")
+    app.include_router(project_collaboration_router, prefix="/api/v1")
+    app.include_router(project_support_handover_router, prefix="/api/v1")
+    app.include_router(project_analytics_router, prefix="/api/v1")
     app.include_router(configuration_router, prefix="/api/v1")
     app.include_router(feature_policy_router, prefix="/api/v1")
     app.include_router(entitlement_approvals_router, prefix="/api/v1")
     app.include_router(manager_finance_router, prefix="/api/v1")
     app.include_router(visits_router, prefix="/api/v1")
+    app.include_router(work_assignments_router, prefix="/api/v1")
+    app.include_router(work_assignments_public_router, prefix="/api/v1")
+    app.include_router(maintenance_router, prefix="/api/v1")
     app.include_router(outlook_email_router, prefix="/api/v1")
     app.include_router(onboarding_router, prefix="/api/v1")
     app.include_router(service_checklists_router, prefix="/api/v1")

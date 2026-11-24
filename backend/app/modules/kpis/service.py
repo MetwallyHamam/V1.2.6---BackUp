@@ -21,6 +21,7 @@ from app.modules.tickets.models import (
     TicketStatusHistory,
     TicketTask,
 )
+from app.modules.work_assignments.models import WorkAssignment, WorkAssignmentAssignee
 
 JUNIOR_DEFINITIONS = [
     {"key": "product_knowledge", "name": "Knowledge of Millensys Products", "category": "Technical", "weight": .10, "source": "MANUAL"},
@@ -152,11 +153,13 @@ def calculate_metrics(db: Session, user_id: int, start: datetime, end: datetime)
     tasks = db.scalar(select(func.count(TicketTask.id)).where(TicketTask.created_by_user_id == user_id, TicketTask.created_at >= start, TicketTask.created_at <= end)) or 0
     followers = db.scalar(select(func.count(TicketFollower.ticket_id)).where(TicketFollower.user_id == user_id, TicketFollower.created_at >= start, TicketFollower.created_at <= end)) or 0
     after_shift = db.scalar(select(func.count(InternalOperation.id)).join(InternalOperationAssignee, InternalOperationAssignee.operation_id == InternalOperation.id).where(InternalOperationAssignee.user_id == user_id, InternalOperation.operation_type == "AFTER_SHIFT", InternalOperation.status == "COMPLETED", InternalOperation.ends_at >= start, InternalOperation.ends_at <= end)) or 0
+    assignment_contribution = db.scalar(select(func.coalesce(func.sum(WorkAssignmentAssignee.contribution_percent), 0)).join(WorkAssignment, WorkAssignment.id == WorkAssignmentAssignee.assignment_id).where(WorkAssignmentAssignee.user_id == user_id, WorkAssignment.status == "COMPLETED", WorkAssignment.activity_classification.in_(["EXTERNAL", "MIXED"]), WorkAssignment.kpi_source_type == "ASSIGNMENT", WorkAssignment.completed_at >= start, WorkAssignment.completed_at <= end)) or 0
     return {
         "tickets_handled": len(tickets), "resolved": resolved, "priority_points": priority_points,
         "first_response_compliance": compliance(response_clocks), "resolution_compliance": compliance(resolution_clocks),
         "reopened": reopened, "reopen_rate": round(100 * reopened / resolved, 1) if resolved else 0.0,
         "escalations": escalations, "activities": len(activities), "after_shift": after_shift,
+        "external_assignment_equivalents": round(float(assignment_contribution) / 100, 2),
         "training_delivered": sum(item.activity_type == "TRAINING" and item.participation_role in {"FACILITATOR", "PRESENTER"} for item in activities),
         "meetings": sum(item.activity_type == "MEETING" for item in activities),
         "knowledge_articles": int(articles), "tasks_created": int(tasks), "follower_assignments": int(followers),
@@ -178,7 +181,7 @@ def automatic_ratings(level: str, metrics: dict[str, Any], months: float) -> dic
         ratings.update({
             "escalation_efficiency": _rating_high(float(metrics["escalations"]), (12, 8, 4, 1)),
             "reopen_quality": _rating_low(float(metrics["reopen_rate"]), (3, 5, 8, 12)),
-            "external_activities": _rating_high(float(metrics["activities"]) + float(metrics["after_shift"]), (8, 6, 4, 2)),
+            "external_activities": _rating_high(float(metrics["activities"]) + float(metrics["after_shift"]) + float(metrics["external_assignment_equivalents"]), (8, 6, 4, 2)),
             "knowledge_share": _rating_high(float(metrics["training_delivered"]) + float(metrics["knowledge_articles"]), (6, 4, 2, 1)),
         })
     return ratings

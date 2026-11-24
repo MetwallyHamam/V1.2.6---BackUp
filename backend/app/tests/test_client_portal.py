@@ -705,10 +705,24 @@ def test_portal_client_isolation_and_safe_comments(
     assert internal_own_ticket.status_code == 201, internal_own_ticket.text
     portal_list = client.get("/api/v1/portal/tickets", headers=portal_headers)
     assert portal_list.status_code == 200, portal_list.text
+    assert portal_list.headers["x-total-count"] == "2"
     assert {item["id"] for item in portal_list.json()} == {
         own_ticket.json()["id"],
         internal_own_ticket.json()["id"],
     }
+    first_page = client.get(
+        "/api/v1/portal/tickets",
+        headers=portal_headers,
+        params={"limit": 1, "offset": 0},
+    )
+    second_page = client.get(
+        "/api/v1/portal/tickets",
+        headers=portal_headers,
+        params={"limit": 1, "offset": 1},
+    )
+    assert first_page.headers["x-total-count"] == "2"
+    assert len(first_page.json()) == len(second_page.json()) == 1
+    assert first_page.json()[0]["id"] != second_page.json()[0]["id"]
     stored_ticket = database.get(Ticket, own_ticket.json()["id"])
     assert stored_ticket is not None
     stored_ticket.created_at = datetime(2026, 8, 25, 22, 30, tzinfo=UTC)
@@ -767,6 +781,45 @@ def test_portal_client_isolation_and_safe_comments(
         headers=portal_headers,
     )
     assert guessed_attachments.status_code == 403
+    internal_attachment = client.post(
+        f"/api/v1/tickets/{own_ticket.json()['id']}/attachments",
+        headers=admin_headers,
+        files={"file": ("internal.csv", b"secret,diagnostic\n", "text/csv")},
+    )
+    assert internal_attachment.status_code == 201, internal_attachment.text
+    assert internal_attachment.json()["portal_visible"] is False
+    visible_attachments = client.get(
+        f"/api/v1/tickets/{own_ticket.json()['id']}/attachments",
+        headers=portal_headers,
+    )
+    assert visible_attachments.status_code == 200
+    assert visible_attachments.json() == []
+    hidden_download = client.get(
+        f"/api/v1/tickets/{own_ticket.json()['id']}/attachments/"
+        f"{internal_attachment.json()['id']}/download",
+        headers=portal_headers,
+    )
+    assert hidden_download.status_code == 404
+    public_attachment = client.post(
+        f"/api/v1/tickets/{own_ticket.json()['id']}/attachments",
+        headers=portal_headers,
+        files={"file": ("public.csv", b"client,evidence\n", "text/csv")},
+    )
+    assert public_attachment.status_code == 201, public_attachment.text
+    assert public_attachment.json()["portal_visible"] is True
+    visible_attachments = client.get(
+        f"/api/v1/tickets/{own_ticket.json()['id']}/attachments",
+        headers=portal_headers,
+    )
+    assert [item["id"] for item in visible_attachments.json()] == [
+        public_attachment.json()["id"]
+    ]
+    portal_timeline = client.get(
+        f"/api/v1/tickets/{own_ticket.json()['id']}/timeline",
+        headers=portal_headers,
+    )
+    assert "internal.csv" not in {item["description"] for item in portal_timeline.json()}
+    assert "public.csv" in {item["description"] for item in portal_timeline.json()}
     contracts = client.get("/api/v1/contracts", headers=portal_headers)
     assert contracts.status_code == 403
     internal = client.post(
@@ -905,6 +958,17 @@ def test_portal_catalog_uses_contract_coverage_and_exclusions(
             "calendar_id": calendar_id,
         },
     ).json()
+    portal_contract = client.get(
+        f"/api/v1/portal/contracts/{shared['id']}", headers=portal_headers
+    )
+    assert portal_contract.status_code == 200, portal_contract.text
+    assert portal_contract.json()["contract_number"] == "PORTAL-SHARED"
+    assert "linked_client_ids" not in portal_contract.json()
+    assert "approval_group_id" not in portal_contract.json()
+    internal_contract = client.get(
+        f"/api/v1/contracts/{shared['id']}", headers=portal_headers
+    )
+    assert internal_contract.status_code == 403
     shared_coverage = client.post(
         f"/api/v1/contracts/{shared['id']}/coverage",
         headers=admin_headers,

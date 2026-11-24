@@ -527,345 +527,20 @@
    'Ticketing System\\V1.2.6 - '
    'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\__init__.py',
    'PYMODULE'),
-  ('_pytest._argcomplete',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\_argcomplete.py',
-   'PYMODULE'),
-  ('_pytest._code',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\_code\\__init__.py',
-   'PYMODULE'),
-  ('_pytest._code.code',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\_code\\code.py',
-   'PYMODULE'),
-  ('_pytest._code.source',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\_code\\source.py',
-   'PYMODULE'),
-  ('_pytest._io',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\_io\\__init__.py',
-   'PYMODULE'),
-  ('_pytest._io.pprint',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\_io\\pprint.py',
-   'PYMODULE'),
-  ('_pytest._io.saferepr',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\_io\\saferepr.py',
-   'PYMODULE'),
-  ('_pytest._io.terminalwriter',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\_io\\terminalwriter.py',
-   'PYMODULE'),
-  ('_pytest._io.wcwidth',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\_io\\wcwidth.py',
-   'PYMODULE'),
-  ('_pytest._py',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\_py\\__init__.py',
-   'PYMODULE'),
-  ('_pytest._py.error',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\_py\\error.py',
-   'PYMODULE'),
-  ('_pytest._py.path',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\_py\\path.py',
-   'PYMODULE'),
   ('_pytest._version',
    'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
    'Ticketing System\\V1.2.6 - '
    'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\_version.py',
-   'PYMODULE'),
-  ('_pytest.assertion',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\assertion\\__init__.py',
-   'PYMODULE'),
-  ('_pytest.assertion.rewrite',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\assertion\\rewrite.py',
-   'PYMODULE'),
-  ('_pytest.assertion.truncate',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\assertion\\truncate.py',
-   'PYMODULE'),
-  ('_pytest.assertion.util',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\assertion\\util.py',
-   'PYMODULE'),
-  ('_pytest.cacheprovider',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\cacheprovider.py',
-   'PYMODULE'),
-  ('_pytest.capture',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\capture.py',
-   'PYMODULE'),
-  ('_pytest.compat',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\compat.py',
-   'PYMODULE'),
-  ('_pytest.config',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\config\\__init__.py',
-   'PYMODULE'),
-  ('_pytest.config.argparsing',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\config\\argparsing.py',
-   'PYMODULE'),
-  ('_pytest.config.compat',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\config\\compat.py',
-   'PYMODULE'),
-  ('_pytest.config.exceptions',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\config\\exceptions.py',
-   'PYMODULE'),
-  ('_pytest.config.findpaths',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\config\\findpaths.py',
-   'PYMODULE'),
-  ('_pytest.debugging',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\debugging.py',
-   'PYMODULE'),
-  ('_pytest.deprecated',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\deprecated.py',
-   'PYMODULE'),
-  ('_pytest.doctest',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\doctest.py',
-   'PYMODULE'),
-  ('_pytest.faulthandler',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\faulthandler.py',
-   'PYMODULE'),
-  ('_pytest.fixtures',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\fixtures.py',
-   'PYMODULE'),
-  ('_pytest.freeze_support',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\freeze_support.py',
-   'PYMODULE'),
-  ('_pytest.helpconfig',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\helpconfig.py',
-   'PYMODULE'),
-  ('_pytest.hookspec',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\hookspec.py',
-   'PYMODULE'),
-  ('_pytest.junitxml',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\junitxml.py',
-   'PYMODULE'),
-  ('_pytest.legacypath',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\legacypath.py',
-   'PYMODULE'),
-  ('_pytest.logging',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\logging.py',
-   'PYMODULE'),
-  ('_pytest.main',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\main.py',
-   'PYMODULE'),
-  ('_pytest.mark',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\mark\\__init__.py',
-   'PYMODULE'),
-  ('_pytest.mark.expression',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\mark\\expression.py',
-   'PYMODULE'),
-  ('_pytest.mark.structures',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\mark\\structures.py',
-   'PYMODULE'),
-  ('_pytest.monkeypatch',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\monkeypatch.py',
-   'PYMODULE'),
-  ('_pytest.nodes',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\nodes.py',
    'PYMODULE'),
   ('_pytest.outcomes',
    'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
    'Ticketing System\\V1.2.6 - '
    'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\outcomes.py',
    'PYMODULE'),
-  ('_pytest.pastebin',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\pastebin.py',
-   'PYMODULE'),
-  ('_pytest.pathlib',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\pathlib.py',
-   'PYMODULE'),
-  ('_pytest.pytester',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\pytester.py',
-   'PYMODULE'),
-  ('_pytest.pytester_assertions',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\pytester_assertions.py',
-   'PYMODULE'),
-  ('_pytest.python',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\python.py',
-   'PYMODULE'),
-  ('_pytest.python_api',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\python_api.py',
-   'PYMODULE'),
-  ('_pytest.raises',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\raises.py',
-   'PYMODULE'),
-  ('_pytest.recwarn',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\recwarn.py',
-   'PYMODULE'),
-  ('_pytest.reports',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\reports.py',
-   'PYMODULE'),
-  ('_pytest.runner',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\runner.py',
-   'PYMODULE'),
-  ('_pytest.scope',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\scope.py',
-   'PYMODULE'),
-  ('_pytest.setuponly',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\setuponly.py',
-   'PYMODULE'),
-  ('_pytest.setupplan',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\setupplan.py',
-   'PYMODULE'),
-  ('_pytest.skipping',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\skipping.py',
-   'PYMODULE'),
-  ('_pytest.stash',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\stash.py',
-   'PYMODULE'),
-  ('_pytest.stepwise',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\stepwise.py',
-   'PYMODULE'),
-  ('_pytest.terminal',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\terminal.py',
-   'PYMODULE'),
-  ('_pytest.threadexception',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\threadexception.py',
-   'PYMODULE'),
-  ('_pytest.timing',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\timing.py',
-   'PYMODULE'),
-  ('_pytest.tmpdir',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\tmpdir.py',
-   'PYMODULE'),
-  ('_pytest.tracemalloc',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\tracemalloc.py',
-   'PYMODULE'),
-  ('_pytest.unittest',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\unittest.py',
-   'PYMODULE'),
-  ('_pytest.unraisableexception',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\unraisableexception.py',
-   'PYMODULE'),
   ('_pytest.warning_types',
    'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
    'Ticketing System\\V1.2.6 - '
    'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\warning_types.py',
-   'PYMODULE'),
-  ('_pytest.warnings',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\_pytest\\warnings.py',
    'PYMODULE'),
   ('_sitebuiltins',
    'C:\\Program Files\\Python314\\Lib\\_sitebuiltins.py',
@@ -878,11 +553,6 @@
    'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
    'Ticketing System\\V1.2.6 - '
    'BackUp\\backend\\.venv\\Lib\\site-packages\\alembic\\__init__.py',
-   'PYMODULE'),
-  ('alembic.__main__',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\alembic\\__main__.py',
    'PYMODULE'),
   ('alembic.autogenerate',
    'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
@@ -1004,16 +674,6 @@
    'Ticketing System\\V1.2.6 - '
    'BackUp\\backend\\.venv\\Lib\\site-packages\\alembic\\ddl\\sqlite.py',
    'PYMODULE'),
-  ('alembic.environment',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\alembic\\environment.py',
-   'PYMODULE'),
-  ('alembic.migration',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\alembic\\migration.py',
-   'PYMODULE'),
   ('alembic.op',
    'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
    'Ticketing System\\V1.2.6 - '
@@ -1088,56 +748,6 @@
    'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
    'Ticketing System\\V1.2.6 - '
    'BackUp\\backend\\.venv\\Lib\\site-packages\\alembic\\script\\write_hooks.py',
-   'PYMODULE'),
-  ('alembic.testing',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\alembic\\testing\\__init__.py',
-   'PYMODULE'),
-  ('alembic.testing.assertions',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\alembic\\testing\\assertions.py',
-   'PYMODULE'),
-  ('alembic.testing.env',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\alembic\\testing\\env.py',
-   'PYMODULE'),
-  ('alembic.testing.fixtures',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\alembic\\testing\\fixtures.py',
-   'PYMODULE'),
-  ('alembic.testing.plugin',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\alembic\\testing\\plugin\\__init__.py',
-   'PYMODULE'),
-  ('alembic.testing.plugin.bootstrap',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\alembic\\testing\\plugin\\bootstrap.py',
-   'PYMODULE'),
-  ('alembic.testing.requirements',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\alembic\\testing\\requirements.py',
-   'PYMODULE'),
-  ('alembic.testing.schemacompare',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\alembic\\testing\\schemacompare.py',
-   'PYMODULE'),
-  ('alembic.testing.util',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\alembic\\testing\\util.py',
-   'PYMODULE'),
-  ('alembic.testing.warnings',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\alembic\\testing\\warnings.py',
    'PYMODULE'),
   ('alembic.util',
    'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
@@ -1889,6 +1499,36 @@
    'Ticketing System\\V1.2.6 - '
    'BackUp\\backend\\app\\modules\\local_ai\\schemas.py',
    'PYMODULE'),
+  ('app.modules.maintenance',
+   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
+   'Ticketing System\\V1.2.6 - '
+   'BackUp\\backend\\app\\modules\\maintenance\\__init__.py',
+   'PYMODULE'),
+  ('app.modules.maintenance.models',
+   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
+   'Ticketing System\\V1.2.6 - '
+   'BackUp\\backend\\app\\modules\\maintenance\\models.py',
+   'PYMODULE'),
+  ('app.modules.maintenance.routes',
+   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
+   'Ticketing System\\V1.2.6 - '
+   'BackUp\\backend\\app\\modules\\maintenance\\routes.py',
+   'PYMODULE'),
+  ('app.modules.maintenance.scheduler',
+   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
+   'Ticketing System\\V1.2.6 - '
+   'BackUp\\backend\\app\\modules\\maintenance\\scheduler.py',
+   'PYMODULE'),
+  ('app.modules.maintenance.schemas',
+   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
+   'Ticketing System\\V1.2.6 - '
+   'BackUp\\backend\\app\\modules\\maintenance\\schemas.py',
+   'PYMODULE'),
+  ('app.modules.maintenance.service',
+   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
+   'Ticketing System\\V1.2.6 - '
+   'BackUp\\backend\\app\\modules\\maintenance\\service.py',
+   'PYMODULE'),
   ('app.modules.news',
    'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
    'Ticketing System\\V1.2.6 - '
@@ -2097,6 +1737,31 @@
    'Ticketing System\\V1.2.6 - '
    'BackUp\\backend\\app\\modules\\service_checklists\\schemas.py',
    'PYMODULE'),
+  ('app.modules.service_management',
+   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
+   'Ticketing System\\V1.2.6 - '
+   'BackUp\\backend\\app\\modules\\service_management\\__init__.py',
+   'PYMODULE'),
+  ('app.modules.service_management.attachments',
+   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
+   'Ticketing System\\V1.2.6 - '
+   'BackUp\\backend\\app\\modules\\service_management\\attachments.py',
+   'PYMODULE'),
+  ('app.modules.service_management.lifecycle',
+   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
+   'Ticketing System\\V1.2.6 - '
+   'BackUp\\backend\\app\\modules\\service_management\\lifecycle.py',
+   'PYMODULE'),
+  ('app.modules.service_management.models',
+   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
+   'Ticketing System\\V1.2.6 - '
+   'BackUp\\backend\\app\\modules\\service_management\\models.py',
+   'PYMODULE'),
+  ('app.modules.service_management.routes',
+   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
+   'Ticketing System\\V1.2.6 - '
+   'BackUp\\backend\\app\\modules\\service_management\\routes.py',
+   'PYMODULE'),
   ('app.modules.shifts',
    'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
    'Ticketing System\\V1.2.6 - '
@@ -2239,6 +1904,16 @@
    'Ticketing System\\V1.2.6 - '
    'BackUp\\backend\\app\\modules\\uat\\collaboration_routes.py',
    'PYMODULE'),
+  ('app.modules.uat.deployment_routes',
+   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
+   'Ticketing System\\V1.2.6 - '
+   'BackUp\\backend\\app\\modules\\uat\\deployment_routes.py',
+   'PYMODULE'),
+  ('app.modules.uat.deployment_ticket_sync',
+   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
+   'Ticketing System\\V1.2.6 - '
+   'BackUp\\backend\\app\\modules\\uat\\deployment_ticket_sync.py',
+   'PYMODULE'),
   ('app.modules.uat.evidence',
    'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
    'Ticketing System\\V1.2.6 - BackUp\\backend\\app\\modules\\uat\\evidence.py',
@@ -2304,6 +1979,31 @@
    'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
    'Ticketing System\\V1.2.6 - '
    'BackUp\\backend\\app\\modules\\visits\\schemas.py',
+   'PYMODULE'),
+  ('app.modules.work_assignments',
+   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
+   'Ticketing System\\V1.2.6 - '
+   'BackUp\\backend\\app\\modules\\work_assignments\\__init__.py',
+   'PYMODULE'),
+  ('app.modules.work_assignments.attachments',
+   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
+   'Ticketing System\\V1.2.6 - '
+   'BackUp\\backend\\app\\modules\\work_assignments\\attachments.py',
+   'PYMODULE'),
+  ('app.modules.work_assignments.models',
+   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
+   'Ticketing System\\V1.2.6 - '
+   'BackUp\\backend\\app\\modules\\work_assignments\\models.py',
+   'PYMODULE'),
+  ('app.modules.work_assignments.routes',
+   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
+   'Ticketing System\\V1.2.6 - '
+   'BackUp\\backend\\app\\modules\\work_assignments\\routes.py',
+   'PYMODULE'),
+  ('app.modules.work_assignments.schemas',
+   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
+   'Ticketing System\\V1.2.6 - '
+   'BackUp\\backend\\app\\modules\\work_assignments\\schemas.py',
    'PYMODULE'),
   ('argon2',
    'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
@@ -2445,7 +2145,6 @@
   ('bdb', 'C:\\Program Files\\Python314\\Lib\\bdb.py', 'PYMODULE'),
   ('bisect', 'C:\\Program Files\\Python314\\Lib\\bisect.py', 'PYMODULE'),
   ('bz2', 'C:\\Program Files\\Python314\\Lib\\bz2.py', 'PYMODULE'),
-  ('cProfile', 'C:\\Program Files\\Python314\\Lib\\cProfile.py', 'PYMODULE'),
   ('calendar', 'C:\\Program Files\\Python314\\Lib\\calendar.py', 'PYMODULE'),
   ('certifi',
    'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
@@ -4922,21 +4621,6 @@
   ('importlib.util',
    'C:\\Program Files\\Python314\\Lib\\importlib\\util.py',
    'PYMODULE'),
-  ('iniconfig',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\iniconfig\\__init__.py',
-   'PYMODULE'),
-  ('iniconfig._parse',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\iniconfig\\_parse.py',
-   'PYMODULE'),
-  ('iniconfig.exceptions',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\iniconfig\\exceptions.py',
-   'PYMODULE'),
   ('inspect', 'C:\\Program Files\\Python314\\Lib\\inspect.py', 'PYMODULE'),
   ('ipaddress', 'C:\\Program Files\\Python314\\Lib\\ipaddress.py', 'PYMODULE'),
   ('json', 'C:\\Program Files\\Python314\\Lib\\json\\__init__.py', 'PYMODULE'),
@@ -5660,20 +5344,10 @@
    'Ticketing System\\V1.2.6 - '
    'BackUp\\backend\\.venv\\Lib\\site-packages\\mypy\\plugins\\__init__.py',
    'PYMODULE'),
-  ('mypy.pyinfo',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\mypy\\pyinfo.py',
-   'PYMODULE'),
   ('mypy.server',
    'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
    'Ticketing System\\V1.2.6 - '
    'BackUp\\backend\\.venv\\Lib\\site-packages\\mypy\\server\\__init__.py',
-   'PYMODULE'),
-  ('mypy.split_namespace',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\mypy\\split_namespace.py',
    'PYMODULE'),
   ('mypy.version',
    'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
@@ -6648,208 +6322,11 @@
   ('pathlib.types',
    'C:\\Program Files\\Python314\\Lib\\pathlib\\types.py',
    'PYMODULE'),
-  ('pathspec',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\pathspec\\__init__.py',
-   'PYMODULE'),
-  ('pathspec._backends',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\pathspec\\_backends\\__init__.py',
-   'PYMODULE'),
-  ('pathspec._backends._utils',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\pathspec\\_backends\\_utils.py',
-   'PYMODULE'),
-  ('pathspec._backends.agg',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\pathspec\\_backends\\agg.py',
-   'PYMODULE'),
-  ('pathspec._backends.hyperscan',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\pathspec\\_backends\\hyperscan\\__init__.py',
-   'PYMODULE'),
-  ('pathspec._backends.hyperscan._base',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\pathspec\\_backends\\hyperscan\\_base.py',
-   'PYMODULE'),
-  ('pathspec._backends.hyperscan.base',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\pathspec\\_backends\\hyperscan\\base.py',
-   'PYMODULE'),
-  ('pathspec._backends.hyperscan.gitignore',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\pathspec\\_backends\\hyperscan\\gitignore.py',
-   'PYMODULE'),
-  ('pathspec._backends.hyperscan.pathspec',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\pathspec\\_backends\\hyperscan\\pathspec.py',
-   'PYMODULE'),
-  ('pathspec._backends.re2',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\pathspec\\_backends\\re2\\__init__.py',
-   'PYMODULE'),
-  ('pathspec._backends.re2._base',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\pathspec\\_backends\\re2\\_base.py',
-   'PYMODULE'),
-  ('pathspec._backends.re2.base',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\pathspec\\_backends\\re2\\base.py',
-   'PYMODULE'),
-  ('pathspec._backends.re2.gitignore',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\pathspec\\_backends\\re2\\gitignore.py',
-   'PYMODULE'),
-  ('pathspec._backends.re2.pathspec',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\pathspec\\_backends\\re2\\pathspec.py',
-   'PYMODULE'),
-  ('pathspec._backends.simple',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\pathspec\\_backends\\simple\\__init__.py',
-   'PYMODULE'),
-  ('pathspec._backends.simple.gitignore',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\pathspec\\_backends\\simple\\gitignore.py',
-   'PYMODULE'),
-  ('pathspec._backends.simple.pathspec',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\pathspec\\_backends\\simple\\pathspec.py',
-   'PYMODULE'),
-  ('pathspec._meta',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\pathspec\\_meta.py',
-   'PYMODULE'),
-  ('pathspec._typing',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\pathspec\\_typing.py',
-   'PYMODULE'),
-  ('pathspec._version',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\pathspec\\_version.py',
-   'PYMODULE'),
-  ('pathspec.backend',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\pathspec\\backend.py',
-   'PYMODULE'),
-  ('pathspec.gitignore',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\pathspec\\gitignore.py',
-   'PYMODULE'),
-  ('pathspec.pathspec',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\pathspec\\pathspec.py',
-   'PYMODULE'),
-  ('pathspec.pattern',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\pathspec\\pattern.py',
-   'PYMODULE'),
-  ('pathspec.patterns',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\pathspec\\patterns\\__init__.py',
-   'PYMODULE'),
-  ('pathspec.patterns.gitignore',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\pathspec\\patterns\\gitignore\\__init__.py',
-   'PYMODULE'),
-  ('pathspec.patterns.gitignore.base',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\pathspec\\patterns\\gitignore\\base.py',
-   'PYMODULE'),
-  ('pathspec.patterns.gitignore.basic',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\pathspec\\patterns\\gitignore\\basic.py',
-   'PYMODULE'),
-  ('pathspec.patterns.gitignore.spec',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\pathspec\\patterns\\gitignore\\spec.py',
-   'PYMODULE'),
-  ('pathspec.patterns.gitwildmatch',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\pathspec\\patterns\\gitwildmatch.py',
-   'PYMODULE'),
-  ('pathspec.util',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\pathspec\\util.py',
-   'PYMODULE'),
   ('pdb', 'C:\\Program Files\\Python314\\Lib\\pdb.py', 'PYMODULE'),
   ('pickle', 'C:\\Program Files\\Python314\\Lib\\pickle.py', 'PYMODULE'),
   ('pkgutil', 'C:\\Program Files\\Python314\\Lib\\pkgutil.py', 'PYMODULE'),
   ('platform', 'C:\\Program Files\\Python314\\Lib\\platform.py', 'PYMODULE'),
-  ('pluggy',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\pluggy\\__init__.py',
-   'PYMODULE'),
-  ('pluggy._callers',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\pluggy\\_callers.py',
-   'PYMODULE'),
-  ('pluggy._hooks',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\pluggy\\_hooks.py',
-   'PYMODULE'),
-  ('pluggy._manager',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\pluggy\\_manager.py',
-   'PYMODULE'),
-  ('pluggy._result',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\pluggy\\_result.py',
-   'PYMODULE'),
-  ('pluggy._tracing',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\pluggy\\_tracing.py',
-   'PYMODULE'),
-  ('pluggy._version',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\pluggy\\_version.py',
-   'PYMODULE'),
-  ('pluggy._warnings',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\pluggy\\_warnings.py',
-   'PYMODULE'),
   ('pprint', 'C:\\Program Files\\Python314\\Lib\\pprint.py', 'PYMODULE'),
-  ('profile', 'C:\\Program Files\\Python314\\Lib\\profile.py', 'PYMODULE'),
-  ('pstats', 'C:\\Program Files\\Python314\\Lib\\pstats.py', 'PYMODULE'),
   ('pty', 'C:\\Program Files\\Python314\\Lib\\pty.py', 'PYMODULE'),
   ('pwdlib',
    'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
@@ -6880,11 +6357,6 @@
    'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
    'Ticketing System\\V1.2.6 - '
    'BackUp\\backend\\.venv\\Lib\\site-packages\\pwdlib\\hashers\\base.py',
-   'PYMODULE'),
-  ('py',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\py.py',
    'PYMODULE'),
   ('py_compile',
    'C:\\Program Files\\Python314\\Lib\\py_compile.py',
@@ -9224,21 +8696,6 @@
    'Ticketing System\\V1.2.6 - '
    'BackUp\\backend\\.venv\\Lib\\site-packages\\pygments\\util.py',
    'PYMODULE'),
-  ('pymssql',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\pymssql\\__init__.py',
-   'PYMODULE'),
-  ('pymssql.exceptions',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\pymssql\\exceptions.py',
-   'PYMODULE'),
-  ('pytest',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\pytest\\__init__.py',
-   'PYMODULE'),
   ('python_multipart',
    'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
    'Ticketing System\\V1.2.6 - '
@@ -11391,16 +10848,6 @@
    'Ticketing System\\V1.2.6 - '
    'BackUp\\backend\\.venv\\Lib\\site-packages\\sqlalchemy\\ext\\compiler.py',
    'PYMODULE'),
-  ('sqlalchemy.ext.mypy',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\sqlalchemy\\ext\\mypy\\__init__.py',
-   'PYMODULE'),
-  ('sqlalchemy.ext.mypy.util',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\sqlalchemy\\ext\\mypy\\util.py',
-   'PYMODULE'),
   ('sqlalchemy.future',
    'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
    'Ticketing System\\V1.2.6 - '
@@ -11790,111 +11237,6 @@
    'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
    'Ticketing System\\V1.2.6 - '
    'BackUp\\backend\\.venv\\Lib\\site-packages\\sqlalchemy\\sql\\visitors.py',
-   'PYMODULE'),
-  ('sqlalchemy.testing',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\sqlalchemy\\testing\\__init__.py',
-   'PYMODULE'),
-  ('sqlalchemy.testing.assertions',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\sqlalchemy\\testing\\assertions.py',
-   'PYMODULE'),
-  ('sqlalchemy.testing.assertsql',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\sqlalchemy\\testing\\assertsql.py',
-   'PYMODULE'),
-  ('sqlalchemy.testing.asyncio',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\sqlalchemy\\testing\\asyncio.py',
-   'PYMODULE'),
-  ('sqlalchemy.testing.config',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\sqlalchemy\\testing\\config.py',
-   'PYMODULE'),
-  ('sqlalchemy.testing.engines',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\sqlalchemy\\testing\\engines.py',
-   'PYMODULE'),
-  ('sqlalchemy.testing.entities',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\sqlalchemy\\testing\\entities.py',
-   'PYMODULE'),
-  ('sqlalchemy.testing.exclusions',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\sqlalchemy\\testing\\exclusions.py',
-   'PYMODULE'),
-  ('sqlalchemy.testing.fixtures',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\sqlalchemy\\testing\\fixtures\\__init__.py',
-   'PYMODULE'),
-  ('sqlalchemy.testing.fixtures.base',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\sqlalchemy\\testing\\fixtures\\base.py',
-   'PYMODULE'),
-  ('sqlalchemy.testing.fixtures.mypy',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\sqlalchemy\\testing\\fixtures\\mypy.py',
-   'PYMODULE'),
-  ('sqlalchemy.testing.fixtures.orm',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\sqlalchemy\\testing\\fixtures\\orm.py',
-   'PYMODULE'),
-  ('sqlalchemy.testing.fixtures.sql',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\sqlalchemy\\testing\\fixtures\\sql.py',
-   'PYMODULE'),
-  ('sqlalchemy.testing.plugin',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\sqlalchemy\\testing\\plugin\\__init__.py',
-   'PYMODULE'),
-  ('sqlalchemy.testing.plugin.plugin_base',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\sqlalchemy\\testing\\plugin\\plugin_base.py',
-   'PYMODULE'),
-  ('sqlalchemy.testing.profiling',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\sqlalchemy\\testing\\profiling.py',
-   'PYMODULE'),
-  ('sqlalchemy.testing.provision',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\sqlalchemy\\testing\\provision.py',
-   'PYMODULE'),
-  ('sqlalchemy.testing.requirements',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\sqlalchemy\\testing\\requirements.py',
-   'PYMODULE'),
-  ('sqlalchemy.testing.schema',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\sqlalchemy\\testing\\schema.py',
-   'PYMODULE'),
-  ('sqlalchemy.testing.util',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\sqlalchemy\\testing\\util.py',
-   'PYMODULE'),
-  ('sqlalchemy.testing.warnings',
-   'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '
-   'Ticketing System\\V1.2.6 - '
-   'BackUp\\backend\\.venv\\Lib\\site-packages\\sqlalchemy\\testing\\warnings.py',
    'PYMODULE'),
   ('sqlalchemy.types',
    'D:\\Metwally\\Developing tools\\Support Operations Systems\\Web CRM & '

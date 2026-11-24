@@ -35,3 +35,17 @@ test("manual logout sends the next account to its own default page", () => {
     ),
   ).toBe("/dashboard");
 });
+
+test("client portal login never restores an employee page", () => {
+  expect(
+    loginDestination(
+      {
+        require_password_change: false,
+        default_page: "dashboard",
+        user_type: "CLIENT_PORTAL",
+      },
+      { from: { pathname: "/system", search: "?tab=general" } },
+      "/tickets/42",
+    ),
+  ).toBe("/portal");
+});

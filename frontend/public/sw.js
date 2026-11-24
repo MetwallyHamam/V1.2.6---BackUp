@@ -1,6 +1,7 @@
-const CACHE = "support-assistant-shell-v1";
+const CACHE = "support-assistant-shell-v3";
 const BASE = "/SupportHub/";
-const SHELL = [BASE, `${BASE}support-workspace`, `${BASE}manifest.webmanifest`, `${BASE}support-hub-login.webp`];
+const ASSISTANT = `${BASE}support-assistant-app`;
+const SHELL = [ASSISTANT, `${BASE}manifest.webmanifest`, `${BASE}support-hub-login.webp`];
 
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting()));
@@ -16,11 +17,12 @@ self.addEventListener("fetch", event => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin || url.pathname.includes("/backend/api/")) return;
   if (request.mode === "navigate") {
+    if (!url.pathname.startsWith(ASSISTANT)) return;
     event.respondWith(fetch(request).then(response => {
       const copy = response.clone();
       void caches.open(CACHE).then(cache => cache.put(request, copy));
       return response;
-    }).catch(() => caches.match(request).then(cached => cached || caches.match(`${BASE}support-workspace`)).then(response => response || Response.error())));
+    }).catch(() => caches.match(request).then(cached => cached || caches.match(ASSISTANT)).then(response => response || Response.error())));
     return;
   }
   event.respondWith(caches.match(request).then(cached => cached || fetch(request).then(response => {

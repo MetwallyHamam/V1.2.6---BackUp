@@ -239,6 +239,27 @@ class UatTestAttempt(Base):
     comment: Mapped[str | None] = mapped_column(UnicodeText)
 
 
+class UatDefectLink(Base):
+    __tablename__ = "uat_defect_links"
+    __table_args__ = (
+        UniqueConstraint("ticket_id"),
+        UniqueConstraint("cycle_test_id"),
+        Index("ix_uat_defect_links_cycle_release", "cycle_code", "release_version"),
+        Index("ix_uat_defect_links_test_code", "test_code"),
+    )
+
+    id: Mapped[int] = mapped_column(IdType, primary_key=True, autoincrement=True)
+    ticket_id: Mapped[int] = mapped_column(IdType, ForeignKey("tickets.id", ondelete="CASCADE"))
+    cycle_id: Mapped[int] = mapped_column(IdType, ForeignKey("uat_cycles.id"))
+    cycle_test_id: Mapped[int] = mapped_column(IdType, ForeignKey("uat_cycle_tests.id"))
+    attempt_id: Mapped[int | None] = mapped_column(IdType, ForeignKey("uat_test_attempts.id", ondelete="SET NULL"))
+    cycle_code: Mapped[str] = mapped_column(String(80))
+    test_code: Mapped[str | None] = mapped_column(String(80))
+    release_version: Mapped[str] = mapped_column(String(100))
+    created_by_user_id: Mapped[int | None] = mapped_column(IdType, ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
+
+
 class UatSignoff(Base):
     __tablename__ = "uat_signoffs"
     __table_args__ = (

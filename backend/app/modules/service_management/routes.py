@@ -73,8 +73,29 @@ from app.modules.tickets.models import (
     TicketType,
 )
 from app.modules.tickets.service import visible_ticket_query
+from app.modules.tickets.workflow import allowed_transition_codes, authorize_transition_actor
 
 router = APIRouter(tags=["service management"])
+
+
+def _incident_overview_actions(
+    row: Ticket, current_code: str, *, portal: bool, permissions: set[str], actor_id: int
+) -> tuple[bool, bool]:
+    if portal:
+        return False, False
+    targets = allowed_transition_codes(current_code, permissions)
+    can_resolve = "RESOLVED" in targets
+    if can_resolve:
+        try:
+            authorize_transition_actor(
+                target_code="RESOLVED",
+                assigned_user_id=row.assigned_user_id,
+                actor_user_id=actor_id,
+                permissions=permissions,
+            )
+        except ConflictError:
+            can_resolve = False
+    return "IN_PROGRESS" in targets, can_resolve
 
 
 CHANGE_PARENT_TICKET_STATUS = {
@@ -513,10 +534,35 @@ def service_management_dashboard_cards(
         if not portal and permission and permission not in access.permissions:
             continue
         statement = tickets.where(Ticket.ticket_type_id.in_(select(TicketType.id).where(TicketType.code == code)))
+        if key == "incidents":
+            statement = statement.where(
+                Ticket.status_id.in_(
+                    select(TicketStatus.id).where(
+                        TicketStatus.code.not_in({"RESOLVED", "CLOSED", "CANCELLED"})
+                    )
+                )
+            )
         count = db.scalar(select(func.count()).select_from(statement.subquery())) or 0
         ticket_records = list(db.scalars(statement.order_by(Ticket.created_at.desc()).limit(100)))
+        statuses = {
+            item.id: item.code
+            for item in db.scalars(
+                select(TicketStatus).where(
+                    TicketStatus.id.in_({row.status_id for row in ticket_records})
+                )
+            )
+        } if ticket_records else {}
+        actions = {
+            row.id: _incident_overview_actions(
+                row, statuses.get(row.status_id, ""), portal=portal,
+                permissions=set(access.permissions), actor_id=actor.id,
+            ) if key == "incidents" else (False, False)
+            for row in ticket_records
+        }
         result[key] = {"count": count, "records": [
             {"id": row.id, "number": row.ticket_number, "title": row.subject,
+             "status_code": statuses.get(row.status_id), "version": row.version,
+             "can_acknowledge": actions[row.id][0], "can_resolve": actions[row.id][1],
              "route": f"/portal/tickets/{row.id}" if portal else
              f"/tickets/{row.id}/change-request" if key == "changes" else f"/tickets/{row.id}"}
             for row in ticket_records

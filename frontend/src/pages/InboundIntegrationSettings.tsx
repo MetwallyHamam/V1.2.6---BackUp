@@ -509,13 +509,17 @@ export function InboundIntegrationSettings() {
             e.preventDefault();
             const f = new FormData(e.currentTarget),
               name = String(f.get("name")).trim();
-            if (name)
-              createKey.mutate({
+            if (name) {
+              const values: Record<string, string> = {
                 name,
                 auth_type: authType,
-                username: String(f.get("username") ?? ""),
-                password: String(f.get("password") ?? ""),
-              });
+              };
+              if (authType === "BASIC") {
+                values.username = String(f.get("username") ?? "");
+                values.password = String(f.get("password") ?? "");
+              }
+              createKey.mutate(values);
+            }
           }}
         >
           <TextField required name="name" label="Credential name" fullWidth />
@@ -548,6 +552,14 @@ export function InboundIntegrationSettings() {
         {newKey && (
           <Alert severity="warning" sx={{ wordBreak: "break-all" }}>
             Copy now: <span dir="ltr">{newKey}</span>
+          </Alert>
+        )}
+        {createKey.isError && (
+          <Alert severity="error">
+            {axios.isAxiosError(createKey.error)
+              ? createKey.error.response?.data?.error?.message ??
+                "Credential could not be created."
+              : "Credential could not be created."}
           </Alert>
         )}
         <Stack spacing={1} mt={1}>

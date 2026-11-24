@@ -27,13 +27,16 @@ class ImportErrorRead(BaseModel):
 
 class ImportConfirm(BaseModel):
     reason: str = Field(min_length=5, max_length=500)
+    skip_invalid_rows: bool = False
     create_missing_clients: bool = False
     create_missing_engineers: bool = False
     create_missing_callers: bool = False
 
 
 class ItopImportPreview(BaseModel):
+    total_rows: int
     rows: int
+    invalid_rows: int
     missing_clients: list[str]
     missing_engineers: list[str]
     missing_callers: list[str]

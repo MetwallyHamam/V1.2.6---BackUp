@@ -77,9 +77,11 @@ def itop_preview(job_id: int, db: Session = Depends(get_db), _: User = Depends(r
     job = db.get(ImportJob, job_id)
     if not job or job.template_type != "ITOP_TICKETS":
         raise NotFoundError()
-    records = [json.loads(row.normalized_json) for row in db.scalars(select(ImportRow).where(ImportRow.import_job_id == job.id))]
+    records = [json.loads(row.normalized_json) for row in db.scalars(select(ImportRow).where(ImportRow.import_job_id == job.id, ImportRow.is_valid.in_([True])))]
     return ItopImportPreview(
+        total_rows=job.total_rows,
         rows=len(records),
+        invalid_rows=job.invalid_rows,
         missing_clients=sorted({row["_ClientName"] for row in records if row.get("_ClientName") and not row.get("ClientCode")}),
         missing_engineers=sorted({row["_EngineerName"] for row in records if row.get("_EngineerName") and not row.get("AssignedUsername")}),
         missing_callers=sorted({f'{row["_CallerName"]} · {row["_ClientName"]}' for row in records if row.get("_CallerName") and not row.get("_RequesterContactId")}),
@@ -107,8 +109,12 @@ def confirm(job_id: int, data: ImportConfirm, background_tasks: BackgroundTasks,
     job = db.get(ImportJob, job_id)
     if not job:
         raise NotFoundError()
-    if job.status != "READY_FOR_CONFIRMATION":
-        raise ConflictError("IMPORT_NOT_READY", "Import job is not ready for confirmation.")
+    partial = job.status == "VALIDATION_FAILED" and data.skip_invalid_rows and job.valid_rows > 0
+    if job.status != "READY_FOR_CONFIRMATION" and not partial:
+        raise ConflictError(
+            "IMPORT_NOT_READY",
+            "Correct the invalid rows, or explicitly choose to skip them when valid rows remain.",
+        )
     job.status = "IMPORTING"
     job.confirmation_reason = data.reason
     db.commit()
@@ -120,5 +126,6 @@ def confirm(job_id: int, data: ImportConfirm, background_tasks: BackgroundTasks,
         "create_missing_clients": data.create_missing_clients,
         "create_missing_engineers": data.create_missing_engineers,
         "create_missing_callers": data.create_missing_callers,
+        "skip_invalid_rows": data.skip_invalid_rows,
     })
     return job

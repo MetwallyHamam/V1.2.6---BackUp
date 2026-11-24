@@ -109,6 +109,24 @@ class ApiTicketResult(BaseModel):
     duplicate: bool
 
 
+class ApiTicketStatusUpdate(BaseModel):
+    event_id: str = Field(min_length=1, max_length=120)
+    status_code: str = Field(min_length=2, max_length=30, pattern=r"^[A-Z][A-Z0-9_]*$")
+    reason: str | None = Field(default=None, max_length=500)
+    resolution_summary: str | None = Field(default=None, min_length=5, max_length=10000)
+    root_cause_summary: str | None = Field(default=None, min_length=5, max_length=10000)
+
+
+class ApiTicketStatusResult(BaseModel):
+    event_id: str | None = None
+    ticket_id: int
+    ticket_number: str
+    status_code: str
+    version: int
+    resolution_summary: str | None = None
+    duplicate: bool = False
+
+
 class InboundFieldConfiguration(BaseModel):
     enabled: bool = True
     required: bool = False

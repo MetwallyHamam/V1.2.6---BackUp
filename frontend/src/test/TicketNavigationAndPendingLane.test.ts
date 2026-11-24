@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { ticketStatusLaneId } from "../pages/TicketsPage";
+import {
+  DEFAULT_STATUS_LANE_CODES,
+  PENDING_BOARD_LANE_KEY,
+  defaultStatusLaneRank,
+  ticketStatusLaneId,
+} from "../pages/TicketsPage";
 import { resolveTicketsNavigationPath } from "../utils/ticketNavigation";
 
 describe("Tickets navigation date filter", () => {
@@ -18,26 +23,52 @@ describe("Tickets navigation date filter", () => {
 
 describe("ticket status board lane", () => {
   const statuses = [
+    { id: 1, code: "ASSIGNED" },
     { id: 2, code: "IN_PROGRESS" },
     { id: 3, code: "PENDING_CLIENT" },
     { id: 4, code: "PENDING_INTERNAL" },
   ];
 
-  it("keeps client-pending work in its pending lane after progress started", () => {
+  it("groups client-pending work in the unified pending lane", () => {
     expect(
       ticketStatusLaneId(
         { status_id: 3, progress_started_at: "2026-10-23T10:00:00Z" },
         statuses,
       ),
-    ).toBe(3);
+    ).toBe(PENDING_BOARD_LANE_KEY);
   });
 
-  it("keeps internal-pending work in its pending lane after progress started", () => {
+  it("groups internal-pending work in the unified pending lane", () => {
     expect(
       ticketStatusLaneId(
         { status_id: 4, progress_started_at: "2026-10-23T10:00:00Z" },
         statuses,
       ),
-    ).toBe(4);
+    ).toBe(PENDING_BOARD_LANE_KEY);
+  });
+
+  it("keeps an assigned ticket in Assigned even when it was started before", () => {
+    expect(
+      ticketStatusLaneId(
+        { status_id: 1, progress_started_at: "2026-10-23T10:00:00Z" },
+        statuses,
+      ),
+    ).toBe(1);
+  });
+});
+
+describe("default ticket lane order", () => {
+  it("uses the requested operational lane sequence", () => {
+    expect(DEFAULT_STATUS_LANE_CODES).toEqual([
+      "NEW",
+      "ASSIGNED",
+      "IN_PROGRESS",
+      "RESOLVED",
+      "CLOSED",
+      "PENDING",
+    ]);
+    expect(defaultStatusLaneRank("PENDING")).toBeGreaterThan(
+      defaultStatusLaneRank("CLOSED"),
+    );
   });
 });

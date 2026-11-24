@@ -1,76 +1,87 @@
 import { ArrowBack } from '@mui/icons-material'
-import { Breadcrumbs, Button, Paper, Stack, Tab, Tabs, Typography } from '@mui/material'
+import { Button, Paper, Stack, Typography } from '@mui/material'
 import { useEffect, useState } from 'react'
-import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 
-type ContextLink = { label: string; path: string; selected: boolean }
-type OpenedPage = { label: string; path: string }
+type VisitedPage = { label: string; path: string }
 
-const openedPagesKey = 'support-hub-opened-page-tabs-v2'
-const maximumOpenedPages = 8
+const recentPagesKey = 'support-hub-recent-pages-v1'
+const maximumRecentPages = 6
 
-function savedOpenedPages(): OpenedPage[] {
+function readRecentPages(): VisitedPage[] {
   try {
-    const value = JSON.parse(window.sessionStorage.getItem(openedPagesKey) ?? '[]')
+    const value = JSON.parse(window.sessionStorage.getItem(recentPagesKey) ?? '[]')
     if (!Array.isArray(value)) return []
-    const unique = new Map<string, OpenedPage>()
-    value
-      .filter((item): item is OpenedPage => Boolean(item?.label && item?.path))
-      .forEach(item => unique.set(item.label.trim().toLocaleLowerCase(), item))
-    return [...unique.values()].slice(-maximumOpenedPages)
+    return value.filter((page): page is VisitedPage => Boolean(page?.label && page?.path))
   } catch {
     return []
   }
 }
 
-export function PageContextHeader({ area, homeLabel, title, links }: { area: string; homeLabel: string; title: string; links: ContextLink[] }) {
+export function PageContextHeader({ homeLabel, title }: { homeLabel: string; title: string }) {
   const navigate = useNavigate()
   const location = useLocation()
   const currentPath = `${location.pathname}${location.search}`
-  const [openedPages, setOpenedPages] = useState<OpenedPage[]>(savedOpenedPages)
-  const back = () => window.history.length > 1 ? navigate(-1) : navigate(location.pathname.startsWith('/portal') ? '/portal' : '/home')
+  const [recentPages, setRecentPages] = useState<VisitedPage[]>(readRecentPages)
+
   useEffect(() => {
-    setOpenedPages(current => {
-      const labelKey = title.trim().toLocaleLowerCase()
-      const homeKey = homeLabel.trim().toLocaleLowerCase()
-      const unique = new Map<string, OpenedPage>()
-      current.forEach(item => {
-        const itemKey = item.label.trim().toLocaleLowerCase()
-        if (itemKey !== homeKey) unique.set(itemKey, item)
-      })
-      if (labelKey !== homeKey) unique.set(labelKey, { label: title, path: currentPath })
-      const next = [...unique.values()].slice(-maximumOpenedPages)
-      window.sessionStorage.setItem(openedPagesKey, JSON.stringify(next))
+    setRecentPages(current => {
+      const withoutCurrent = current.filter(
+        page => page.path !== currentPath && page.label !== title,
+      )
+      const next = [...withoutCurrent, { label: title, path: currentPath }].slice(-maximumRecentPages)
+      window.sessionStorage.setItem(recentPagesKey, JSON.stringify(next))
       return next
     })
-  }, [currentPath, homeLabel, title])
-  const visibleOpenedPages = [...new Map(
-    openedPages
-      .filter(page => page.label.trim().toLocaleLowerCase() !== homeLabel.trim().toLocaleLowerCase())
-      .map(page => [page.label.trim().toLocaleLowerCase(), page] as const),
-  ).values()].slice(-maximumOpenedPages)
+  }, [currentPath, title])
+
+  const visitedPages = recentPages
+    .filter(page => page.path !== currentPath && page.label !== title)
+    .filter(
+      (page, index, pages) =>
+        pages.findIndex(candidate => candidate.label === page.label) === index,
+    )
+    .slice(-5)
+    .reverse()
+  const previousPage = visitedPages[0] ?? null
+  const previousLabel = previousPage?.label ?? homeLabel
+  const goBack = () => {
+    if (previousPage) navigate(previousPage.path)
+    else if (window.history.length > 1) navigate(-1)
+    else navigate(location.pathname.startsWith('/portal') ? '/portal' : '/home')
+  }
+
   return <Paper component="header" variant="outlined" sx={{ px: { xs: 1, sm: 1.5 }, py: .75, mb: 1 }}>
-    <Stack direction="row" alignItems="center" gap={1}>
-      <Button size="small" color="inherit" startIcon={<ArrowBack />} onClick={back} sx={{ minWidth: 0 }}>{homeLabel}</Button>
-      <Breadcrumbs aria-label="Breadcrumb" sx={{ flex: 1 }}>
-      <Typography component={RouterLink} to="/" color="inherit" sx={{ textDecoration: 'none' }}>{homeLabel}</Typography>
-      <Typography color="text.primary">{title}</Typography>
-      </Breadcrumbs>
-      <Typography variant="subtitle1" fontWeight={800} sx={{ display: { xs: 'none', md: 'block' } }}>{title}</Typography>
+    <Stack direction="row" alignItems="center" gap={.75} minHeight={36}>
+      <Button
+        size="small"
+        color="inherit"
+        startIcon={<ArrowBack />}
+        onClick={goBack}
+        sx={{ minWidth: 0, textTransform: 'none', fontWeight: 700 }}
+      >
+        {previousLabel}
+      </Button>
+      <Typography color="text.secondary" aria-hidden>/</Typography>
+      <Typography color="text.primary" fontWeight={700} noWrap>{title}</Typography>
+      {visitedPages.length > 0 && <Stack
+        component="nav"
+        aria-label="Recently visited pages"
+        direction="row"
+        gap={.25}
+        alignItems="center"
+        sx={{ marginInlineStart: 'auto', overflowX: 'auto', minWidth: 0 }}
+      >
+        {visitedPages.map(page => <Button
+          key={page.path}
+          size="small"
+          color="inherit"
+          onClick={() => navigate(page.path)}
+          sx={{ flexShrink: 0, minWidth: 0, px: 1, textTransform: 'none', color: 'text.secondary' }}
+        >
+          {page.label}
+        </Button>)}
+      </Stack>}
     </Stack>
-    {visibleOpenedPages.length > 1 && <Tabs
-      value={visibleOpenedPages.some(item => item.path === currentPath) ? currentPath : false}
-      onChange={(_, path: string) => navigate(path)}
-      variant="scrollable"
-      scrollButtons="auto"
-      allowScrollButtonsMobile
-      aria-label="Previously opened pages"
-      sx={{ mt: .5, minHeight: 34, borderTop: 1, borderColor: 'divider', '& .MuiTab-root': { minHeight: 34, py: .5, px: 1.5, textTransform: 'none' } }}
-    >
-      {visibleOpenedPages.map(page => <Tab key={page.label.trim().toLocaleLowerCase()} value={page.path} label={page.label} />)}
-    </Tabs>}
-    {links.length > 1 && <Stack component="nav" aria-label={`${area} navigation`} direction="row" gap={.5} mt={.5} sx={{ overflowX: 'auto' }}>
-      {links.map(link => <Button key={link.path} component={RouterLink} to={link.path} size="small" variant={link.selected ? 'contained' : 'text'} sx={{ flexShrink: 0, textTransform: 'none' }}>{link.label}</Button>)}
-    </Stack>}
   </Paper>
 }

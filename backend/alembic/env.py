@@ -16,17 +16,20 @@ from app.modules.imports import models as import_models  # noqa: F401
 from app.modules.integrations import models as integration_models  # noqa: F401
 from app.modules.internal_operations import models as internal_operation_models  # noqa: F401
 from app.modules.knowledge_base import models as knowledge_models  # noqa: F401
+from app.modules.maintenance import models as maintenance_models  # noqa: F401
 from app.modules.news import models as news_models  # noqa: F401
 from app.modules.notifications import models as notification_models  # noqa: F401
 from app.modules.outlook_email import models as outlook_email_models  # noqa: F401
 from app.modules.pre_tickets import models as pre_ticket_models  # noqa: F401
 from app.modules.project_handovers import models as project_handover_models  # noqa: F401
+from app.modules.projects import models as project_models  # noqa: F401
 from app.modules.service_checklists import models as service_checklist_models  # noqa: F401
 from app.modules.service_management import models as service_management_models  # noqa: F401
 from app.modules.shifts import models as shift_models  # noqa: F401
 from app.modules.tickets import models as ticket_models  # noqa: F401
 from app.modules.uat import models as uat_models  # noqa: F401
 from app.modules.visits import models as visit_models  # noqa: F401
+from app.modules.work_assignments import models as work_assignment_models  # noqa: F401
 
 config = context.config
 if config.config_file_name:

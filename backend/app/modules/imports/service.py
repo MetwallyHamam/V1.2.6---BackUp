@@ -787,9 +787,15 @@ def commit_import(
     create_missing_clients: bool = False,
     create_missing_engineers: bool = False,
     create_missing_callers: bool = False,
+    skip_invalid_rows: bool = False,
 ) -> ImportJob:
     if job.status not in {"READY_FOR_CONFIRMATION", "IMPORTING"}:
-        raise ConflictError("IMPORT_NOT_READY", "Only a fully valid import can be confirmed.")
+        raise ConflictError("IMPORT_NOT_READY", "The import is not ready for confirmation.")
+    if job.invalid_rows and not skip_invalid_rows:
+        raise ConflictError(
+            "IMPORT_INVALID_ROWS_NOT_ACKNOWLEDGED",
+            "Invalid rows must be corrected or explicitly skipped.",
+        )
     rows = list(db.scalars(select(ImportRow).where(ImportRow.import_job_id == job.id, ImportRow.is_valid.in_([True])).order_by(ImportRow.row_number)))
     clients_by_code = {item.code: item for item in db.scalars(select(Client))} if job.template_type == "TICKETS" else {}
     users_by_username = {item.username_normalized: item for item in db.scalars(select(User))} if job.template_type == "TICKETS" else {}
@@ -993,7 +999,7 @@ def commit_import(
                     db.add(HandoverRecipient(handover_id=handover.id, user_id=recipient.id))
             else:
                 raise ConflictError("IMPORT_TYPE_INVALID", "Import template is not supported.")
-        job.status = "COMPLETED"
+        job.status = "COMPLETED_WITH_SKIPS" if job.invalid_rows else "COMPLETED"
         job.inserted_rows = inserted_rows if job.template_type == "ITOP_TICKETS" else len(rows)
         job.confirmation_reason = reason
         job.completed_at = server_now()

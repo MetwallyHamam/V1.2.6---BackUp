@@ -600,6 +600,7 @@ class TicketAttachment(Base):
     sha256: Mapped[str] = mapped_column(String(64))
     operation_key: Mapped[str | None] = mapped_column(String(200))
     scan_status: Mapped[str] = mapped_column(String(30), default="NOT_SCANNED")
+    portal_visible: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now)
     ticket: Mapped[Ticket] = relationship(back_populates="attachments")
 

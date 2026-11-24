@@ -19,8 +19,9 @@ from app.core.exceptions import (
     NotFoundError,
 )
 from app.db.session import get_db
-from app.modules.clients.models import Client
+from app.modules.clients.models import Client, Contact
 from app.modules.configuration.models import SiteSetting
+from app.modules.contracts.models import TicketSlaClock, TicketSlaInterval
 from app.modules.iam.models import AuditLog, User
 from app.modules.iam.security import hash_password, verify_password
 from app.modules.iam.service import effective_permissions, normalize
@@ -35,6 +36,8 @@ from app.modules.integrations.schemas import (
     ApiClientRead,
     ApiTicketCreate,
     ApiTicketResult,
+    ApiTicketStatusResult,
+    ApiTicketStatusUpdate,
     InboundClientResult,
     InboundEmailEvent,
     InboundEmailResult,
@@ -51,9 +54,16 @@ from app.modules.integrations.schemas import (
 )
 from app.modules.notifications.models import Notification
 from app.modules.pre_tickets.models import EngineerPreTicket
-from app.modules.tickets.models import Ticket, TicketComment, TicketStatus, TicketType
-from app.modules.tickets.schemas import TicketCreate
-from app.modules.tickets.service import create_ticket
+from app.modules.tickets.models import (
+    Ticket,
+    TicketComment,
+    TicketFlag,
+    TicketFlagAssignment,
+    TicketStatus,
+    TicketType,
+)
+from app.modules.tickets.schemas import TicketCreate, TicketTransition
+from app.modules.tickets.service import create_ticket, transition_ticket
 
 router = APIRouter(prefix="/integrations", tags=["integrations"])
 INBOUND_SETTINGS_KEY = "inbound_pre_ticket_configuration"
@@ -935,6 +945,90 @@ def revoke_api_client(
     return Response(status_code=204)
 
 
+def _monitoring_contact(db: Session, client_id: int) -> Contact:
+    contact = db.scalar(
+        select(Contact).where(
+            Contact.client_id == client_id,
+            func.lower(Contact.full_name) == "mimonitoringservice",
+        )
+    )
+    if contact is None:
+        contact = Contact(
+            code=f"MIMONITORING_{client_id}",
+            client_id=client_id,
+            full_name="MiMonitoringService",
+            email=f"mimonitoringservice+{client_id}@local.invalid",
+            job_title="Monitoring integration",
+            contact_role="SYSTEM",
+            is_active=True,
+        )
+        db.add(contact)
+        db.flush()
+    return contact
+
+
+def _apply_system_maintenance_flag(
+    db: Session, ticket: Ticket, actor: User
+) -> None:
+    flag = db.scalar(
+        select(TicketFlag).where(
+            or_(
+                TicketFlag.code == "SYSTEM_MAINTENANCE",
+                func.lower(TicketFlag.name) == "system maintenance",
+            )
+        )
+    )
+    if flag is None:
+        flag = TicketFlag(
+            code="SYSTEM_MAINTENANCE",
+            name="System Maintenance",
+            description="Monitoring-detected system maintenance; resolution SLA is paused.",
+            color="#ED6C02",
+            pauses_sla=True,
+            is_active=True,
+            sort_order=10,
+        )
+        db.add(flag)
+        db.flush()
+    else:
+        flag.pauses_sla = True
+        flag.is_active = True
+
+    clock = db.scalar(
+        select(TicketSlaClock).where(
+            TicketSlaClock.ticket_id == ticket.id,
+            TicketSlaClock.clock_type == "RESOLUTION",
+        )
+    )
+    interval = None
+    if clock is not None:
+        interval = TicketSlaInterval(
+            ticket_id=ticket.id,
+            interval_type="FLAG_PAUSE",
+            responsible_party="AUTHORIZED_EXCLUSION",
+            comment="Automatically paused for MiMonitoringService system maintenance.",
+            started_at=server_now(),
+            created_by_user_id=actor.id,
+        )
+        db.add(interval)
+        db.flush()
+        clock.state = "PAUSED"
+
+    db.add(
+        TicketFlagAssignment(
+            ticket_id=ticket.id,
+            flag_id=flag.id,
+            interval_id=interval.id if interval else None,
+            flag_code_snapshot=flag.code,
+            flag_name_snapshot=flag.name,
+            flag_color_snapshot=flag.color,
+            pauses_sla_snapshot=True,
+            apply_reason="Applied automatically by MiMonitoringService.",
+            applied_by_user_id=actor.id,
+        )
+    )
+
+
 @router.post("/api/tickets", response_model=ApiTicketResult, status_code=status.HTTP_201_CREATED)
 def create_api_ticket(
     data: ApiTicketCreate,
@@ -969,6 +1063,7 @@ def create_api_ticket(
     if not ticket_type:
         raise NotFoundError("The requested ticket type does not exist.")
     actor = _integration_actor(db, settings)
+    requester = _monitoring_contact(db, data.client_id)
     delivery = IntegrationDelivery(
         provider=provider,
         event_id=data.event_id,
@@ -983,6 +1078,7 @@ def create_api_ticket(
         TicketCreate(
             ticket_type_id=ticket_type.id,
             client_id=data.client_id,
+            requester_contact_id=requester.id,
             source_channel="API",
             creation_idempotency_key=f"api:{provider}:{data.event_id}",
             impact=data.impact,
@@ -991,7 +1087,10 @@ def create_api_ticket(
             description=data.description,
         ),
         actor,
+        commit=False,
+        enforce_configured_required_fields=False,
     )
+    _apply_system_maintenance_flag(db, ticket, actor)
     delivery.ticket_id = ticket.id
     delivery.status = "PROCESSED"
     delivery.processed_at = server_now()
@@ -1003,3 +1102,130 @@ def create_api_ticket(
         ticket_number=ticket.ticket_number or "",
         duplicate=False,
     )
+
+
+def _api_ticket(
+    db: Session, api_client: IntegrationApiClient, ticket_id: int
+) -> Ticket:
+    provider = f"API_CLIENT_{api_client.id}"
+    ticket = db.scalar(
+        select(Ticket)
+        .join(IntegrationDelivery, IntegrationDelivery.ticket_id == Ticket.id)
+        .where(
+            Ticket.id == ticket_id,
+            IntegrationDelivery.provider == provider,
+        )
+    )
+    if ticket is None:
+        raise NotFoundError("Ticket does not exist or was not created by this API client.")
+    return ticket
+
+
+def _api_ticket_status_result(
+    db: Session,
+    ticket: Ticket,
+    *,
+    event_id: str | None = None,
+    duplicate: bool = False,
+) -> ApiTicketStatusResult:
+    ticket_status = db.get(TicketStatus, ticket.status_id)
+    if ticket_status is None:
+        raise NotFoundError("Ticket status does not exist.")
+    return ApiTicketStatusResult(
+        event_id=event_id,
+        ticket_id=ticket.id,
+        ticket_number=ticket.ticket_number or "",
+        status_code=ticket_status.code,
+        version=ticket.version,
+        resolution_summary=ticket.resolution_summary,
+        duplicate=duplicate,
+    )
+
+
+@router.get("/api/tickets/{ticket_id}", response_model=ApiTicketStatusResult)
+def get_api_ticket_status(
+    ticket_id: int,
+    x_api_key: str = Header(default=""),
+    db: Session = Depends(get_db),
+) -> ApiTicketStatusResult:
+    api_client = _api_client(db, x_api_key)
+    ticket = _api_ticket(db, api_client, ticket_id)
+    api_client.last_used_at = server_now()
+    db.commit()
+    return _api_ticket_status_result(db, ticket)
+
+
+@router.patch("/api/tickets/{ticket_id}/status", response_model=ApiTicketStatusResult)
+def update_api_ticket_status(
+    ticket_id: int,
+    data: ApiTicketStatusUpdate,
+    request: Request,
+    x_api_key: str = Header(default=""),
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+) -> ApiTicketStatusResult:
+    api_client = _api_client(db, x_api_key)
+    ticket = _api_ticket(db, api_client, ticket_id)
+    provider = f"API_CLIENT_{api_client.id}_STATUS"
+    previous = db.scalar(
+        select(IntegrationDelivery).where(
+            IntegrationDelivery.provider == provider,
+            IntegrationDelivery.event_id == data.event_id,
+        )
+    )
+    if previous:
+        if previous.ticket_id != ticket.id:
+            raise ConflictError(
+                "INTEGRATION_EVENT_CONFLICT",
+                "This status event ID was already used for another ticket.",
+            )
+        return _api_ticket_status_result(
+            db, ticket, event_id=data.event_id, duplicate=True
+        )
+    actor = _integration_actor(db, settings)
+    current_status = db.get(TicketStatus, ticket.status_id)
+    close_through_resolution = (
+        data.status_code == "CLOSED"
+        and current_status is not None
+        and current_status.code not in {"RESOLVED", "CLIENT_CONFIRMATION"}
+    )
+    transition_ticket(
+        db,
+        ticket,
+        TicketTransition(
+            to_status_code="RESOLVED" if close_through_resolution else data.status_code,
+            reason=data.reason,
+            resolution_summary=data.resolution_summary,
+            root_cause_summary=data.root_cause_summary,
+            version=ticket.version,
+            close_after_resolve=close_through_resolution,
+        ),
+        actor,
+        commit=False,
+        additional_permissions={
+            "ticket.change.status",
+            "ticket.start.progress",
+            "ticket.resolve",
+            "ticket.resolve.any",
+            "ticket.close",
+            "ticket.cancel",
+            "ticket.reopen",
+        },
+        source="MONITORING_API",
+    )
+    db.add(
+        IntegrationDelivery(
+            provider=provider,
+            event_id=data.event_id,
+            external_key=str(ticket.id),
+            correlation_id=request.state.correlation_id,
+            payload_json=json.dumps(data.model_dump(mode="json"), separators=(",", ":")),
+            ticket_id=ticket.id,
+            status="PROCESSED",
+            processed_at=server_now(),
+        )
+    )
+    api_client.last_used_at = server_now()
+    db.commit()
+    db.refresh(ticket)
+    return _api_ticket_status_result(db, ticket, event_id=data.event_id)

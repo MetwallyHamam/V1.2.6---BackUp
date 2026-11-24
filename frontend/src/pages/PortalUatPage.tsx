@@ -91,6 +91,8 @@ type Attempt = {
   comment: string | null;
   tested_at: string;
 };
+type PortalExecutionDraft = { result: "PASS" | "FAIL" | "BLOCKED"; actual: string; reason: string; comment: string; severity: string };
+type Availability = { code: string; message: string };
 
 export function PortalUatPage() {
   const cache = useQueryClient();
@@ -107,6 +109,12 @@ export function PortalUatPage() {
   const cycles = useQuery({
     queryKey: ["portal-uat-cycles"],
     queryFn: async () => (await api.get<Cycle[]>("/portal/uat/cycles")).data,
+  });
+  const availability = useQuery({
+    queryKey: ["portal-uat-availability"],
+    enabled: cycles.isSuccess && cycles.data.length === 0,
+    queryFn: async () =>
+      (await api.get<Availability>("/portal/uat/availability")).data,
   });
   const attempts = useQuery({
     queryKey: ["portal-uat-attempts", selected],
@@ -200,6 +208,19 @@ export function PortalUatPage() {
   const current = cycles.data
     ?.flatMap((cycle) => cycle.tests.map((test) => ({ cycle, test })))
     .find(({ test }) => test.id === selected);
+  const currentIndex = current?.cycle.tests.findIndex((test) => test.id === selected) ?? -1;
+  const openTest = (testId: number, quickResult?: "PASS" | "FAIL" | "BLOCKED") => {
+    const saved = window.sessionStorage.getItem(`portal-uat-execution-draft:${testId}`);
+    let draft: PortalExecutionDraft | null = null;
+    try { draft = saved ? JSON.parse(saved) as PortalExecutionDraft : null; } catch { window.sessionStorage.removeItem(`portal-uat-execution-draft:${testId}`); }
+    setSelected(testId);
+    setResult(quickResult ?? draft?.result ?? "PASS");
+    setActual(draft?.actual ?? "");
+    setReason(draft?.reason ?? "");
+    setComment(draft?.comment ?? "");
+    setSeverity(draft?.severity ?? "MEDIUM");
+    setDefectDraft(null);
+  };
   const visibleCycles =
     tab === 3
       ? []
@@ -224,6 +245,10 @@ export function PortalUatPage() {
         ) ?? "PASS",
       );
   }, [current, result]);
+  useEffect(() => {
+    if (selected === null) return;
+    window.sessionStorage.setItem(`portal-uat-execution-draft:${selected}`, JSON.stringify({ result, actual, reason, comment, severity }));
+  }, [selected, result, actual, reason, comment, severity]);
   return (
     <Stack spacing={2}>
       <Paper sx={{ p: 3 }}>
@@ -258,7 +283,9 @@ export function PortalUatPage() {
         </Alert>
       )}
       {!cycles.isLoading && !cycles.data?.length && (
-        <Alert severity="info">No UAT cycles are available to you.</Alert>
+        <Alert severity={availability.data?.code === "ACCESS_EXPIRED" ? "warning" : "info"}>
+          {availability.data?.message ?? "No UAT cycles are available to you."}
+        </Alert>
       )}
       {visibleCycles?.map((cycle) => {
         const visibleTests = cycle.tests.filter(
@@ -290,14 +317,7 @@ export function PortalUatPage() {
                   moveWorkflow.mutate({ testId, workflowStatus })
                 }
                 onOpen={(test, quickResult) => {
-                  setSelected(test.id);
-                  setDefectDraft(null);
-                  if (quickResult) {
-                    setResult(quickResult);
-                    setReason("");
-                    setActual("");
-                    setComment("");
-                  }
+                  openTest(test.id, quickResult);
                 }}
               />
             )}
@@ -440,6 +460,12 @@ export function PortalUatPage() {
                 <Close />
               </IconButton>
             </Stack>
+            <Stack direction="row" alignItems="center" justifyContent="space-between" gap={1} sx={{ mt: 2 }}>
+              <Button disabled={currentIndex === 0} onClick={() => openTest(current.cycle.tests[currentIndex - 1].id)}>Previous test</Button>
+              <Typography fontWeight={800}>Test {currentIndex + 1} of {current.cycle.tests.length}</Typography>
+              <Button disabled={currentIndex === current.cycle.tests.length - 1} onClick={() => openTest(current.cycle.tests[currentIndex + 1].id)}>Next test</Button>
+            </Stack>
+            <Typography variant="caption" color="text.secondary">Draft input is kept for this browser session.</Typography>
             {!current.test.assigned_to_me && (
               <Alert severity="info" sx={{ mt: 2 }}>
                 This test is assigned to another tester. You can review it, but
@@ -481,7 +507,7 @@ export function PortalUatPage() {
               current.test.client_workflow_status !== "BLOCKED" &&
               !(
                 current.test.has_linked_ticket &&
-                current.test.client_workflow_status === "WAITING_FIX"
+                ["WAITING_FIX", "FIX_IN_PROGRESS"].includes(current.test.client_workflow_status)
               ) && (
                 <Stack
                   component="form"
@@ -576,7 +602,7 @@ export function PortalUatPage() {
                   onClick={() => prepareDefect(current.test.id)}
                   sx={{ alignSelf: "flex-start" }}
                 >
-                  Review defect ticket
+                  Create UAT Defect Ticket
                 </Button>
               )}
             {current.test.assigned_to_me &&
@@ -665,7 +691,7 @@ export function PortalUatPage() {
               />
             )}
             {current.test.has_linked_ticket &&
-              current.test.client_workflow_status === "WAITING_FIX" && (
+              ["WAITING_FIX", "FIX_IN_PROGRESS"].includes(current.test.client_workflow_status) && (
                 <Alert severity="info" sx={{ mt: 2 }}>
                   The linked defect ticket must be resolved before you can
                   retest this case.

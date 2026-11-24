@@ -146,7 +146,7 @@ export function PortalTicketDetailPage() {
     queryFn: async () =>
       (
         await api.get<ContractEvidence>(
-          `/contracts/${ticket.data?.contract_id}`,
+          `/portal/contracts/${ticket.data?.contract_id}`,
         )
       ).data,
   });

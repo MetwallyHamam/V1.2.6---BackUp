@@ -146,6 +146,16 @@ class TicketRead(BaseModel):
     category_id: int | None
     subcategory_id: int | None
     source_channel: str
+    is_uat_defect: bool = False
+    uat_cycle_id: int | None = None
+    uat_cycle_test_id: int | None = None
+    uat_attempt_id: int | None = None
+    uat_cycle_code: str | None = None
+    uat_test_code: str | None = None
+    uat_release_version: str | None = None
+    uat_workflow_status: str | None = None
+    uat_ready_for_closure: bool = False
+    uat_closure_warning: bool = False
     category: str | None
     affected_users: str | None
     first_occurred_at: datetime | None
@@ -791,6 +801,7 @@ class TicketAttachmentRead(BaseModel):
     size_bytes: int
     sha256: str
     scan_status: str
+    portal_visible: bool
     created_at: datetime
 
 

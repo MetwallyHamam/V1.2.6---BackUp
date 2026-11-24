@@ -24,8 +24,21 @@ FUTURE_COLUMNS: dict[str, set[str]] = {
     "ticket_resolution_history": {"resolution_service_ids_json"},
     "resolution_outcomes": {"name_ar", "description_ar"},
     "departments": {"name_ar", "description_ar"},
-    "clients": {"country", "zone", "owner_department_id", "contract_service_status"},
-    "branches": {"support_hours", "escalation_contact_id", "country", "zone"},
+    "clients": {
+        "country",
+        "zone",
+        "owner_department_id",
+        "organization_id",
+        "department_policy_mode",
+        "contract_service_status",
+    },
+    "branches": {
+        "support_hours",
+        "escalation_contact_id",
+        "country",
+        "zone",
+        "department_policy_mode",
+    },
     "contacts": {"contact_role", "is_escalation_contact", "code"},
     "tickets": {
         "root_cause_summary",

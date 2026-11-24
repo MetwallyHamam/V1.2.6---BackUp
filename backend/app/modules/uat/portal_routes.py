@@ -6,7 +6,7 @@ from typing import Literal, cast
 
 from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel, Field
-from sqlalchemy import func, select, true
+from sqlalchemy import func, or_, select, true
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -25,6 +25,8 @@ from app.modules.uat.models import (
     UatComment,
     UatCycle,
     UatCycleTest,
+    UatDefectLink,
+    UatEvidence,
     UatSignoff,
     UatTestAttempt,
 )
@@ -169,6 +171,49 @@ def list_portal_cycles(db: Session = Depends(get_db), actor: User = Depends(requ
             continue
         result.append(_cycle_read(db, cycle, actor))
     return result
+
+
+@router.get("/availability")
+def portal_uat_availability(
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_permission("uat.portal.view")),
+) -> dict[str, str]:
+    """Explain an empty portal workspace without disclosing cycle identity or content."""
+    if actor.user_type != "CLIENT_PORTAL":
+        raise NotFoundError("UAT availability does not exist.")
+    client_ids = effective_permissions(db, actor).client_scope_ids
+    if not client_ids:
+        return {"code": "NO_ASSIGNED_TESTS", "message": "No UAT tests are assigned to you."}
+    assigned_cycle_ids = select(UatCycleTest.cycle_id).where(
+        UatCycleTest.client_tester_user_id == actor.id
+    )
+    cycles = list(
+        db.scalars(
+            select(UatCycle)
+            .where(
+                UatCycle.client_id.in_(client_ids),
+                or_(
+                    UatCycle.id.in_(assigned_cycle_ids),
+                    UatCycle.client_approver_user_id == actor.id,
+                    UatCycle.client_coordinator_user_id == actor.id,
+                ),
+            )
+            .order_by(UatCycle.created_at.desc())
+        )
+    )
+    if not cycles:
+        return {"code": "NO_ASSIGNED_TESTS", "message": "No UAT tests are assigned to you."}
+    now = server_now()
+    active_cycles = [cycle for cycle in cycles if cycle.status == "ACTIVE"]
+    if any(not cycle.portal_visible for cycle in active_cycles):
+        return {"code": "UNPUBLISHED", "message": "Your UAT cycle has not been published yet."}
+    if any(cycle.client_access_start_at and now < _aware(cycle.client_access_start_at) for cycle in active_cycles):
+        return {"code": "ACCESS_NOT_STARTED", "message": "Your UAT access window has not started yet."}
+    if any(cycle.client_access_end_at and now > _aware(cycle.client_access_end_at) for cycle in active_cycles):
+        return {"code": "ACCESS_EXPIRED", "message": "Your UAT access window has expired."}
+    if any(cycle.status in {"COMPLETED", "ARCHIVED"} for cycle in cycles):
+        return {"code": "COMPLETED_OR_ARCHIVED", "message": "Your UAT cycle is completed or archived."}
+    return {"code": "NO_ASSIGNED_TESTS", "message": "No UAT tests are currently assigned to you."}
 
 
 @router.get("/cycles/{cycle_id}")
@@ -343,8 +388,19 @@ def _client_defect_draft(db: Session, cycle: UatCycle, test: UatCycleTest) -> di
     if not latest:
         raise ConflictError("UAT_CLIENT_NOT_FAILED", "No failed client attempt was found.")
     snapshot = json.loads(test.snapshot_json)
-    subject = f"UAT Failed - {snapshot['title']}"[:300]
-    description = f"UAT cycle: {cycle.code} - {cycle.title}\nTest: {snapshot['code']} - {snapshot['title']}\nExpected: {snapshot['expected_result']}\nActual: {latest.actual_result}\nFailure: {latest.failure_reason or latest.actual_result}\nRelease: {cycle.release_version}"
+    subject = f"[UAT][Release {cycle.release_version}] {snapshot['title']} — {snapshot['code']}"[:300]
+    client_safe_evidence = list(
+        db.scalars(
+            select(UatEvidence)
+            .where(
+                UatEvidence.attempt_id == latest.id,
+                UatEvidence.visibility == "CLIENT_VISIBLE",
+            )
+            .order_by(UatEvidence.id)
+        )
+    )
+    evidence_names = ", ".join(item.original_filename for item in client_safe_evidence) or "None"
+    description = f"UAT cycle: {cycle.code} - {cycle.title}\nTest: {snapshot['code']} - {snapshot['title']}\nExpected: {snapshot['expected_result']}\nActual: {latest.actual_result}\nFailure: {latest.failure_reason or latest.actual_result}\nSeverity: {latest.severity or 'MEDIUM'}\nAttempt: {latest.attempt_number}\nRelease: {cycle.release_version}\nEnvironment: {cycle.environment}\nClient-safe evidence: {evidence_names}"
     severity = latest.severity or "MEDIUM"
     return {"subject": subject, "description": description[:20000], "impact": severity, "urgency": severity}
 
@@ -379,6 +435,13 @@ def create_client_defect_ticket(test_id: int, data: ClientDefectInput, db: Sessi
                                                     UatTestAttempt.result == "FAIL").order_by(UatTestAttempt.attempt_number.desc()))
     if latest:
         latest.linked_ticket_id = ticket.id
+    if not db.scalar(select(UatDefectLink.id).where(UatDefectLink.ticket_id == ticket.id)):
+        db.add(UatDefectLink(
+            ticket_id=ticket.id, cycle_id=cycle.id, cycle_test_id=test.id,
+            attempt_id=latest.id if latest else None, cycle_code=cycle.code,
+            test_code=snapshot.get("code"), release_version=cycle.release_version,
+            created_by_user_id=actor.id,
+        ))
     test.client_workflow_status = "WAITING_FIX"
     notify_defect_created(db, cycle, test, ticket)
     db.add(AuditLog(actor_user_id=actor.id, entity_type="UatCycleTest", entity_id=str(test.id), action="uat.client_defect_ticket.linked"))
@@ -421,15 +484,20 @@ def execute_client_test(test_id: int, data: ClientAttemptInput, db: Session = De
         raise ConflictError("UAT_BLOCKING_DETAILS_REQUIRED", "Blocking reason and comment are required.")
     if test.client_workflow_status == "BLOCKED":
         raise ConflictError("UAT_CLIENT_BLOCKED", "Ask the UAT coordinator to unblock this client test.")
-    if test.linked_ticket_id and test.client_workflow_status == "WAITING_FIX":
-        raise ConflictError("UAT_WAITING_FIX", "The linked ticket must be resolved before retesting.")
+    if test.linked_ticket_id and test.client_workflow_status in {"WAITING_FIX", "FIX_IN_PROGRESS"}:
+        raise ConflictError("UAT_WAITING_FIX", "The linked ticket fix must be resolved before retesting.")
     if test.client_workflow_status == "NEEDS_INVESTIGATION":
         raise ConflictError("UAT_NEEDS_INVESTIGATION", "The UAT coordinator must investigate this failure before retesting.")
     when = server_now()
     attempt_number = (db.scalar(select(func.max(UatTestAttempt.attempt_number)).where(UatTestAttempt.cycle_test_id == test.id)) or 0) + 1
     test.client_attempt_count += 1
     test.client_test_result = data.result
-    test.client_workflow_status = {"PASS": "COMPLETED", "FAIL": "NEEDS_INVESTIGATION", "BLOCKED": "BLOCKED"}[data.result]
+    is_retest = test.client_attempt_count > 1
+    test.client_workflow_status = {
+        "PASS": "COMPLETED",
+        "FAIL": "WAITING_FIX" if test.linked_ticket_id and is_retest else "NEEDS_INVESTIGATION",
+        "BLOCKED": "BLOCKED",
+    }[data.result]
     test.client_tested_at = when
     db.add(UatTestAttempt(cycle_test_id=test.id, attempt_number=attempt_number,
                           execution_source="CLIENT_PORTAL", tested_by_user_id=actor.id, tested_at=when,
@@ -451,6 +519,12 @@ def execute_client_test(test_id: int, data: ClientAttemptInput, db: Session = De
                             message=f"Client test #{test.id} retest {data.result.lower()}.",
                             deep_link="/uat",
                             deduplication_key=f"uat-client-retest-result:{test.id}:attempt:{test.client_attempt_count}"))
+        if test.linked_ticket_id:
+            linked_ticket = db.get(Ticket, test.linked_ticket_id)
+            if linked_ticket:
+                from app.modules.uat.service import mark_retest_outcome
+
+                mark_retest_outcome(db, linked_ticket, test, actor, data.result)
     db.add(AuditLog(actor_user_id=actor.id, entity_type="UatCycleTest", entity_id=str(test.id), action="uat.client_test.executed"))
     try:
         db.commit()

@@ -61,6 +61,15 @@ type Assignee = {
 };
 type Branch = { id: number; name: string; code: string; is_active: boolean };
 type TicketPayload = Record<string, unknown>;
+type WorkAssignmentSource = {
+  id: number;
+  title: string;
+  description: string;
+  version: number;
+  assignment_type: string;
+  context: Record<string, string>;
+  clients: Array<{ client_id: number; name: string }>;
+};
 type TicketFormFieldSetting = {
   field_key: string;
   is_visible: boolean;
@@ -278,6 +287,8 @@ export function CreateTicketPage({
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const copyFromId = Number(searchParams.get("copy_from")) || null;
+  const workAssignmentId =
+    Number(searchParams.get("work_assignment_id")) || null;
   const returnTo = (location.state as { returnTo?: string } | null)?.returnTo;
   const goBack = () => (returnTo ? navigate(returnTo) : navigate(-1));
   const queryClient = useQueryClient();
@@ -347,6 +358,7 @@ export function CreateTicketPage({
   const [reusedFromTicket, setReusedFromTicket] =
     useState<SimilarTicket | null>(null);
   const copiedTicketApplied = useRef(false);
+  const workAssignmentApplied = useRef(false);
   const [copiedRequesterContactId, setCopiedRequesterContactId] = useState<
     number | null
   >(null);
@@ -362,6 +374,16 @@ export function CreateTicketPage({
     queryFn: async () =>
       (await api.get<SimilarTicket>(`/tickets/${copyFromId}`)).data,
     enabled: Boolean(copyFromId && hasPermission("ticket.copy")),
+  });
+  const workAssignment = useQuery({
+    queryKey: ["work-assignment-ticket-source", workAssignmentId],
+    queryFn: async () =>
+      (
+        await api.get<WorkAssignmentSource>(
+          `/work-assignments/${workAssignmentId}`,
+        )
+      ).data,
+    enabled: Boolean(workAssignmentId),
   });
   const setting = (key: string) =>
     formSettings.data?.find((item) => item.field_key === key);
@@ -663,6 +685,34 @@ export function CreateTicketPage({
       field.value = String(value);
   }
 
+  useEffect(() => {
+    const assignment = workAssignment.data;
+    if (
+      !assignment ||
+      formSettings.isLoading ||
+      !formRef.current ||
+      workAssignmentApplied.current
+    )
+      return;
+    workAssignmentApplied.current = true;
+    setSubject(assignment.title);
+    setSelectedClientId(assignment.clients[0]?.client_id ?? null);
+    const details = Object.entries(assignment.context)
+      .filter(([, value]) => value.trim())
+      .map(([key, value]) => `${key.replaceAll("_", " ")}: ${value}`)
+      .join("\n");
+    setFormValue(
+      "description",
+      [
+        assignment.description,
+        details,
+        `Converted from work assignment #${assignment.id} (${assignment.assignment_type.replaceAll("_", " ")}).`,
+      ]
+        .filter(Boolean)
+        .join("\n\n"),
+    );
+  }, [formSettings.isLoading, workAssignment.data]);
+
   function applyAiSuggestion(suggestion: IntakeAiSuggestion) {
     if (suggestion.client_id && suggestion.client_id !== selectedClientId) {
       setSelectedClientId(suggestion.client_id);
@@ -738,11 +788,20 @@ export function CreateTicketPage({
     setSaving(true);
     setError("");
     try {
-      const response = await api.post("/tickets", {
+      const ticketPayload = {
         ...payload,
         creation_idempotency_key: creationIdempotencyKey.current,
         inactive_client_confirmed: inactiveClientConfirmed,
-      });
+      };
+      const response = workAssignment.data
+        ? await api.post(
+            `/work-assignments/${workAssignment.data.id}/convert-to-ticket`,
+            {
+              expected_version: workAssignment.data.version,
+              ticket: ticketPayload,
+            },
+          )
+        : await api.post("/tickets", ticketPayload);
       if (reusedFromTicket && hasPermission("ticket.relate")) {
         try {
           await api.post(`/tickets/${response.data.id}/relations`, {
@@ -797,6 +856,22 @@ export function CreateTicketPage({
       }
       if (onCreated) {
         onCreated("close");
+        return;
+      }
+      if (workAssignment.data) {
+        navigate(`/tickets/${response.data.id}`, {
+          replace: true,
+          state: {
+            ticketCreated: true,
+            ticketNumber: response.data.ticket_number,
+            convertedFromAssignmentId: workAssignment.data.id,
+            ...(uploadFailures.length
+              ? {
+                  attachmentError: `Ticket created, but these attachments need to be retried: ${uploadFailures.join(", ")}`,
+                }
+              : {}),
+          },
+        });
         return;
       }
       navigate(returnTo ?? "/tickets", {
@@ -1023,7 +1098,10 @@ export function CreateTicketPage({
               variant="contained"
               color="inherit"
               disabled={
-                saving || !clients.data?.length || formSettings.isLoading
+                saving ||
+                !clients.data?.length ||
+                formSettings.isLoading ||
+                Boolean(workAssignmentId && !workAssignment.data)
               }
               sx={{
                 bgcolor: "background.paper",
@@ -1035,7 +1113,11 @@ export function CreateTicketPage({
                 completionMode.current = "close";
               }}
             >
-              {saving ? t("createTicket.creating") : t("createTicket.create")}
+              {saving
+                ? t("createTicket.creating")
+                : workAssignment.data
+                  ? "Convert to ticket"
+                  : t("createTicket.create")}
             </Button>
           </Stack>
           <Typography
@@ -1053,6 +1135,17 @@ export function CreateTicketPage({
         {error && (
           <Alert severity="error" sx={{ mb: 2 }}>
             {error}
+          </Alert>
+        )}
+        {workAssignment.isError && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            The work assignment could not be loaded or is outside your scope.
+          </Alert>
+        )}
+        {workAssignment.data && (
+          <Alert severity="info" sx={{ mb: 2 }}>
+            Creating this ticket will link it to work assignment #
+            {workAssignment.data.id} and transfer KPI attribution to the ticket.
           </Alert>
         )}
         {selectedClient && !selectedClient.ticket_creation_allowed && (
@@ -1828,27 +1921,40 @@ export function CreateTicketPage({
               {t("createTicket.additionalInformation")}
             </Button>
           )}
-          <Button
-            type="submit"
-            variant="outlined"
-            disabled={saving || !clients.data?.length || formSettings.isLoading}
-            onClick={() => {
-              completionMode.current = "new";
-            }}
-          >
-            {saving && completionMode.current === "new"
-              ? t("createTicket.creating")
-              : t("createTicket.createAndNew")}
-          </Button>
+          {!workAssignmentId && (
+            <Button
+              type="submit"
+              variant="outlined"
+              disabled={
+                saving || !clients.data?.length || formSettings.isLoading
+              }
+              onClick={() => {
+                completionMode.current = "new";
+              }}
+            >
+              {saving && completionMode.current === "new"
+                ? t("createTicket.creating")
+                : t("createTicket.createAndNew")}
+            </Button>
+          )}
           <Button
             type="submit"
             variant="contained"
-            disabled={saving || !clients.data?.length || formSettings.isLoading}
+            disabled={
+              saving ||
+              !clients.data?.length ||
+              formSettings.isLoading ||
+              Boolean(workAssignmentId && !workAssignment.data)
+            }
             onClick={() => {
               completionMode.current = "close";
             }}
           >
-            {saving ? t("createTicket.creating") : t("createTicket.create")}
+            {saving
+              ? t("createTicket.creating")
+              : workAssignment.data
+                ? "Convert to ticket"
+                : t("createTicket.create")}
           </Button>
         </Stack>
       </Paper>

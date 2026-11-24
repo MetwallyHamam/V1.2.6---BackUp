@@ -4,6 +4,7 @@ import {
   ContentCopy,
   ContactPage,
   Business,
+  Close,
   Delete,
   DragIndicator,
   Download,
@@ -30,7 +31,6 @@ import {
   Checkbox,
   Chip,
   CircularProgress,
-  Collapse,
   Dialog,
   DialogActions,
   DialogContent,
@@ -60,7 +60,7 @@ import {
   Typography,
 } from "@mui/material";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -94,6 +94,13 @@ type Ticket = {
   priority: string;
   updated_at: string;
   source_channel: string;
+  is_uat_defect?: boolean;
+  uat_cycle_id?: number;
+  uat_cycle_test_id?: number;
+  uat_attempt_id?: number;
+  uat_cycle_code?: string;
+  uat_test_code?: string;
+  uat_release_version?: string;
   ticket_type_id: number;
   branch_id?: number;
   requester_contact_id?: number;
@@ -364,6 +371,24 @@ export const ticketNeedsApprovalAttention = (
   ticket: Pick<Ticket, "entitlement_status">,
 ) => ticket.entitlement_status === "PENDING_APPROVAL";
 
+export const PENDING_BOARD_LANE_KEY = "__PENDING__";
+const isPendingStatusCode = (code?: string) =>
+  Boolean(code?.startsWith("PENDING_"));
+export const DEFAULT_STATUS_LANE_CODES = [
+  "NEW",
+  "ASSIGNED",
+  "IN_PROGRESS",
+  "RESOLVED",
+  "CLOSED",
+  "PENDING",
+] as const;
+export const defaultStatusLaneRank = (code?: string) => {
+  const index = DEFAULT_STATUS_LANE_CODES.indexOf(
+    code as (typeof DEFAULT_STATUS_LANE_CODES)[number],
+  );
+  return index < 0 ? DEFAULT_STATUS_LANE_CODES.length : index;
+};
+
 export const ticketStatusLaneId = (
   ticket: Pick<Ticket, "status_id" | "progress_started_at">,
   statusCatalog: Pick<Catalog, "id" | "code">[],
@@ -371,11 +396,14 @@ export const ticketStatusLaneId = (
   const currentStatus = statusCatalog.find(
     (item) => item.id === ticket.status_id,
   );
+  if (isPendingStatusCode(currentStatus?.code)) return PENDING_BOARD_LANE_KEY;
   if (
     ticket.progress_started_at &&
     currentStatus &&
     !currentStatus.code.startsWith("PENDING_") &&
-    !["RESOLVED", "CLOSED", "CANCELLED"].includes(currentStatus.code)
+    !["ASSIGNED", "RESOLVED", "CLOSED", "CANCELLED"].includes(
+      currentStatus.code,
+    )
   ) {
     return (
       statusCatalog.find((item) => item.code === "IN_PROGRESS")?.id ??
@@ -448,6 +476,9 @@ const filterKeys = [
   "ticket_number",
   "subject",
   "search",
+  "uat_defect_only",
+  "uat_cycle_code",
+  "uat_release_version",
   "description",
   "created_by_user_id",
   "department_id",
@@ -485,6 +516,7 @@ const filterKeys = [
   "resolved_only",
   "incomplete_resolution_only",
   "without_product",
+  "uat_defect_only",
   "ticket_type_id",
   "product_id",
   "product_module_id",
@@ -542,6 +574,9 @@ const filterLabels: Record<string, string> = {
   ticket_number: "Ticket number",
   subject: "Subject",
   search: "Search",
+  uat_defect_only: "UAT defects only",
+  uat_cycle_code: "UAT cycle code",
+  uat_release_version: "UAT release",
   description: "Description",
   created_by_user_id: "Created by",
   department_id: "Department",
@@ -920,6 +955,7 @@ export function TicketsPage() {
   const [bulkReason, setBulkReason] = useState("");
   const [statusOpen, setStatusOpen] = useState(false);
   const [bulkStatus, setBulkStatus] = useState("");
+  const [choosePendingStatus, setChoosePendingStatus] = useState(false);
   const [bulkPendingOwner, setBulkPendingOwner] = useState("");
   const [bulkPendingFollowUp, setBulkPendingFollowUp] = useState("");
   const [bulkPendingParty, setBulkPendingParty] = useState<
@@ -1090,6 +1126,7 @@ export function TicketsPage() {
   const reportsTab = queueTab === "reports";
   const dedicatedListTab = dedicatedListTabs.has(queueTab);
   const effectiveViewMode = resolveTicketViewMode(viewMode, queueTab);
+  const showLegacyFastActionPanel = false;
   const listColumns = resolveTicketListColumns(visibleColumns, queueTab);
   const listDensity = dedicatedListTab ? "STANDARD" : density;
   const effectiveGroupBy = dedicatedListTab ? "" : groupBy;
@@ -1217,34 +1254,43 @@ export function TicketsPage() {
       ...(key === "category_id" ? { subcategory_id: "" } : {}),
     }));
   };
-  const applyFastAction = (
-    overrides: Filters,
-    options: { preserveDateFilters?: boolean } = {},
-  ) => {
+  const applyFastAction = (overrides: Filters) => {
     setPage(0);
-    setFilters((current) => ({
-      ...current,
-      assigned_user_id: "",
-      assigned_team: "",
-      my_teams_only: "",
-      my_department_requests: "",
-      department_requests_only: "",
-      escalations_sent_only: "",
-      routing_status: "",
-      open_only: "",
-      unassigned_only: "",
-      strictly_unassigned_only: "",
-      due_soon: "",
-      breached_only: "",
-      ...(options.preserveDateFilters
-        ? {}
-        : { created_from: "", created_to: "" }),
+    setActiveSavedViewId(null);
+    setVisibleFilterKeys(
+      defaultFilterKeys.filter(
+        (key) => key !== "assigned_user_id" || canUseAssignmentFilters,
+      ),
+    );
+    setDateType("created");
+    setDatePreset(
+      overrides.created_from === today() && overrides.created_to === today()
+        ? "today"
+        : "all",
+    );
+    setSortBy("updated_at");
+    setSortDirection("desc");
+    setFilters({
+      ...Object.fromEntries(filterKeys.map((key) => [key, ""])),
       ...overrides,
-    }));
+    });
   };
   const removeFilter = (key: string) => {
     updateFilter(key, "");
     setVisibleFilterKeys((current) => current.filter((item) => item !== key));
+  };
+  const removeActiveFilter = (key: string) => {
+    const nextFilters = { ...filters, [key]: "" };
+    const hasRemainingFilter = Object.values(nextFilters).some(Boolean);
+    if (!hasRemainingFilter) {
+      const currentDay = today();
+      nextFilters.created_from = currentDay;
+      nextFilters.created_to = currentDay;
+      setDateType("created");
+      setDatePreset("today");
+    }
+    setFilters(nextFilters);
+    setPage(0);
   };
   const activeFilters = {
     ...Object.fromEntries(
@@ -1908,7 +1954,7 @@ export function TicketsPage() {
       await refreshPermissions();
     },
   });
-  const applySavedView = (view: SavedView) => {
+  const applySavedView = useCallback((view: SavedView) => {
     const savedDateView = resolveSavedViewDates(
       JSON.parse(view.filter_json) as Filters,
       today(),
@@ -1994,7 +2040,7 @@ export function TicketsPage() {
     }
     setActiveSavedViewId(view.id);
     setPage(0);
-  };
+  }, [gridPreference.data]);
   useEffect(() => {
     const requestedId =
       Number(searchParams.get("saved_view_id") || 0) ||
@@ -2005,7 +2051,7 @@ export function TicketsPage() {
     if (!requested) return;
     appliedRequestedViewRef.current = requestedId;
     applySavedView(requested);
-  }, [savedViews.data, searchParams]);
+  }, [applySavedView, savedViews.data, searchParams]);
   const applyDatePreset = (preset: DatePreset, type: DateType = dateType) => {
     setDatePreset(preset);
     const { from, to } = dateRangeForPreset(preset, today());
@@ -2135,6 +2181,7 @@ export function TicketsPage() {
     onSuccess: async () => {
       setSelectedIds([]);
       setStatusOpen(false);
+      setChoosePendingStatus(false);
       setBulkStatus("");
       setBulkReason("");
       setBulkPendingOwner("");
@@ -2757,6 +2804,9 @@ export function TicketsPage() {
                 sx={{ flexShrink: 0 }}
               />
             )}
+            {ticket.is_uat_defect && (
+              <Chip size="small" color="secondary" label="UAT Defect" sx={{ flexShrink: 0 }} />
+            )}
           </Stack>
         );
       case "created_by":
@@ -3022,15 +3072,41 @@ export function TicketsPage() {
     : (tickets.data?.items ?? []);
   const allCardGroups = (() => {
     if (groupBy === "status") {
-      return (statuses.data ?? []).map((status) => ({
-        key: String(status.id),
-        label: getLocalizedName(status, language),
-        statusCode: status.code,
-        color: status.color,
+      const catalog = statuses.data ?? [];
+      const pendingStatuses = catalog.filter((status) =>
+        isPendingStatusCode(status.code),
+      );
+      const groups = catalog
+        .filter((status) => !isPendingStatusCode(status.code))
+        .map((status) => ({
+          key: String(status.id),
+          label: getLocalizedName(status, language),
+          statusCode: status.code,
+          color: status.color,
+          tickets: displayedTickets.filter(
+            (ticket) => groupValue(ticket) === String(status.id),
+          ),
+        }));
+      if (!pendingStatuses.length) return groups;
+      const pendingGroup = {
+        key: PENDING_BOARD_LANE_KEY,
+        label: t("ticketsList.pendingLane", {
+          defaultValue: "Waiting / Pending",
+        }),
+        statusCode: "PENDING",
+        color: pendingStatuses[0]?.color,
         tickets: displayedTickets.filter(
-          (ticket) => groupValue(ticket) === String(status.id),
+          (ticket) => groupValue(ticket) === PENDING_BOARD_LANE_KEY,
         ),
-      }));
+      };
+      const firstPendingIndex = catalog.findIndex((status) =>
+        isPendingStatusCode(status.code),
+      );
+      const insertionIndex = catalog
+        .slice(0, firstPendingIndex)
+        .filter((status) => !isPendingStatusCode(status.code)).length;
+      groups.splice(insertionIndex, 0, pendingGroup);
+      return groups;
     }
     const groups = new Map<string, { label: string; tickets: Ticket[] }>();
     displayedTickets.forEach((ticket) => {
@@ -3057,6 +3133,16 @@ export function TicketsPage() {
   const cardGroups = [...visibleCardGroups].sort((left, right) => {
     const leftIndex = boardSettings.laneOrder.indexOf(String(left.key));
     const rightIndex = boardSettings.laneOrder.indexOf(String(right.key));
+    if (leftIndex < 0 && rightIndex < 0 && groupBy === "status") {
+      const defaultOrder =
+        defaultStatusLaneRank(
+          "statusCode" in left ? String(left.statusCode) : undefined,
+        ) -
+        defaultStatusLaneRank(
+          "statusCode" in right ? String(right.statusCode) : undefined,
+        );
+      if (defaultOrder !== 0) return defaultOrder;
+    }
     return (
       (leftIndex < 0 ? 9999 : leftIndex) - (rightIndex < 0 ? 9999 : rightIndex)
     );
@@ -3070,6 +3156,22 @@ export function TicketsPage() {
         (rightIndex < 0 ? 999999 : rightIndex)
       );
     });
+  const pendingGroupLabel = (ticket: Ticket) => {
+    const status = statuses.data?.find((item) => item.id === ticket.status_id);
+    return status ? getLocalizedName(status, language) : "";
+  };
+  const orderedLaneTickets = (group: (typeof cardGroups)[number]) => {
+    const ordered = orderedTickets(group.tickets);
+    if (!("statusCode" in group) || group.statusCode !== "PENDING")
+      return ordered;
+    return [...ordered].sort((left, right) => {
+      const leftCode =
+        statuses.data?.find((item) => item.id === left.status_id)?.code ?? "";
+      const rightCode =
+        statuses.data?.find((item) => item.id === right.status_id)?.code ?? "";
+      return leftCode.localeCompare(rightCode);
+    });
+  };
   const swimlaneLabel = (ticket: Ticket) => {
     if (boardSettings.swimlane === "priority")
       return t(`priority.${ticket.priority}`, {
@@ -3361,143 +3463,51 @@ export function TicketsPage() {
               <Tab value="returned" label={t("ticketsList.returned")} />
             </Tabs>
           )}
-          <Paper
-            variant="outlined"
+          <Box
             sx={{
-              px: 1.25,
-              py: 0.75,
-              mb: 1,
-              borderRadius: 2,
-              position: selectedIds.length ? "sticky" : "relative",
-              top: selectedIds.length ? 56 : undefined,
-              zIndex: selectedIds.length ? 5 : undefined,
-              boxShadow: selectedIds.length ? 3 : undefined,
+              display: { xs: "block", xl: "grid" },
+              gridTemplateColumns: {
+                xl: "minmax(0, 1fr)",
+              },
+              gap: { xl: 1 },
+              alignItems: "stretch",
             }}
           >
-            <Stack
-              direction={{ xs: "column", md: "row" }}
-              spacing={1}
-              alignItems={{ md: "center" }}
-            >
-              <Box sx={{ flexGrow: 1 }}>
-                <Typography variant="subtitle1" fontWeight={900}>
-                  {t("ticketsList.title")}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {tickets.data
-                    ? t("ticketsList.summary", {
-                        total: tickets.data.total,
-                        selected: selectedIds.length,
-                      })
-                    : t("ticketsList.search", {
-                        defaultValue: "Search and manage support tickets",
-                      })}
-                </Typography>
-              </Box>
-              {selectedIds.length > 0 && (
-                <Stack direction="row" gap={0.75} flexWrap="wrap">
-                  {hasPermission("ticket.assign.team") && (
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      disabled={selectedHasPendingApproval}
-                      title={
-                        selectedHasPendingApproval
-                          ? t("ticketsList.approvalBeforeAssignment")
-                          : undefined
-                      }
-                      onClick={() => setBulkOpen(true)}
-                    >
-                      {t("ticketsList.bulkAssign")}
-                    </Button>
-                  )}
-                  {hasPermission("ticket.bulk.status") && (
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      disabled={selectedHasPendingApproval}
-                      onClick={() => {
-                        setBulkReason("");
-                        setStatusOpen(true);
-                      }}
-                    >
-                      {t("ticketsList.changeStatusCount", {
-                        count: selectedIds.length,
-                      })}
-                    </Button>
-                  )}
-                  {!trashTab && hasPermission("ticket.delete.request") && (
-                    <Button
-                      size="small"
-                      color="error"
-                      startIcon={<Delete />}
-                      onClick={() => {
-                        setBulkReason("");
-                        setDeleteOpen(true);
-                      }}
-                    >
-                      {t("ticketsList.deleteCount", {
-                        count: selectedIds.length,
-                      })}
-                    </Button>
-                  )}
-                </Stack>
-              )}
-              {hasPermission("ticket.pre_ticket.create") && (
-                <Button
-                  size="small"
-                  variant="outlined"
-                  startIcon={<Add />}
-                  onClick={() => navigate("/tickets/pre-tickets")}
-                >
-                  {t("preTickets.new")}
-                </Button>
-              )}
-              {hasPermission("ticket.create") && (
-                <Button
-                  variant="contained"
-                  startIcon={<Add />}
-                  onClick={() => navigate("/tickets/create")}
-                  sx={{
-                    whiteSpace: "nowrap",
-                    boxShadow: 2,
-                    position: { xs: "fixed", sm: "static" },
-                    insetInlineEnd: { xs: 16, sm: "auto" },
-                    bottom: { xs: 16, sm: "auto" },
-                    zIndex: { xs: 8, sm: "auto" },
-                    borderRadius: { xs: 99, sm: 1 },
-                  }}
-                >
-                  {t("ticketsList.createTicket")}
-                </Button>
-              )}
-            </Stack>
-          </Paper>
-          {queueTab === "all" && (
+          {showLegacyFastActionPanel && (
             <Paper
               variant="outlined"
-              sx={{ px: 1, py: 0.5, mb: 1, borderRadius: 2, overflowX: "auto" }}
+              sx={{
+                px: 1.25,
+                py: 1,
+                mb: 1,
+                borderRadius: 2,
+                overflowX: { xs: "auto", md: "visible" },
+                bgcolor: "action.hover",
+              }}
             >
               <Stack
                 direction="row"
-                gap={0.5}
+                gap={0.75}
                 alignItems="center"
-                flexWrap="nowrap"
+                flexWrap={{ xs: "nowrap", md: "wrap" }}
                 sx={{
+                  width: { xs: "max-content", md: "auto" },
                   "& .MuiButton-root": {
-                    minHeight: 24,
-                    py: 0,
-                    px: 0.75,
-                    fontSize: "0.7rem",
-                    lineHeight: 1.2,
+                    minHeight: 32,
+                    py: 0.4,
+                    px: 1,
+                    fontSize: "0.75rem",
+                    lineHeight: 1.25,
                     whiteSpace: "nowrap",
+                    borderRadius: 1.5,
                   },
                 }}
               >
                 <Typography
                   variant="body2"
-                  fontWeight={800}
-                  sx={{ marginInlineEnd: 0.5 }}
+                  fontWeight={850}
+                  color="text.secondary"
+                  sx={{ marginInlineEnd: 0.5, whiteSpace: "nowrap" }}
                 >
                   {t("ticketsList.fastActions")}
                 </Typography>
@@ -3630,14 +3640,11 @@ export function TicketsPage() {
                   }
                   onClick={() => {
                     if (!user) return;
-                    applyFastAction(
-                      {
-                        status_code: "RESOLVED",
-                        assigned_user_id: String(user.id),
-                        incomplete_resolution_only: "true",
-                      },
-                      { preserveDateFilters: true },
-                    );
+                    applyFastAction({
+                      status_code: "RESOLVED",
+                      assigned_user_id: String(user.id),
+                      incomplete_resolution_only: "true",
+                    });
                     setSortBy("resolved_at");
                     setSortDirection("asc");
                   }}
@@ -3652,21 +3659,49 @@ export function TicketsPage() {
               </Stack>
             </Paper>
           )}
+          </Box>
           {!trashTab && (
             <Paper
               variant="outlined"
               sx={{
-                p: { xs: 1.25, md: 1.5 },
-                mb: 1.5,
-                borderRadius: 2,
+                p: { xs: 0.75, md: 1 },
+                mb: 1,
+                borderRadius: 1.5,
                 bgcolor: "background.paper",
+                display: { xs: "block", lg: "flex" },
+                alignItems: { lg: "center" },
+                gap: { lg: 0.5 },
+                overflowX: { lg: "auto" },
+                "& .MuiInputBase-root": {
+                  minHeight: 36,
+                  fontSize: "0.8125rem",
+                },
+                "& .MuiInputLabel-root": {
+                  fontSize: "0.8125rem",
+                },
+                "& .MuiFormHelperText-root": {
+                  mt: 0.25,
+                  mx: 0.5,
+                  fontSize: "0.6875rem",
+                  lineHeight: 1.2,
+                },
+                "& .MuiButton-root": {
+                  minHeight: 32,
+                  px: 1,
+                  fontSize: "0.75rem",
+                },
+                "& .MuiChip-root": {
+                  height: 26,
+                  fontSize: "0.75rem",
+                },
               }}
             >
               <Stack
                 direction={{ xs: "column", md: "row" }}
-                spacing={0.75}
-                mb={0.75}
+                spacing={0.5}
+                mb={{ xs: 0.5, lg: 0 }}
                 alignItems={{ md: "center" }}
+                sx={{ flexShrink: 0 }}
               >
                 <TextField
                   size="small"
@@ -3691,7 +3726,7 @@ export function TicketsPage() {
                       ),
                     },
                   }}
-                  sx={{ minWidth: { xs: "100%", md: 240 } }}
+                  sx={{ minWidth: { xs: "100%", md: 220 } }}
                 />
                 <TextField
                   select
@@ -3703,7 +3738,7 @@ export function TicketsPage() {
                     setDateType(value);
                     applyDatePreset(datePreset, value);
                   }}
-                  sx={{ minWidth: 135 }}
+                  sx={{ minWidth: 120 }}
                 >
                   <MenuItem value="created">
                     {t("ticketsList.dateCreated")}
@@ -3729,7 +3764,7 @@ export function TicketsPage() {
                   onChange={(event) =>
                     applyDatePreset(event.target.value as DatePreset)
                   }
-                  sx={{ minWidth: 135 }}
+                  sx={{ minWidth: 120 }}
                 >
                   <MenuItem value="today">Today</MenuItem>
                   <MenuItem value="yesterday">
@@ -3785,8 +3820,9 @@ export function TicketsPage() {
               </Stack>
               <Stack
                 direction={{ xs: "column", sm: "row" }}
-                spacing={1}
+                spacing={0.5}
                 alignItems={{ sm: "center" }}
+                sx={{ flexGrow: 1, minWidth: 0 }}
               >
                 <Button
                   variant={filtersOpen ? "contained" : "outlined"}
@@ -3798,11 +3834,14 @@ export function TicketsPage() {
                   sx={{
                     flexGrow: 1,
                     justifyContent: "flex-start",
-                    minHeight: 40,
+                    minHeight: 34,
                     textTransform: "none",
                     fontWeight: 800,
                   }}
-                  onClick={() => setFiltersOpen((value) => !value)}
+                  onClick={() => {
+                    setPreviewTicket(null);
+                    setFiltersOpen((value) => !value);
+                  }}
                 >
                   {filtersOpen
                     ? t("ticketsList.hideFilters", {
@@ -3871,12 +3910,159 @@ export function TicketsPage() {
                     {t("ticketsList.resetFilters")}
                   </Button>
                 )}
+                {hasPermission("ticket.pre_ticket.create") && (
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    startIcon={<Add />}
+                    onClick={() => navigate("/tickets/pre-tickets")}
+                    sx={{ whiteSpace: "nowrap" }}
+                  >
+                    {t("preTickets.new")}
+                  </Button>
+                )}
+                {hasPermission("ticket.create") && (
+                  <Button
+                    size="small"
+                    variant="contained"
+                    startIcon={<Add />}
+                    onClick={() => navigate("/tickets/create")}
+                    sx={{
+                      whiteSpace: "nowrap",
+                      boxShadow: 1,
+                      position: { xs: "fixed", sm: "static" },
+                      insetInlineEnd: { xs: 16, sm: "auto" },
+                      bottom: { xs: 16, sm: "auto" },
+                      zIndex: { xs: 8, sm: "auto" },
+                      borderRadius: { xs: 99, sm: 1 },
+                    }}
+                  >
+                    {t("ticketsList.createTicket")}
+                  </Button>
+                )}
               </Stack>
-              <Collapse id="ticket-filters-panel" in={filtersOpen}>
+              <Drawer
+                anchor="right"
+                open={filtersOpen}
+                onClose={() => setFiltersOpen(false)}
+                slotProps={{
+                  paper: {
+                    sx: {
+                      top: { xs: 56, sm: 64 },
+                      height: {
+                        xs: "calc(100% - 56px)",
+                        sm: "calc(100% - 64px)",
+                      },
+                    },
+                  },
+                }}
+              >
+                <Box
+                  id="ticket-filters-panel"
+                  sx={{
+                    width: { xs: "92vw", sm: 420 },
+                    p: 1.5,
+                    "& .MuiInputBase-root": {
+                      minHeight: 36,
+                      fontSize: "0.8125rem",
+                    },
+                    "& .MuiInputLabel-root": { fontSize: "0.8125rem" },
+                    "& .MuiFormHelperText-root": {
+                      mt: 0.25,
+                      mx: 0.5,
+                      fontSize: "0.6875rem",
+                      lineHeight: 1.2,
+                    },
+                    "& .MuiButton-root": {
+                      minHeight: 32,
+                      px: 1,
+                      fontSize: "0.75rem",
+                    },
+                    "& .MuiChip-root": {
+                      height: 26,
+                      fontSize: "0.75rem",
+                    },
+                  }}
+                >
+                  <Stack
+                    direction="row"
+                    alignItems="center"
+                    justifyContent="space-between"
+                    mb={0.5}
+                  >
+                    <Box>
+                      <Typography variant="h6" fontWeight={900}>
+                        {t("ticketsList.filters", { defaultValue: "Filters" })}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {t("ticketsList.activeCount", {
+                          count: Object.keys(activeFilters).length,
+                        })}
+                      </Typography>
+                    </Box>
+                    <IconButton
+                      size="small"
+                      aria-label={t("ticketsList.hideFilters", {
+                        defaultValue: "Close filters",
+                      })}
+                      onClick={() => setFiltersOpen(false)}
+                    >
+                      <Close />
+                    </IconButton>
+                  </Stack>
+                  <Divider />
                 <Stack
-                  direction={{ xs: "column", sm: "row" }}
-                  spacing={1}
-                  mt={2}
+                  direction="column"
+                  spacing={0.5}
+                  mt={1}
+                  alignItems={{ sm: "center" }}
+                >
+                  <Button
+                    variant={
+                      filters.uat_defect_only === "true" &&
+                      filters.open_only === "true"
+                        ? "contained"
+                        : "outlined"
+                    }
+                    color="secondary"
+                    onClick={() =>
+                      filters.uat_defect_only === "true" &&
+                      filters.open_only === "true"
+                        ? applyFastAction({
+                            uat_defect_only: "",
+                            open_only: "",
+                          })
+                        : applyFastAction({
+                            uat_defect_only: "true",
+                            open_only: "true",
+                          })
+                    }
+                  >
+                    Open UAT Defects
+                  </Button>
+                  <TextField
+                    size="small"
+                    label="UAT cycle"
+                    value={filters.uat_cycle_code}
+                    onChange={(event) =>
+                      updateFilter("uat_cycle_code", event.target.value)
+                    }
+                    sx={{ minWidth: 145 }}
+                  />
+                  <TextField
+                    size="small"
+                    label="UAT release"
+                    value={filters.uat_release_version}
+                    onChange={(event) =>
+                      updateFilter("uat_release_version", event.target.value)
+                    }
+                    sx={{ minWidth: 145 }}
+                  />
+                </Stack>
+                <Stack
+                  direction="row"
+                  spacing={0.5}
+                  mt={0.75}
                 >
                   <TextField
                     select
@@ -3884,7 +4070,7 @@ export function TicketsPage() {
                     label={t("ticketsList.addFilter")}
                     value={filterToAdd}
                     onChange={(event) => setFilterToAdd(event.target.value)}
-                    sx={{ minWidth: 190 }}
+                    sx={{ minWidth: 175 }}
                   >
                     <MenuItem value="">
                       {t("ticketsList.chooseFilter")}
@@ -3924,24 +4110,24 @@ export function TicketsPage() {
                   <Box
                     sx={{
                       display: "grid",
-                      gridTemplateColumns: {
-                        xs: "1fr",
-                        sm: "repeat(2, 1fr)",
-                        lg: "repeat(4, 1fr)",
-                      },
-                      gap: 1.5,
-                      mt: 2,
+                      gridTemplateColumns: "minmax(0, 1fr)",
+                      gap: 0.75,
+                      mt: 1,
                     }}
                   >
                     {visibleFilterKeys.map((key) => (
                       <Paper
                         key={key}
                         variant="outlined"
-                        sx={{ p: 1, bgcolor: "background.paper" }}
+                        sx={{
+                          p: 0.5,
+                          borderRadius: 1.25,
+                          bgcolor: "background.paper",
+                        }}
                       >
                         <Stack
                           direction="row"
-                          spacing={0.75}
+                          spacing={0.375}
                           alignItems="center"
                         >
                           {renderFilter(key)}
@@ -3949,6 +4135,7 @@ export function TicketsPage() {
                             size="small"
                             color="inherit"
                             onClick={() => removeFilter(key)}
+                            sx={{ minWidth: "auto", px: 0.75 }}
                           >
                             {t("ticketsList.remove")}
                           </Button>
@@ -4009,7 +4196,8 @@ export function TicketsPage() {
                     )}
                   </Box>
                 )}
-              </Collapse>
+                </Box>
+              </Drawer>
             </Paper>
           )}
           {!trashTab && Object.keys(activeFilters).length > 0 && (
@@ -4035,7 +4223,7 @@ export function TicketsPage() {
                     key={key}
                     size="small"
                     label={`${filterLabel(key)}: ${String(value).replaceAll("_", " ")}`}
-                    onDelete={() => updateFilter(key, "")}
+                    onDelete={() => removeActiveFilter(key)}
                   />
                 ))}
               {Object.keys(activeFilters).length > 6 && (
@@ -4152,6 +4340,56 @@ export function TicketsPage() {
                     selected: selectedIds.length,
                   })}
                 </Typography>
+                {selectedIds.length > 0 &&
+                  hasPermission("ticket.assign.team") && (
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      disabled={selectedHasPendingApproval}
+                      title={
+                        selectedHasPendingApproval
+                          ? t("ticketsList.approvalBeforeAssignment")
+                          : undefined
+                      }
+                      onClick={() => setBulkOpen(true)}
+                    >
+                      {t("ticketsList.bulkAssign")}
+                    </Button>
+                  )}
+                {selectedIds.length > 0 &&
+                  hasPermission("ticket.bulk.status") && (
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      disabled={selectedHasPendingApproval}
+                      onClick={() => {
+                        setBulkReason("");
+                        setChoosePendingStatus(false);
+                        setStatusOpen(true);
+                      }}
+                    >
+                      {t("ticketsList.changeStatusCount", {
+                        count: selectedIds.length,
+                      })}
+                    </Button>
+                  )}
+                {selectedIds.length > 0 &&
+                  !trashTab &&
+                  hasPermission("ticket.delete.request") && (
+                    <Button
+                      size="small"
+                      color="error"
+                      startIcon={<Delete />}
+                      onClick={() => {
+                        setBulkReason("");
+                        setDeleteOpen(true);
+                      }}
+                    >
+                      {t("ticketsList.deleteCount", {
+                        count: selectedIds.length,
+                      })}
+                    </Button>
+                  )}
                 <TextField
                   select
                   size="small"
@@ -4336,6 +4574,7 @@ export function TicketsPage() {
                   <Stack direction="row" gap={0.75} mb={1} flexWrap="wrap">
                     <Chip
                       clickable
+                      size="small"
                       label="P1"
                       color={filters.priority === "P1" ? "error" : "default"}
                       onClick={() =>
@@ -4347,49 +4586,143 @@ export function TicketsPage() {
                     />
                     <Chip
                       clickable
-                      label={t("ticketsList.myQueue")}
+                      size="small"
+                      label={t("ticketsList.todayTickets")}
                       color={
-                        filters.assigned_user_id === String(user?.id)
+                        filters.created_from === today() &&
+                        filters.created_to === today() &&
+                        !filters.open_only &&
+                        !filters.assigned_user_id
                           ? "primary"
                           : "default"
                       }
                       onClick={() =>
-                        updateFilter(
-                          "assigned_user_id",
-                          filters.assigned_user_id === String(user?.id)
-                            ? ""
-                            : String(user?.id ?? ""),
-                        )
+                        applyFastAction({
+                          created_from: today(),
+                          created_to: today(),
+                        })
                       }
                     />
+                    {hasPermission("ticket.assign.team") && (
+                      <Chip
+                        clickable
+                        size="small"
+                        label={t("ticketsList.todayUnassigned")}
+                        color={
+                          filters.unassigned_only === "true"
+                            ? "warning"
+                            : "default"
+                        }
+                        onClick={() =>
+                          applyFastAction({
+                            created_from: today(),
+                            created_to: today(),
+                            unassigned_only: "true",
+                          })
+                        }
+                      />
+                    )}
+                    {hasPermission("ticket.assign.self") && (
+                      <Chip
+                        clickable
+                        size="small"
+                        label={t("ticketsList.myQueue")}
+                        color={
+                          filters.assigned_user_id === String(user?.id) &&
+                          filters.open_only === "true"
+                            ? "primary"
+                            : "default"
+                        }
+                        onClick={() =>
+                          user &&
+                          applyFastAction({
+                            assigned_user_id: String(user.id),
+                            open_only: "true",
+                          })
+                        }
+                      />
+                    )}
+                    {hasPermission("dashboard.online_engineers.view") && (
+                      <Chip
+                        clickable
+                        size="small"
+                        label={t("ticketsList.engineerQueues")}
+                        onClick={() => navigate("/")}
+                      />
+                    )}
                     <Chip
                       clickable
-                      label={t("ticketsList.slaBreached")}
-                      color={
-                        filters.breached_only === "true" ? "error" : "default"
-                      }
-                      onClick={() =>
-                        updateFilter(
-                          "breached_only",
-                          filters.breached_only === "true" ? "" : "true",
-                        )
-                      }
+                      size="small"
+                      label={t("ticketsList.myTeamTickets")}
+                      color={filters.my_teams_only === "true" ? "primary" : "default"}
+                      onClick={() => applyFastAction({ my_teams_only: "true" })}
                     />
+                    {hasPermission("ticket.view.department") && (
+                      <Chip
+                        clickable
+                        size="small"
+                        label={t("ticketsList.myDepartmentRequests")}
+                        color={
+                          filters.my_department_requests === "true"
+                            ? "primary"
+                            : "default"
+                        }
+                        onClick={() =>
+                          applyFastAction({
+                            my_department_requests: "true",
+                            department_requests_only: "true",
+                          })
+                        }
+                      />
+                    )}
+                    {hasPermission("ticket.view.team") && (
+                      <Chip
+                        clickable
+                        size="small"
+                        label={t("ticketsList.dueSoon")}
+                        color={filters.due_soon === "true" ? "warning" : "default"}
+                        onClick={() => applyFastAction({ due_soon: "true" })}
+                      />
+                    )}
+                    {hasPermission("ticket.view.team") && (
+                      <Chip
+                        clickable
+                        size="small"
+                        label={t("ticketsList.slaBreached")}
+                        color={filters.breached_only === "true" ? "error" : "default"}
+                        onClick={() => applyFastAction({ breached_only: "true" })}
+                      />
+                    )}
                     <Chip
                       clickable
-                      label={t("ticketsList.todayUnassigned")}
+                      size="small"
+                      label={t("ticketsList.resolvedAwaitingClosure")}
                       color={
-                        filters.unassigned_only === "true"
-                          ? "warning"
+                        filters.status_code === "RESOLVED" &&
+                        filters.assigned_user_id === String(user?.id ?? "")
+                          ? "success"
                           : "default"
                       }
-                      onClick={() =>
-                        updateFilter(
-                          "unassigned_only",
-                          filters.unassigned_only === "true" ? "" : "true",
-                        )
-                      }
+                      onClick={() => {
+                        if (!user) return;
+                        applyFastAction({
+                          status_code: "RESOLVED",
+                          assigned_user_id: String(user.id),
+                          incomplete_resolution_only: "true",
+                        });
+                        setSortBy("resolved_at");
+                        setSortDirection("asc");
+                      }}
                     />
+                    {hasPermission("report.export") && (
+                      <Chip
+                        clickable
+                        size="small"
+                        icon={<Download />}
+                        label={t("ticketsList.exportCsv")}
+                        onClick={exportTickets}
+                      />
+                    )}
                   </Stack>
                   <Box
                     sx={{
@@ -4475,7 +4808,20 @@ export function TicketsPage() {
                           const ticket = displayedTickets.find(
                             (item) => item.id === droppedId,
                           );
-                          const statusCode = String(group.statusCode);
+                          const isUnifiedPendingLane =
+                            String(group.statusCode) === "PENDING";
+                          const currentStatusCode = statuses.data?.find(
+                            (item) => item.id === ticket?.status_id,
+                          )?.code;
+                          const pendingDefaultStatus = statuses.data?.find(
+                            (item) => item.code === "PENDING_CLIENT",
+                          );
+                          const statusCode = isUnifiedPendingLane
+                            ? (pendingDefaultStatus?.code ?? "PENDING_CLIENT")
+                            : String(group.statusCode);
+                          const targetStatusId = isUnifiedPendingLane
+                            ? (pendingDefaultStatus?.id ?? ticket?.status_id ?? 0)
+                            : Number(group.key);
                           if (ticket && ticketNeedsApprovalAttention(ticket)) {
                             setPendingTicket(ticket);
                             setDraggedTicketId(null);
@@ -4483,9 +4829,13 @@ export function TicketsPage() {
                           }
                           if (
                             ticket &&
+                            !(
+                              isUnifiedPendingLane &&
+                              isPendingStatusCode(currentStatusCode)
+                            ) &&
                             ticketCardNeedsStatusMove(
                               statusCode,
-                              Number(group.key),
+                              targetStatusId,
                               ticket,
                             )
                           ) {
@@ -4533,6 +4883,7 @@ export function TicketsPage() {
                             if (transitionMode === "status-dialog") {
                               setCardTransitionTicket(ticket);
                               setBulkStatus(statusCode);
+                              setChoosePendingStatus(isUnifiedPendingLane);
                               setBulkReason("");
                               setBulkPendingOwner(String(user?.id ?? ""));
                               setBulkPendingFollowUp(
@@ -4669,6 +5020,33 @@ export function TicketsPage() {
                         </Stack>
                         {groupBy === "status" &&
                           "statusCode" in group &&
+                          group.statusCode === "PENDING" && (
+                            <Stack
+                              direction="row"
+                              gap={0.5}
+                              mb={1}
+                              flexWrap="wrap"
+                            >
+                              {(statuses.data ?? [])
+                                .filter((status) =>
+                                  isPendingStatusCode(status.code),
+                                )
+                                .map((status) => (
+                                  <Chip
+                                    key={status.id}
+                                    size="small"
+                                    variant="outlined"
+                                    label={`${getLocalizedName(status, language)} · ${group.tickets.filter((ticket) => ticket.status_id === status.id).length}`}
+                                    sx={{
+                                      borderColor: status.color,
+                                      maxWidth: "100%",
+                                    }}
+                                  />
+                                ))}
+                            </Stack>
+                          )}
+                        {groupBy === "status" &&
+                          "statusCode" in group &&
                           group.statusCode === "NEW" &&
                           hasPermission("ticket.create") && (
                             <Typography
@@ -4687,9 +5065,27 @@ export function TicketsPage() {
                           String(group.key),
                         ) && (
                           <Stack spacing={1}>
-                            {orderedTickets(group.tickets).map(
+                            {orderedLaneTickets(group).map(
                               (ticket, cardIndex, laneTickets) => (
                                 <Box key={ticket.id} sx={{ minWidth: 0 }}>
+                                  {groupBy === "status" &&
+                                    "statusCode" in group &&
+                                    group.statusCode === "PENDING" &&
+                                    (cardIndex === 0 ||
+                                      laneTickets[cardIndex - 1].status_id !==
+                                        ticket.status_id) && (
+                                      <Divider
+                                        textAlign="left"
+                                        sx={{ my: 0.75 }}
+                                      >
+                                        <Typography
+                                          variant="caption"
+                                          fontWeight={900}
+                                        >
+                                          {pendingGroupLabel(ticket)}
+                                        </Typography>
+                                      </Divider>
+                                    )}
                                   {boardSettings.swimlane &&
                                     (cardIndex === 0 ||
                                       swimlaneLabel(
@@ -4871,6 +5267,9 @@ export function TicketsPage() {
                                         >
                                           {ticket.ticket_number}
                                         </SemanticLink>
+                                        {ticket.is_uat_defect && (
+                                          <Chip size="small" color="secondary" label="UAT Defect" sx={{ mt: 0.5 }} />
+                                        )}
                                         <Typography
                                           fontWeight={700}
                                           sx={{
@@ -5150,6 +5549,9 @@ export function TicketsPage() {
                         >
                           {ticket.ticket_number}
                         </SemanticLink>
+                        {ticket.is_uat_defect && (
+                          <Chip size="small" color="secondary" label="UAT Defect" sx={{ ml: 0.75 }} />
+                        )}
                         <Typography
                           variant="body2"
                           fontWeight={700}
@@ -6974,6 +7376,7 @@ export function TicketsPage() {
         open={statusOpen}
         onClose={() => {
           setStatusOpen(false);
+          setChoosePendingStatus(false);
           setCardTransitionTicket(null);
           setCardResolutionAttachments([]);
           setCardKnowledgeSearch("");
@@ -7005,20 +7408,40 @@ export function TicketsPage() {
               })}
             </Alert>
           )}
+          {choosePendingStatus && (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              {t("ticketsList.pendingLaneChooseReason", {
+                defaultValue:
+                  "Choose who the ticket is waiting for. The original pending status and workflow rules are preserved.",
+              })}
+            </Alert>
+          )}
           <TextField
             select
             required
             fullWidth
             label={t("ticketsList.newStatus")}
             value={bulkStatus}
-            disabled={Boolean(cardTransitionTicket)}
-            onChange={(event) => setBulkStatus(event.target.value)}
+            disabled={Boolean(cardTransitionTicket) && !choosePendingStatus}
+            onChange={(event) => {
+              const nextStatus = event.target.value;
+              setBulkStatus(nextStatus);
+              if (choosePendingStatus)
+                setBulkPendingParty(
+                  nextStatus === "PENDING_CLIENT" ? "CUSTOMER" : "MILLENSYS",
+                );
+            }}
           >
-            {statuses.data?.map((status) => (
-              <MenuItem key={status.id} value={status.code}>
-                {getLocalizedName(status, language)}
-              </MenuItem>
-            ))}
+            {statuses.data
+              ?.filter(
+                (status) =>
+                  !choosePendingStatus || isPendingStatusCode(status.code),
+              )
+              .map((status) => (
+                <MenuItem key={status.id} value={status.code}>
+                  {getLocalizedName(status, language)}
+                </MenuItem>
+              ))}
           </TextField>
           <TextField
             required={
@@ -7385,6 +7808,7 @@ export function TicketsPage() {
           <Button
             onClick={() => {
               setStatusOpen(false);
+              setChoosePendingStatus(false);
               setCardTransitionTicket(null);
               setCardResolutionAttachments([]);
               setCardKnowledgeSearch("");

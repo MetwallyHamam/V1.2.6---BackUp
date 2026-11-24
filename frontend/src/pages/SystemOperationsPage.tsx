@@ -1,6 +1,8 @@
 import {
   Alert,
+  Box,
   Button,
+  Chip,
   CircularProgress,
   FormControlLabel,
   MenuItem,
@@ -17,6 +19,7 @@ import {
   TextField,
   Typography,
 } from "@mui/material";
+import { CheckCircle, SettingsSuggest, WarningAmber } from "@mui/icons-material";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FormEvent, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -469,32 +472,91 @@ export function SystemOperationsPage() {
     setGeneralDirty(false);
     setSearchParams({ tab: next });
   };
-  if (status.isLoading) return <CircularProgress />;
+  if (status.isLoading)
+    return (
+      <Paper variant="outlined" sx={{ p: 5, textAlign: "center" }}>
+        <CircularProgress size={32} />
+        <Typography color="text.secondary" sx={{ mt: 2 }}>
+          {t("systemOperations.loading")}
+        </Typography>
+      </Paper>
+    );
   return (
     <Stack spacing={3}>
-      <Paper sx={{ p: 3 }}>
-        <Typography variant="h4" gutterBottom>
-          {t("systemOperations.title")}
-        </Typography>
-        <Typography color="text.secondary">
-          {t("systemOperations.subtitle")}
-        </Typography>
-        <Tabs
-          value={tab}
-          onChange={(_, value: string) => changeTab(value)}
-          variant="scrollable"
-          scrollButtons="auto"
-          aria-label={t("systemOperations.categoriesLabel")}
-          sx={{ mt: 2 }}
+      <Paper variant="outlined" sx={{ overflow: "hidden" }}>
+        <Stack
+          direction={{ xs: "column", md: "row" }}
+          gap={2}
+          alignItems={{ md: "center" }}
+          sx={{ p: { xs: 2, md: 3 } }}
         >
-          {categories.map((key) => (
-            <Tab
-              key={key}
-              value={key}
-              label={t(`systemOperations.categories.${key}`)}
+          <Box
+            sx={{
+              width: 48,
+              height: 48,
+              borderRadius: 2.5,
+              display: "grid",
+              placeItems: "center",
+              bgcolor: "primary.main",
+              color: "primary.contrastText",
+              flexShrink: 0,
+            }}
+          >
+            <SettingsSuggest />
+          </Box>
+          <Box flex={1} minWidth={0}>
+            <Typography variant="h4" fontWeight={850}>
+              {t("systemOperations.title")}
+            </Typography>
+            <Typography color="text.secondary">
+              {t("systemOperations.subtitle")}
+            </Typography>
+          </Box>
+          <Stack direction="row" gap={1} flexWrap="wrap">
+            <Chip
+              icon={status.isError ? <WarningAmber /> : <CheckCircle />}
+              color={status.isError ? "error" : "success"}
+              variant="outlined"
+              label={
+                status.isError
+                  ? t("systemOperations.statusUnavailable")
+                  : t("systemOperations.systemOnline")
+              }
             />
-          ))}
-        </Tabs>
+            {generalDirty && (
+              <Chip
+                color="warning"
+                label={t("systemOperations.unsavedChanges")}
+              />
+            )}
+          </Stack>
+        </Stack>
+        <Box sx={{ borderTop: 1, borderColor: "divider", bgcolor: "action.hover" }}>
+          <Tabs
+            value={tab}
+            onChange={(_, value: string) => changeTab(value)}
+            variant="scrollable"
+            scrollButtons="auto"
+            allowScrollButtonsMobile
+            aria-label={t("systemOperations.categoriesLabel")}
+            sx={{
+              px: { xs: 0.5, md: 1.5 },
+              "& .MuiTab-root": {
+                minHeight: 52,
+                textTransform: "none",
+                fontWeight: 750,
+              },
+            }}
+          >
+            {categories.map((key) => (
+              <Tab
+                key={key}
+                value={key}
+                label={t(`systemOperations.categories.${key}`)}
+              />
+            ))}
+          </Tabs>
+        </Box>
       </Paper>
       {status.isError && (
         <Alert severity="error">{t("systemOperations.statusFailed")}</Alert>
@@ -938,8 +1000,27 @@ export function SystemOperationsPage() {
               rows={5}
               helperText={t("systemOperations.general.templateHelp")}
             />
-            <Stack direction="row" gap={1}>
-              <Button type="submit" variant="contained">
+            <Stack
+              direction="row"
+              gap={1}
+              justifyContent="flex-end"
+              sx={{
+                position: "sticky",
+                bottom: 0,
+                zIndex: 2,
+                py: 1.5,
+                px: 1.5,
+                mx: -1.5,
+                bgcolor: "background.paper",
+                borderTop: 1,
+                borderColor: "divider",
+              }}
+            >
+              <Button
+                type="submit"
+                variant="contained"
+                disabled={!generalDirty || saveSiteSettings.isPending}
+              >
                 {t("systemOperations.general.save")}
               </Button>
               <Button

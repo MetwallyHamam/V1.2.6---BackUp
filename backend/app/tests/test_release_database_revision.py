@@ -9,7 +9,12 @@ from app.db.compatibility import EXPECTED_DATABASE_REVISION, REQUIRED_COLUMNS
 def test_release_compatibility_matches_current_migration_head() -> None:
     scripts = ScriptDirectory.from_config(Config("alembic.ini"))
     assert scripts.get_current_head() == EXPECTED_DATABASE_REVISION
-    assert EXPECTED_DATABASE_REVISION == "0275_personal_workspace"
+    assert EXPECTED_DATABASE_REVISION == "0295_project_lifecycle"
+    assert "row_version" in REQUIRED_COLUMNS["company_projects"]
+    assert "row_version" in REQUIRED_COLUMNS["company_project_assignment_requests"]
+    assert "project_status_transitions" in REQUIRED_COLUMNS
+    assert "dismissed_at" in REQUIRED_COLUMNS["notifications"]
+    assert {"role", "contribution_percent"} <= REQUIRED_COLUMNS["work_assignment_assignees"]
     assert "approved_software_version" not in REQUIRED_COLUMNS["change_request_details"]
     assert "approved_software_version" in REQUIRED_COLUMNS["deployment_plans"]
     assert "ticket_rating" in REQUIRED_COLUMNS["ticket_satisfaction"]
@@ -90,10 +95,17 @@ def test_release_compatibility_matches_current_migration_head() -> None:
         "city_id",
         "support_started_at",
         "parent_client_id",
+        "organization_id",
+        "department_policy_mode",
         "contract_service_status",
     } <= REQUIRED_COLUMNS["clients"]
     assert "department_id" in REQUIRED_COLUMNS["users"]
     assert "departments" in REQUIRED_COLUMNS
+    assert {
+        "organization_department_assignments",
+        "client_department_assignments",
+        "branch_department_assignments",
+    } <= set(REQUIRED_COLUMNS)
     assert {"requires_resolution_outcome", "requires_permanent_fix"} <= REQUIRED_COLUMNS[
         "root_causes"
     ]
@@ -119,11 +131,39 @@ def test_release_compatibility_matches_current_migration_head() -> None:
     assert "ticket_catalog_visibility" in REQUIRED_COLUMNS["contracts"]
     assert "color" in REQUIRED_COLUMNS["ticket_statuses"]
     assert "color" in REQUIRED_COLUMNS["ticket_types"]
+    assert {"intake_owner_user_id", "published_at", "published_by_user_id"} <= REQUIRED_COLUMNS[
+        "company_projects"
+    ]
+    assert {
+        "company_project_product_scopes",
+        "company_project_module_scopes",
+        "project_phase_product_scopes",
+        "project_phase_module_scopes",
+    } <= set(REQUIRED_COLUMNS)
 
 
 def test_all_revision_ids_fit_default_alembic_version_column() -> None:
     scripts = ScriptDirectory.from_config(Config("alembic.ini"))
     assert all(len(revision.revision) <= 32 for revision in scripts.walk_revisions())
+
+
+def test_unified_operations_hardening_uses_filtered_active_timer_uniqueness() -> None:
+    migration = ScriptDirectory.from_config(Config("alembic.ini"))
+    revision = migration.get_revision("0292_unified_ops_hardening")
+    source = Path(revision.path).read_text(encoding="utf-8")
+    assert 'mssql_where=sa.text("is_timer = 1 AND ended_at IS NULL")' in source
+    assert 'sqlite_where=sa.text("is_timer = 1 AND ended_at IS NULL")' in source
+    assert "def downgrade()" in source
+
+
+def test_unified_operations_boolean_filters_are_sql_server_safe() -> None:
+    project_module = Path("app/modules/projects")
+    offenders = [
+        path
+        for path in project_module.glob("*.py")
+        if ".is_(True)" in path.read_text(encoding="utf-8")
+    ]
+    assert offenders == []
 
 
 def test_operations_permission_migration_avoids_sql_server_reserved_aliases() -> None:

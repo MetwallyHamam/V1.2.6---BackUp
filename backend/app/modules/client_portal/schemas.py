@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -42,3 +42,17 @@ class PortalAnnouncement(BaseModel):
     severity: str
     title: str
     message: str
+
+
+class PortalContractRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    contract_number: str
+    name: str
+    status: str
+    start_date: date
+    end_date: date
+    has_sla: bool
+    support_summary: str | None
+    exclusions: str | None

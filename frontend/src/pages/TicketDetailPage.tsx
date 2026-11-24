@@ -42,6 +42,7 @@ import { MajorIncidentPanel } from "../components/MajorIncidentPanel";
 import { TechnicalText } from "../components/TechnicalText";
 import { getLocalizedName } from "../i18n/localizedMasterData";
 import { UatTicketEvidencePanel } from "./UatTicketEvidencePanel";
+import { TicketImplementationHistoryPanel } from "../components/TicketImplementationHistoryPanel";
 
 type Ticket = {
   id: number;
@@ -102,6 +103,16 @@ type Ticket = {
   sla_saved_minutes?: number;
   sla_overrun_minutes?: number;
   sla_resolution_state?: string;
+  is_uat_defect?: boolean;
+  uat_cycle_id?: number;
+  uat_cycle_test_id?: number;
+  uat_attempt_id?: number;
+  uat_cycle_code?: string;
+  uat_test_code?: string;
+  uat_release_version?: string;
+  uat_workflow_status?: string;
+  uat_ready_for_closure?: boolean;
+  uat_closure_warning?: boolean;
 };
 type Catalog = {
   id: number;
@@ -1625,6 +1636,7 @@ export function TicketDetailPage() {
       ticket.data.sla_resolution_target_minutes != null);
   return (
     <>
+      <TicketImplementationHistoryPanel ticketId={Number(id)} />
       <Stack direction={{ xs: "column", lg: "row" }} spacing={3}>
         <Paper
           sx={{
@@ -1655,6 +1667,22 @@ export function TicketDetailPage() {
                 currentStatus ? localized(currentStatus) : t("common.loading")
               }
             />
+            {ticket.data.is_uat_defect && (
+              <Chip color="secondary" label="UAT Defect" />
+            )}
+            {ticket.data.uat_cycle_id && (
+              <Button
+                variant="outlined"
+                color="secondary"
+                onClick={() =>
+                  navigate(
+                    `/uat?cycle_id=${ticket.data.uat_cycle_id}${ticket.data.uat_cycle_test_id ? `&test_id=${ticket.data.uat_cycle_test_id}` : ""}`,
+                  )
+                }
+              >
+                Open UAT Test
+              </Button>
+            )}
             {[
               "ticket.edit.own",
               "ticket.edit.assigned",
@@ -1683,6 +1711,16 @@ export function TicketDetailPage() {
               </Button>
             )}
           </Stack>
+          {ticket.data.uat_ready_for_closure && (
+            <Alert severity="success" sx={{ mt: 1 }}>
+              The linked UAT retest passed. This ticket is ready for the normal closure workflow.
+            </Alert>
+          )}
+          {ticket.data.uat_closure_warning && (
+            <Alert severity="warning" sx={{ mt: 1 }}>
+              This ticket was closed before a successful UAT retest. The UAT test state was preserved.
+            </Alert>
+          )}
           <TicketFlagsPanel ticketId={ticket.data.id} />
           <Stack
             direction={{ xs: "column", sm: "row" }}

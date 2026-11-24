@@ -12,7 +12,7 @@ from app.modules.iam.security import hash_password
 from app.modules.notifications.models import Notification
 from app.modules.tickets.models import Ticket
 from app.modules.uat.models import UatCycleTest
-from app.modules.uat.service import mark_retests_ready, queue_due_reminders
+from app.modules.uat.service import queue_due_reminders, sync_ticket_to_uat
 
 
 def _portal_user(db: Session, username: str, client_id: int) -> User:
@@ -64,6 +64,12 @@ def test_portal_uat_scope_and_separate_results(client: TestClient, admin_headers
     test_id = cycle.json()["tests"][0]["id"]
     assert client.get("/api/v1/portal/uat/cycles", headers=assigned_headers).json() == []
     assert client.post(f"/api/v1/uat/cycles/{cycle_id}/activate", headers=admin_headers).status_code == 200
+    assert client.put(f"/api/v1/uat/cycles/{cycle_id}/portal-settings", headers=admin_headers, json={
+        "portal_visible": False, "client_coordinator_user_id": assigned.id,
+    }).status_code == 200
+    availability = client.get("/api/v1/portal/uat/availability", headers=assigned_headers)
+    assert availability.status_code == 200
+    assert availability.json()["code"] == "UNPUBLISHED"
     coordinator_settings = client.put(f"/api/v1/uat/cycles/{cycle_id}/portal-settings", headers=admin_headers, json={
         "portal_visible": True, "client_coordinator_user_id": assigned.id,
     })
@@ -267,7 +273,12 @@ def test_client_can_create_one_defect_ticket_from_own_failed_test(client: TestCl
     ticket = database.get(Ticket, created.json()["ticket_id"])
     assert ticket is not None
     database.expire_all()
-    mark_retests_ready(database, ticket, admin)
+    sync_ticket_to_uat(database, ticket, admin, target_status_code="ASSIGNED")
+    database.commit()
+    database.expire_all()
+    test = database.get(UatCycleTest, test_id)
+    assert test and test.client_workflow_status == "FIX_IN_PROGRESS"
+    sync_ticket_to_uat(database, ticket, admin, target_status_code="RESOLVED")
     database.commit()
     database.expire_all()
     test = database.get(UatCycleTest, test_id)
@@ -288,6 +299,7 @@ def test_client_can_create_one_defect_ticket_from_own_failed_test(client: TestCl
                          json={"result": "PASS", "actual_result": "Workflow works now"})
     assert retest.status_code == 201, retest.text
     assert database.scalar(select(Notification.id).where(Notification.notification_type == "UAT_CLIENT_RETEST_PASS"))
+    assert database.scalar(select(Notification.id).where(Notification.notification_type == "UAT_TICKET_READY_FOR_CLOSURE"))
 
 
 def test_client_coordinator_reviews_without_tester_or_approver_rights(client: TestClient, admin_headers: dict[str, str], database: Session) -> None:

@@ -1522,6 +1522,252 @@ Release renewal/finance work in independent safety, renewal/SLA, contract-financ
 
 Verify clean install, populated upgrade, recovery/downgrade strategy, seeds, optional-all-blank financial compatibility, and historical-data preservation before enabling finance features.
 
+15A. UAT Experience and Defect-Ticket Enhancement Initiative
+
+Status: PARTIAL
+
+Priority: High
+
+Prepared: 2026-11-20
+
+Objective
+
+Make internal and client-portal UAT work easier to understand, execute, monitor, and complete. Failed tests must create clearly identifiable UAT defect tickets with permanent two-way traceability. This initiative should improve the existing UAT module without introducing a separate ticket lifecycle or replacing established authorization, client isolation, SLA, and audit controls.
+
+Execution boundaries
+
+- Execute one phase at a time and stop after its acceptance gates pass.
+- Preserve the existing UAT cycle, test, attempt, client assignment, sign-off, evidence, and deployment data models unless an additive field is required.
+- Reuse the normal ticket lifecycle. A UAT issue is a normal governed ticket with structured UAT source metadata and a visible UAT Defect identity.
+- Do not mark a test as passed merely because its ticket is resolved. Resolution means ready for retest; only a successful UAT attempt may pass the test.
+- Preserve exact-client authorization in internal and portal APIs.
+- Keep all workflow automation auditable and idempotent.
+
+15A.1 Phase 1 — UAT Portfolio and Navigation
+
+Status: DONE
+
+Scope
+
+- Add portfolio summary cards for Active, Blocked, Awaiting Client, Ready for Sign-off, and Completed cycles.
+- Add a Needs Attention section for overdue tests, failures without tickets, blocked tests, missing client assignments, expired portal access, and pending sign-off.
+- Improve cycle cards to show client, release, environment, progress, due date, coordinator, open defect count, and the next recommended action.
+- Add simple filters for client, cycle status, release, due state, coordinator, and attention state.
+- Default ordering should prioritize urgent and actionable work rather than creation time alone.
+- Use one clear primary action per cycle, such as Continue Testing, Review Failures, Configure Portal, or Review Sign-off.
+- Preserve responsive layouts and accessible light/dark-mode contrast.
+
+Acceptance criteria
+
+- A user can identify the highest-priority UAT work without opening each cycle.
+- Summary values reconcile to the cycles and tests returned by the governed UAT APIs.
+- Empty states explain why no work is available and provide a valid next action where possible.
+- Filters do not weaken client scope or permission enforcement.
+
+Implementation record — 2026-11-20
+
+- Extended the existing permission-governed `/uat/portfolio` read model; no parallel API or database migration was added.
+- Added reconciled Active, Blocked, Awaiting Client, Ready for Sign-off, and Completed summary cards.
+- Added actionable attention detection for overdue tests, failures without linked tickets, blocked tests, missing client assignments, expired portal access, and pending sign-off.
+- Added coordinator and environment context, due state, urgency ranking, open-defect totals, progress, and one recommended primary action to every cycle card.
+- Added composable client, cycle status, release, due state, coordinator, and attention filters plus actionable empty states.
+- Replaced the wide portfolio table with responsive cards using theme-aware surfaces, text labels, progress semantics, and non-color status indicators.
+- Files changed: `backend/app/modules/uat/reporting_routes.py`, `backend/app/tests/test_uat_reporting.py`, `frontend/src/pages/UatPortfolioPanel.tsx`, and `frontend/src/test/UatPortfolioPanel.test.ts`.
+- Database migrations: none.
+- Verification: focused portfolio Vitest passed (2 tests); UAT foundation/reporting Pytest passed (8 tests); Ruff, focused Mypy, TypeScript, focused ESLint, production build, and scoped `git diff --check` passed. The build retained only the repository's existing chunk-size and mixed-import warnings.
+
+15A.2 Phase 2 — Guided Test Execution and Workflow UX
+
+Status: DONE
+
+Target workflow
+
+Draft -> Ready -> In Progress -> Passed / Failed / Blocked -> Waiting for Fix -> Ready for Retest -> Completed
+
+Scope
+
+- Use a consistent cycle workspace with cycle health at the top, workflow board or compact list in the center, and a test execution drawer for the selected test.
+- Present preconditions, ordered steps, expected result, actual result, comments, evidence, and result actions in one guided flow.
+- Add Previous Test, Next Test, and Test X of Y navigation.
+- Show only valid next actions and explain why unavailable actions are disabled.
+- Require a failure reason for Failed and a blocking reason for Blocked.
+- Display priority, assignee, due state, attempt count, evidence count, comments, and linked defect state on test cards without overcrowding them.
+- Preserve keyboard navigation, accessible labels, mobile usability, and clear non-color status indicators.
+
+Acceptance criteria
+
+- An assigned tester can execute a test without navigating away from the cycle workspace.
+- Invalid transitions remain blocked by the backend and are explained by the UI.
+- Draft input is not silently lost during ordinary navigation inside the execution workspace.
+- Internal and portal experiences use consistent terminology while exposing only permitted actions.
+
+Implementation record — 2026-11-20
+
+- Consolidated internal execution into the cycle workspace with cycle health, board/list navigation, and a guided test drawer.
+- Added Previous Test, Next Test, and Test X of Y navigation to internal and client-portal execution drawers.
+- Presented preconditions, ordered steps, expected result, actual result, comments, evidence, attempt history, and result actions in one flow.
+- Restricted internal action menus to transitions currently accepted by the governed backend and added explanations for passed, blocked, investigation, waiting-for-fix, and inactive-cycle states.
+- Preserved per-test internal and portal draft input in browser session storage during ordinary workspace navigation.
+- Added attempt, comment, and evidence counts to cycle-test read models and compact test cards without changing the database schema.
+- Retained backend requirements for actual results, failure reason/severity, blocking reason/comment, assignment, active cycle, sign-off, and ticket/retest state.
+- Files changed: `backend/app/modules/uat/routes.py`, `backend/app/tests/test_uat_foundation.py`, `frontend/src/pages/UatPage.tsx`, `frontend/src/pages/UatCycleReview.tsx`, `frontend/src/pages/PortalUatPage.tsx`, and `frontend/src/test/UatCycleReviewOrdering.test.ts`.
+- Database migrations: none.
+- Verification: UAT foundation/reporting Pytest passed (8 tests); focused UAT Vitest passed (5 tests); Ruff, focused Mypy, TypeScript, focused ESLint, production build, and scoped `git diff --check` passed. The build retained only existing mixed-import and chunk-size warnings.
+
+15A.3 Phase 3 — UAT Defect-Ticket Creation and Discovery
+
+Status: DONE
+
+Scope
+
+- Rename the failure action to Create UAT Defect Ticket.
+- Prefill the governed ticket form with client, cycle code, cycle title, release version, environment, test code, test title, expected result, actual result, failure reason, severity, attempt, and available client-safe evidence.
+- Store structured source linkage for the UAT cycle, cycle test, and attempt. Do not rely only on description text.
+- Add a visible UAT Defect badge to ticket cards and ticket details.
+- Use a predictable subject format such as `[UAT][Release 1.66] Test title — TC-042`.
+- Prevent accidental duplicate open defects for the same test failure. If a linked ticket already exists, open it or require an explicit, permitted reason to create another.
+- Add two-way Open Ticket, Open UAT Test, and Open UAT Cycle navigation.
+- Add a Tickets-page quick filter for UAT Defects and governed filters for cycle and release.
+- Extend authorized ticket search to match UAT cycle code and test-case code.
+- Add an Open UAT Defects saved-view definition or equivalent quick view without changing user-owned saved views unexpectedly.
+
+Data and migration guidance
+
+- Prefer additive nullable linkage columns or a governed association table compatible with SQL Server and SQLite tests.
+- Preserve existing `linked_ticket_id` behavior and migrate or backfill only when linkage is unambiguous.
+- Add indexes for structured UAT lookup fields used by filters and search.
+- Do not copy client-private or internal-only evidence into ticket content visible to unauthorized users.
+
+Acceptance criteria
+
+- A failed test can create a correctly scoped ticket without retyping its UAT context.
+- The same open failure cannot silently create duplicate defect tickets.
+- Authorized users can find UAT tickets from the Tickets page by quick filter, cycle code, test code, release, or ticket number.
+- Ticket and UAT pages provide permanent two-way navigation.
+- Existing non-UAT ticket behavior and filters remain unchanged.
+
+Implementation record — 2026-11-21
+
+- Renamed internal and portal failure actions to Create UAT Defect Ticket and retained the governed review form with prefilled client, cycle, release, environment, test, expected/actual result, failure, severity, and attempt context.
+- Added the additive `uat_defect_links` association table with durable ticket, cycle, cycle-test, and attempt references plus indexed cycle code, test code, and release metadata. Existing unambiguous `linked_ticket_id` values are backfilled.
+- Standardized generated subjects as `[UAT][Release <version>] <test title> — <test code>` and preserved the existing one-linked-ticket duplicate guard.
+- Enriched governed ticket list/detail responses with UAT defect identity and source navigation metadata without changing non-UAT ticket serialization behavior.
+- Added UAT Defect badges to ticket grid/cards/details, an Open UAT Defects quick view, exact cycle/release filters, and authorized ticket search by cycle code, test code, or release.
+- Added ticket-to-UAT deep links that open the source cycle and test; existing UAT-to-ticket links remain in place.
+- Files changed: `backend/app/modules/uat/models.py`, `backend/app/modules/uat/routes.py`, `backend/app/modules/uat/portal_routes.py`, `backend/app/modules/tickets/service.py`, `backend/app/modules/tickets/routes.py`, `backend/app/modules/tickets/schemas.py`, `backend/app/db/compatibility.py`, `backend/app/tests/test_uat_foundation.py`, database-revision tests, `frontend/src/pages/UatPage.tsx`, `frontend/src/pages/PortalUatPage.tsx`, `frontend/src/pages/TicketsPage.tsx`, and `frontend/src/pages/TicketDetailPage.tsx`.
+- Database migration: `0282_uat_defect_links`. Clean SQLite upgrade passed. SQL Server validation passed by applying only `0282` to a disposable schema clone of the configured local `MillensysSupportHub` database at `0281`; the clone was removed and the real database was not changed.
+- Verification: Ruff and strict Mypy passed; focused Phase 3/API and database-revision Pytest passed; the full backend run completed with 559 passes and 10 Windows temp-directory setup errors, then all 11 affected selections passed using a fresh temp root; all 137 frontend tests passed; TypeScript and the production build passed; `git diff --check` reported no content errors. Existing frontend chunk/mixed-import warnings remain.
+- Packaging, release publication, live SQL Server upgrade, and Phase 4 are intentionally deferred.
+
+15A.4 Phase 4 — Ticket and Retest Workflow Synchronization
+
+Status: DONE
+
+Business mapping
+
+- UAT defect ticket created -> test enters Waiting for Fix.
+- Linked ticket assigned or in progress -> test indicates Fix in Progress.
+- Linked ticket resolved -> test becomes Ready for Retest.
+- Retest passed -> test becomes Passed and the ticket is marked ready for closure; automatic closure remains subject to the existing ticket policy.
+- Retest failed -> continue or reopen the existing linked ticket and record a new UAT attempt.
+- Ticket closed without a successful retest -> show a warning and preserve the UAT test state.
+
+Implementation controls
+
+- Synchronization must be idempotent, audited, and safe under retries.
+- Existing ticket transition permissions and required resolution fields remain authoritative.
+- UAT automation must not bypass ticket SLA, assignment, notification, or closure policy.
+- Conflicts must produce a visible actionable message instead of silently forcing a state.
+
+Acceptance criteria
+
+- Ticket resolution never automatically passes UAT.
+- Repeated events do not create duplicate attempts, tickets, notifications, or transitions.
+- Audit history identifies the initiating user or system event and both linked records.
+- Portal users see only client-safe ticket state and messages.
+
+Implementation record — 2026-11-21
+
+- Verified the governed ticket lifecycle codes as `NEW`, `TRIAGED`, `ASSIGNED`, `IN_PROGRESS`, `PENDING_CLIENT`, `PENDING_INTERNAL`, `PENDING_VENDOR`, `RESOLVED`, `CLIENT_CONFIRMATION`, `CLOSED`, `CANCELLED`, and `REOPENED` before implementing synchronization.
+- Added idempotent ticket-to-UAT projection: assignment, active work, pending work, and reopen set failed linked tests to Fix in Progress; resolution/client confirmation set them to Ready for Retest; closure before a successful retest preserves UAT state and raises a deduplicated warning.
+- Kept ticket transition validation, permissions, assignment, SLA, resolution evidence, notification, and closure policy authoritative. Synchronization never automatically passes UAT, reopens a ticket, or closes a ticket.
+- Added internal and portal retest outcome handling. Failed retests return the test to Waiting for Fix and request a normal permitted continue/reopen ticket action; passed retests mark the linked ticket ready for the normal closure workflow.
+- Added paired ticket/test audit entries containing both record IDs, idempotent notification keys, visible Fix in Progress lanes, retest blocking while a fix is active, and ticket-detail readiness/closure-warning messages.
+- Files changed: `backend/app/modules/uat/service.py`, `backend/app/modules/uat/routes.py`, `backend/app/modules/uat/portal_routes.py`, `backend/app/modules/tickets/service.py`, `backend/app/modules/tickets/routes.py`, `backend/app/modules/tickets/schemas.py`, `backend/app/tests/test_uat_foundation.py`, `backend/app/tests/test_uat_portal.py`, `frontend/src/pages/UatPage.tsx`, `frontend/src/pages/UatCycleReview.tsx`, `frontend/src/pages/PortalUatPage.tsx`, and `frontend/src/pages/TicketDetailPage.tsx`.
+- Database migrations: none. Phase 4 reuses the Phase 3 structured defect link and existing workflow/audit/notification tables; production SQL Server remains untouched.
+- Verification: Ruff and strict Mypy passed; 16 focused backend UAT and ticket assignment/transition/resolve/close/reopen tests passed; all 137 frontend tests, TypeScript compilation, and production build passed. Existing frontend test warnings, mixed-import warnings, and chunk-size warnings remain.
+- Packaging, release publication, live database migration, and Phase 5 are intentionally deferred.
+
+15A.5 Phase 5 — Sign-off Readiness and Configuration Safety
+
+Status: DONE
+
+Scope
+
+- Add a sign-off readiness checklist for mandatory tests, failed tests, blocked tests, open defects, required evidence, and completion percentage.
+- Link each unmet condition to the affected tests or tickets.
+- Warn administrators when an active cycle is not portal-published, portal access has not started or has expired, no client tester is assigned, client testing has no enabled result action, or sign-off lacks a valid approver.
+- Explain client-portal empty states: no assigned tests, unpublished cycle, access not started, access expired, or completed/archived cycle.
+- Prevent sign-off while governed blocking conditions remain.
+
+Acceptance criteria
+
+- Users can understand exactly why sign-off is unavailable.
+- Active cycles with expired portal windows are visible as an internal configuration warning.
+- Portal responses do not disclose cycles outside the user's client scope or assignment/coordination role.
+- Readiness calculations reconcile to cycle tests and linked ticket status.
+
+Implementation record — 2026-11-21
+
+- Added a server-authoritative sign-off readiness result with six explicit checks: mandatory tests, failed tests, blocked tests, open linked defects, required evidence, and full completion.
+- Each unmet check returns the affected test IDs and, for open defects, both test and ticket IDs. The internal sign-off panel provides direct links to those records.
+- Added active-cycle configuration warnings for unpublished portal access, access windows that have not started or have expired, missing client testers, no enabled client result action, and an invalid client approver.
+- Blocking configuration warnings and failed readiness checks prevent both sign-off requests and later approval if readiness changes after the request.
+- Added a scoped portal availability endpoint and empty-state UI for no assigned tests, unpublished cycles, access not started, access expired, and completed/archived work. It returns only a reason code/message and never cycle identity or content outside the actor's client scope and assignment/coordinator/approver role.
+- Required-evidence readiness uses the cycle test snapshot's governed `evidence_required` metadata when present and reconciles it against attempt evidence without introducing a schema change.
+- Files changed: `backend/app/modules/uat/routes.py`, `backend/app/modules/uat/portal_routes.py`, `backend/app/tests/test_uat_foundation.py`, `backend/app/tests/test_uat_portal.py`, `frontend/src/pages/UatSignoffPanel.tsx`, and `frontend/src/pages/PortalUatPage.tsx`.
+- Database migrations: none. Production SQL Server remains untouched.
+- Verification: Ruff and strict Mypy passed; 11 focused UAT foundation, portal, reporting, readiness, scope, and configuration tests passed; frontend ESLint completed with one pre-existing `UatPage` hook-dependency warning and no errors; all 137 frontend tests, TypeScript compilation, and production build passed. Existing test-console, mixed-import, and chunk-size warnings remain.
+- Packaging, publication, local IIS smoke testing, full release gates, and section 15A.6 are intentionally deferred.
+
+15A.6 Testing and Release Gates
+
+Status: DONE
+
+- Backend unit and API tests for scope, publication windows, assignments, structured ticket creation, duplicate protection, synchronization, and sign-off readiness.
+- Frontend component tests for portfolio filters, empty states, guided execution, UAT badges, defect filters, and disabled-action explanations.
+- Permission tests for employee, tester, coordinator, approver, and unrelated portal users.
+- SQL Server and SQLite clean-upgrade and populated-upgrade rehearsal for every migration.
+- Ruff, Mypy, backend Pytest, frontend ESLint, TypeScript, Vitest, production build, and `git diff --check` must pass.
+- Local IIS smoke test must cover internal UAT, portal Active UAT, failed-test ticket creation, Tickets-page discovery, resolution, and retest.
+- Update UAT documentation, ticket-filter documentation, release notes, and `RELEASE_STEPS.md` before publishing.
+
+Implementation record — 2026-11-21
+
+- Verified backend coverage for governed scope, portal publication windows, tester/coordinator/approver/bystander roles, structured defect creation, duplicate prevention, ticket synchronization, retest behavior, and sign-off readiness.
+- Verified frontend coverage for portfolio filters, guided portal execution, empty/disabled states, UAT navigation, and production compilation/build behavior.
+- Migrated the configured local SQL Server `MillensysSupportHub` from `0281_portal_attachment_access` to `0282_uat_defect_links`; the refreshed local IIS backend reports the schema compatible at `0282`.
+- Completed SQLite clean and populated upgrade rehearsals. The populated rehearsal confirmed correct legacy backfill of ticket, cycle, cycle test, attempt, cycle code, and release version.
+- Fixed a local acceptance issue where interactive Product/Caller requirements blocked the narrower governed UAT defect action. System-generated UAT defects now bypass interactive-only required-field validation while retaining cycle/test context and normal entitlement governance.
+- Refreshed `D:\SupportHub\Release\frontend` and `D:\SupportHub\Release\backend` with recoverable pre-refresh backups while preserving the IIS configuration and credentials.
+- Local IIS smoke passed against `http://localhost/SupportHub`: internal portfolio, portal Active UAT, failed execution, structured ticket creation, Tickets discovery, entitlement approval where required, assignment, In Progress, resolution, and passed retest. Evidence: cycle `UAT-IIS-20261121182546`, ticket `INC-2026-021555`.
+- Verification: Ruff and strict Mypy passed; all 569 backend tests passed; frontend ESLint completed with no errors and one pre-existing `UatPage` hook warning; all 137 frontend tests, TypeScript, and production build passed; `git diff --check` passed.
+- Updated `docs/UAT_OPERATIONS.md`, `docs/TICKET_FILTERS.md`, `docs/RELEASE-1.66.169.md`, `RELEASE_STEPS.md`, and the remaining-waves index. Packaging and publication remain intentionally deferred.
+
+15A.7 Recommended Execution Order and Resume Point
+
+Recommended initial delivery: Phases 1 through 3, executed as three separate bounded implementation sessions. Phase 4 must begin only after the exact ticket-to-UAT transition mapping is verified against current ticket status codes. Phase 5 follows workflow synchronization.
+
+============================================================
+CODEX STOP POINT
+Status: DONE
+Completed scope: Section 15A.6 — Testing and Release Gates; UAT enhancement phases 1 through 5 are release-gate complete
+Last completed item: Migrated and refreshed the local IIS system, passed the full automated gates and live UAT defect/resolution/retest smoke, and updated release documentation
+Next planned item: Section 15A.7 — Recommended Execution Order and Resume Point review, or an explicit packaging/publication instruction
+Safe to continue from here: YES
+Blocking decision(s): Packaging/publication remains a deliberate user decision; browser automation assets were unavailable, so live IIS acceptance used the deployed HTTP API rather than automated browser clicks
+============================================================
+
 16. Definition of Done
 
 One maintained roadmap governs the consolidated feature groups and source requirements.
@@ -1559,6 +1805,8 @@ Client, contract, hierarchy, shift, visit, department, and engineer reports reco
 Dashboard tabs contain no unexplained duplicate cards/charts; each shared KPI has one documented canonical owner and any secondary summary links to it.
 
 Every actionable dashboard value opens its real evidence target with complete working filters and reconciles to the originating calculation.
+
+UAT users can identify priority work, execute governed tests, create and find structured UAT defect tickets, navigate between tests and tickets, and understand sign-off blockers without weakening client isolation or ticket controls.
 
 Users and departments have a professional, cycle-safe, permission-aware organizational structure, including department filtering and a shared top-management dashboard tab.
 
