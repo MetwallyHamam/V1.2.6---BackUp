@@ -79,6 +79,12 @@ class MilestoneWrite(BaseModel):
     is_gate: bool = False
 
 
+class MilestoneScheduleWrite(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    expected_version: int = Field(ge=1)
+    due_date: date | None
+
+
 class AssignmentRequestWrite(BaseModel):
     requested_department_id: int
     requested_team_id: int | None = None

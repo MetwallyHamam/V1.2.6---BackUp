@@ -95,9 +95,7 @@ export function ProjectManagementPage() {
               <LinearProgress variant="determinate" value={project.progress_percent} />
             </Box>
             <Button size="small" component={Link} to={`/projects/${project.id}/schedule`}>Schedule</Button>
-            {hasPermission("implementation.task.view") && (
-              <Button size="small" component={Link} to={`/projects/${project.id}/execution`}>Open project</Button>
-            )}
+            <Button size="small" component={Link} to={`/projects/${project.id}`}>Open project</Button>
           </Stack>
         ))}
       </Paper>

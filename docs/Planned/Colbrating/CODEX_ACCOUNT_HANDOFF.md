@@ -85,4 +85,8 @@ Project Templates and the planned Gantt schedule are deployed locally at revisio
 
 Added `project.manage.assigned` for the named Project Manager to update the project, add phases and milestones, and hold or resume it. The execution page uses the same manager check for hold and resume. The generic lifecycle transition command still requires `project.manage`. Portfolio regression tests verify that department visibility alone cannot authorize edits.
 
-Deployed backend and frontend to local IIS with rollback stamp `20261124-233552`. Created `Projectuser` in `MillensysSupportHub` and assigned `PROJECT_MANAGER_LOCAL_TEST` for customer setup, project creation and publication, scoped management, collaboration, and Sup
+Deployed backend and frontend to local IIS with rollback stamp `20261124-233552`. Created `Projectuser` in `MillensysSupportHub` and assigned `PROJECT_MANAGER_LOCAL_TEST` for customer setup, project creation and publication, scoped management, collaboration, and Support handover preparation and submission. Verified login, database health, Project portfolio, wizard options and client statuses. The live check required adjusting this account's assignment effective timestamp to SQL Server UTC.
+
+The Wave 3 roadmap contains a proposed permission matrix for all five pilot roles. The read-only inventory in `backend/scripts/preview_project_handover_profiles.py` ran against local `MillensysSupportHub` and found three active holders, all with effective `project.manage`. The five profile bundles and candidate permission deltas are now implemented; per-user mapping approval, live seed/deployment, permission-withdrawal verification for the new bundles and the remaining role workspaces are pending.
+
+Preserve the dirty worktree and unrelated user changes. Never reset the repository. Use timestamped rollback copies for IIS deployment. Do not change production/remote systems.

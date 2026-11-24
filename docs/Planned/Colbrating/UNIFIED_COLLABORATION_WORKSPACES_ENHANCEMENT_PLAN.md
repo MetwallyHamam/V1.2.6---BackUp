@@ -311,6 +311,14 @@ Exit gate:
 
 ### Wave 5 — Project workspace and plan governance
 
+#### Work packages delivery plan
+
+1. **Read-only list.** Show project tasks and milestones in one searchable table with type, status and planned finish. Reuse the scoped Project plan and task APIs. Verify that a user without task visibility can still browse milestones.
+2. **Planning and execution.** Add work-package detail links, ownership, filters and governed edits. Enforce Project Manager scope for planning and assignment scope for engineer actions. Verify that concurrent updates cannot overwrite each other.
+3. **Dependencies and baselines.** Show predecessor and successor relationships in the table and schedule. Validate dependency cycles and compare approved baseline dates with the current plan.
+4. **Risks and changes.** Add typed risk and change records with owners, impacts and decisions. Link approved changes to Implementation work while retaining approval history.
+5. **Department handoff.** Surface returned intake, actionable collaboration and Support readiness from the project. Verify publish, Implementation acceptance, delivery review and Support handover with separate role accounts.
+
 **Goal:** Replace the basic task board with a Project command center.
 
 Project workspace tabs:
@@ -481,4 +489,6 @@ Do not begin dashboard expansion before this slice passes. A polished workspace 
 
 **Assignment inventory:** From `backend`, run `.\.venv\Scripts\python.exe -m scripts.preview_project_handover_profiles` against the configured database. The read-only JSON lists current holders, memberships, active profiles and effective permissions. On local `MillensysSupportHub`, all three active holders had company-wide Project access through their effective `project.manage` permission. The report flags each holder for manual mapping.
 
-**Wave 3 profile slice delivered:** The five proposed r
+**Wave 3 profile slice delivered:** The five proposed role profiles are now idempotent seed definitions and are not auto-assigned. Engineer status, blocker and evidence operations use dedicated permissions plus task-assignment scope instead of broad task management. The legacy-holder preview calculates gained, lost and retained permissions for every candidate profile while leaving each mapping in `REQUIRES_REVIEW`.
+
+**Next action:** obtain approved per-user mappings, run the updated preview against the designated database, seed the unassigned profiles, and perform the same-token permission-withdrawal drill before enabling the remaining Wave 4 role workspace links.

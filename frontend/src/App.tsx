@@ -6,6 +6,13 @@ import { api } from "./api/client";
 import { AppLayout } from "./layouts/AppLayout";
 import { ProjectManagementPage } from "./pages/ProjectManagementPage";
 import { ProjectSchedulePage } from "./pages/ProjectSchedulePage";
+import { ProjectWorkPackagesPage } from "./pages/ProjectWorkPackagesPage";
+import {
+  ProjectWorkspaceCollaboration,
+  ProjectWorkspaceHandover,
+  ProjectWorkspaceOverview,
+  ProjectWorkspacePage,
+} from "./pages/ProjectWorkspacePage";
 import { ProjectTemplatesPage } from "./pages/ProjectTemplatesPage";
 import { ProtectedRoute } from "./routes/ProtectedRoute";
 import { PermissionRoute } from "./routes/PermissionRoute";
@@ -572,8 +579,20 @@ export function App() {
             <Route element={<PermissionRoute anyOf={["project.portfolio.view"]} />}>
               <Route path="project-management" element={<ProjectManagementPage />} />
               <Route path="projects" element={<ProjectsPage />} />
-              <Route path="projects/:id/execution" element={<ProjectExecutionPage />} />
-              <Route path="projects/:id/schedule" element={<ProjectSchedulePage />} />
+              <Route path="projects/:id" element={<ProjectWorkspacePage />}>
+                <Route index element={<ProjectWorkspaceOverview />} />
+                <Route path="work-packages" element={<ProjectWorkPackagesPage />} />
+                <Route path="schedule" element={<ProjectSchedulePage />} />
+                <Route element={<PermissionRoute anyOf={["implementation.task.view"]} />}>
+                  <Route path="execution" element={<ProjectExecutionPage />} />
+                </Route>
+                <Route element={<PermissionRoute anyOf={["cross_department.request.create"]} />}>
+                  <Route path="collaboration" element={<ProjectWorkspaceCollaboration />} />
+                </Route>
+                <Route element={<PermissionRoute anyOf={["handover.view"]} />}>
+                  <Route path="handover" element={<ProjectWorkspaceHandover />} />
+                </Route>
+              </Route>
             </Route>
             <Route element={<PermissionRoute anyOf={["project.create"]} />}>
               <Route path="project-templates" element={<ProjectTemplatesPage />} />

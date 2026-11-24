@@ -19,7 +19,6 @@ from app.modules.iam.models import (
 from app.modules.iam.seed import PROFILE_MAP
 from app.modules.iam.service import effective_permissions
 
-
 CANDIDATE_PROFILE_CODES = (
     "PROJECT_MANAGER",
     "IMPLEMENTATION_MANAGER",

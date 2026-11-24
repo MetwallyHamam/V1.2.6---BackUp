@@ -137,6 +137,7 @@ export function ProjectsPage() {
             </Stack>
           </DialogContent>
           <DialogActions><Button onClick={() => setSelected(null)}>Close</Button>
+            <Button component={Link} to={`/projects/${selected.id}`}>Open project</Button>
             <Button component={Link} to={`/projects/${selected.id}/schedule`}>Gantt &amp; Schedule</Button>
           </DialogActions>
         </>}

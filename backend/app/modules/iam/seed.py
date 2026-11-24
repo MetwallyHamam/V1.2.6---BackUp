@@ -653,6 +653,7 @@ PROFILE_MAP = {
     "PROJECT_MANAGER": {
         "client.view",
         "client.profile.view",
+        "implementation.task.view",
         "project.portfolio.view",
         "project.create",
         "project.manage.assigned",

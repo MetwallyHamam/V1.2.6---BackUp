@@ -2,7 +2,7 @@ import json
 from typing import Any
 
 from fastapi import APIRouter, Depends, Query, status
-from sqlalchemy import func, select, true
+from sqlalchemy import func, select, true, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -48,6 +48,7 @@ from app.modules.projects.models import (
 from app.modules.projects.schemas import (
     AssignmentRequestWrite,
     AssignmentResponseWrite,
+    MilestoneScheduleWrite,
     MilestoneWrite,
     PhaseWrite,
     ProjectCoverageCheck,
@@ -809,6 +810,48 @@ def add_milestone(
     _commit(db)
     db.refresh(row)
     return _row_values(row)
+
+
+@router.patch("/{project_id}/milestones/{milestone_id}/schedule")
+def update_milestone_schedule(
+    project_id: int,
+    milestone_id: int,
+    data: MilestoneScheduleWrite,
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_project_manager),
+) -> Any:
+    project = require_project_access(db, actor, project_id)
+    milestone = db.get(ProjectMilestone, milestone_id)
+    if milestone is None or milestone.project_id != project_id:
+        raise NotFoundError("Project milestone does not exist.")
+    if project.status != "DRAFT":
+        raise ConflictError("PROJECT_PLAN_PUBLISHED", "Only draft milestones can be rescheduled.")
+    if data.due_date and (
+        (project.planned_start_date and data.due_date < project.planned_start_date)
+        or (project.planned_end_date and data.due_date > project.planned_end_date)
+    ):
+        raise ConflictError("INVALID_MILESTONE_DATE", "Milestone date must be within the project plan.")
+    result = db.connection().execute(
+        update(CompanyProject.__table__)
+        .where(
+            CompanyProject.id == project_id,
+            CompanyProject.status == "DRAFT",
+            CompanyProject.row_version == data.expected_version,
+        )
+        .values(row_version=data.expected_version + 1)
+    )
+    if result.rowcount != 1:
+        raise ConflictError("PROJECT_VERSION_CONFLICT", "The project changed. Refresh before editing.")
+    previous_due_date = milestone.due_date
+    milestone.due_date = data.due_date
+    _audit(db, actor, project_id, "project.milestone.rescheduled", {
+        "milestone_id": milestone_id,
+        "previous_due_date": previous_due_date,
+        "due_date": data.due_date,
+    })
+    _commit(db)
+    db.refresh(milestone)
+    return _row_values(milestone)
 
 
 @router.post("/{project_id}/request-implementation", status_code=201)

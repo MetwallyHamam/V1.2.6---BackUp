@@ -443,6 +443,26 @@ def test_project_detail_and_summary_use_the_same_department_scope(
     assert edited.status_code == 200, edited.text
     assert edited.json()["name"] == "Managed Project"
 
+    managed_project.status = "DRAFT"
+    database.commit()
+    milestone = client.post(
+        f"{visible_url}/milestones", headers=scoped_headers, json={"name": "Delivery gate"}
+    )
+    assert milestone.status_code == 201, milestone.text
+    schedule_url = f"{visible_url}/milestones/{milestone.json()['id']}/schedule"
+    version = client.get(visible_url, headers=scoped_headers).json()["row_version"]
+    saved = client.patch(
+        schedule_url, headers=scoped_headers,
+        json={"expected_version": version, "due_date": "2026-12-01"},
+    )
+    assert saved.status_code == 200, saved.text
+    assert saved.json()["due_date"] == "2026-12-01"
+    stale = client.patch(
+        schedule_url, headers=scoped_headers,
+        json={"expected_version": version, "due_date": None},
+    )
+    assert stale.status_code == 409
+
 
 def test_assignment_response_is_hidden_from_other_departments(
     client, admin_headers, database
