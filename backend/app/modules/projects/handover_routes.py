@@ -7,10 +7,11 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies import require_permission
 from app.core.clock import server_now, server_today
-from app.core.exceptions import ConflictError, NotFoundError
+from app.core.exceptions import AuthorizationError, ConflictError, NotFoundError
 from app.db.session import get_db
 from app.modules.clients.models import Client
 from app.modules.iam.models import AuditLog, Department, User
+from app.modules.iam.service import effective_permissions
 from app.modules.notifications.models import Notification
 from app.modules.projects.access import require_project_access
 from app.modules.projects.handover_schemas import (
@@ -323,6 +324,10 @@ def support_decision(
 ) -> dict[str, Any]:
     handover = _handover(db, project_id, actor)
     decision = data.decision.upper()
+    if decision in {"ACCEPT", "CONDITIONAL_ACCEPT"} and (
+        "handover.accept" not in effective_permissions(db, actor).permissions
+    ):
+        raise AuthorizationError("Accepting a Support handover requires handover acceptance permission.")
     statuses = {
         "ACCEPT": "ACCEPTED",
         "CONDITIONAL_ACCEPT": "CONDITIONALLY_ACCEPTED",

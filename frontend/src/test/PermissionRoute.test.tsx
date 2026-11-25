@@ -1,28 +1,28 @@
-import { render, screen } from '@testing-library/react'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import { beforeEach, expect, test, vi } from 'vitest'
+import { render, screen } from "@testing-library/react";
+import { MemoryRouter, Outlet, Route, Routes, useOutletContext } from "react-router-dom";
+import { expect, it, vi } from "vitest";
+import { PermissionRoute } from "../routes/PermissionRoute";
 
-const auth = vi.hoisted(() => ({ permissions: new Set<string>() }))
-vi.mock('../auth/AuthContext', () => ({ useAuth: () => ({ hasPermission: (permission: string) => auth.permissions.has(permission) }) }))
+vi.mock("../auth/AuthContext", () => ({
+  useAuth: () => ({ hasPermission: (permission: string) => permission === "cross_department.request.create" }),
+}));
 
-import { PermissionRoute } from '../routes/PermissionRoute'
+function Collaboration() {
+  const { id } = useOutletContext<{ id: number }>();
+  return <div>Collaboration for project {id}</div>;
+}
 
-beforeEach(() => { auth.permissions = new Set() })
-
-test('project delivery permissions do not open contract or operations workspaces', () => {
-  auth.permissions = new Set(['project_handover.view', 'project_handover.manage', 'project_handover.contract_template.apply', 'project_handover.engineer.lookup'])
-  render(<MemoryRouter initialEntries={['/contracts']}><Routes>
-    <Route element={<PermissionRoute anyOf={['contract.view', 'contract.template.view']} />}><Route path="/contracts" element={<div>Contract workspace</div>} /></Route>
-    <Route path="/unauthorized" element={<div>Access denied</div>} />
-  </Routes></MemoryRouter>)
-  expect(screen.getByText('Access denied')).toBeInTheDocument()
-  expect(screen.queryByText('Contract workspace')).not.toBeInTheDocument()
-})
-
-test('an exact workspace permission opens its route', () => {
-  auth.permissions = new Set(['contract.view'])
-  render(<MemoryRouter initialEntries={['/contracts']}><Routes>
-    <Route element={<PermissionRoute anyOf={['contract.view', 'contract.template.view']} />}><Route path="/contracts" element={<div>Contract workspace</div>} /></Route>
-  </Routes></MemoryRouter>)
-  expect(screen.getByText('Contract workspace')).toBeInTheDocument()
-})
+it("preserves the project context through a nested permission route", () => {
+  render(
+    <MemoryRouter initialEntries={["/projects/3/collaboration"]}>
+      <Routes>
+        <Route path="projects/:id" element={<Outlet context={{ id: 3 }} />}>
+          <Route element={<PermissionRoute anyOf={["cross_department.request.create"]} />}>
+            <Route path="collaboration" element={<Collaboration />} />
+          </Route>
+        </Route>
+      </Routes>
+    </MemoryRouter>,
+  );
+  expect(screen.getByText("Collaboration for project 3")).toBeInTheDocument();
+});

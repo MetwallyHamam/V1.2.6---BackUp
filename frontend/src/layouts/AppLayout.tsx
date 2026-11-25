@@ -75,6 +75,7 @@ import {
   useNavigate,
 } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+import { isProjectWorkspaceRoute, projectMyWorkPath, projectWorkspacePath, usesProjectWorkspace } from "../auth/projectWorkspaceAccess";
 import type { ThemePreset } from "../auth/AuthContext";
 import { api } from "../api/client";
 import {
@@ -86,7 +87,6 @@ import { PageContextHeader } from "../components/PageContextHeader";
 import { QuickActions } from "../components/QuickActions";
 import { NewsAnnouncementDialog } from "../components/NewsAnnouncementDialog";
 import { useAttention } from "../components/AttentionCenter";
-import { ProjectManagementLayout } from "./ProjectManagementLayout";
 
 const drawerWidth = 272;
 const collapsedDrawerWidth = 72;
@@ -114,11 +114,7 @@ type MentionNotification = {
 };
 
 export function AppLayout() {
-  const { hasPermission } = useAuth();
-  const projectManager = hasPermission("project.portfolio.view")
-    && hasPermission("project.manage.assigned")
-    && !hasPermission("project.manage");
-  return projectManager ? <ProjectManagementLayout /> : <SupportHubLayout />;
+  return <SupportHubLayout />;
 }
 
 function SupportHubLayout() {
@@ -136,6 +132,7 @@ function SupportHubLayout() {
     user,
   } = useAuth();
   const { i18n, t } = useTranslation();
+  const projectOnly = usesProjectWorkspace(user?.user_type, hasPermission);
   const [profileAnchor, setProfileAnchor] = useState<HTMLElement | null>(null);
   const [navigationMenuAnchor, setNavigationMenuAnchor] =
     useState<HTMLElement | null>(null);
@@ -302,7 +299,7 @@ function SupportHubLayout() {
         ? requestedSavedViewId
         : null;
       return updateProfilePreferences({
-        default_page: defaultPage,
+        default_page: projectOnly ? "home" : defaultPage,
         default_dashboard_scope: dashboardScope,
         default_saved_view_id: validSavedViewId,
         theme_mode: themeMode,
@@ -509,13 +506,22 @@ function SupportHubLayout() {
   const canViewTopManagementDashboard = hasPermission(
     "topmanagementdashboard.view",
   );
-  const canViewReports = canViewExecutiveDashboard;
+  const canViewReports = !projectOnly && canViewExecutiveDashboard;
   const attention = useAttention(1);
 
   const employeeSections: NavigationSection[] = [
     {
       label: "My Work",
       items: [
+        {
+          label: t("navigation.projectMyWork"),
+          path: projectMyWorkPath,
+          icon: <AssignmentTurnedIn />,
+          color: "#3949ab",
+          visible: hasPermission("project.portfolio.view") && (
+            hasPermission("project.manage.assigned") || hasPermission("project.manage")
+          ),
+        },
         {
           label: "My Workspace",
           path: "/my-workspace",
@@ -724,12 +730,31 @@ function SupportHubLayout() {
             hasPermission("onboarding.view.own") ||
             hasPermission("onboarding.progress.view.department"),
         },
+      ],
+    },
+    {
+      label: t("navigation.projectManagement"),
+      items: [
+        {
+          label: t("navigation.projectWorkspace"),
+          path: projectWorkspacePath,
+          icon: <Dashboard />,
+          color: "#3949ab",
+          visible: hasPermission("project.portfolio.view"),
+        },
         {
           label: t("navigation.projects"),
           path: "/projects",
           icon: <AccountTree />,
           color: "#3949ab",
           visible: hasPermission("project.portfolio.view"),
+        },
+        {
+          label: t("navigation.projectTemplates"),
+          path: "/project-templates",
+          icon: <Description />,
+          color: "#3949ab",
+          visible: hasPermission("project.create"),
         },
         {
           label: t("navigation.projectAnalytics", { defaultValue: "Project Analytics" }),
@@ -975,8 +1000,12 @@ function SupportHubLayout() {
     },
   ];
 
-  const sections =
-    user?.user_type === "CLIENT_PORTAL" ? portalSections : employeeSections;
+  const sections = user?.user_type === "CLIENT_PORTAL" ? portalSections : projectOnly
+    ? employeeSections.map((section) => ({
+      ...section,
+      items: section.items.filter((item) => isProjectWorkspaceRoute(item.path.split("?")[0])),
+    }))
+    : employeeSections;
   useEffect(() => {
     if (!user || initializedNavigationUserRef.current === user.id) return;
     setExpandedNavigationSections(
@@ -1021,6 +1050,7 @@ function SupportHubLayout() {
         ? "/tickets/pre-tickets"
         : "/tickets";
     if (path.startsWith("/clients/")) return "/clients";
+    if (path.startsWith("/projects/")) return "/projects";
     if (path.startsWith("/complaints/")) return "/complaints";
     if (path === "/contract-templates") return "/contracts";
     if (["/shifts", "/visit-operations", "/operational-reports"].includes(path))
@@ -1032,6 +1062,8 @@ function SupportHubLayout() {
     return `${path}${location.search}`;
   })();
   const contextualPathname = contextualParentPath.split("?")[0];
+  const isProjectDetail = location.pathname.startsWith("/projects/");
+  const inProjectWorkspace = projectOnly || isProjectDetail || ["/projects", projectWorkspacePath, projectMyWorkPath, "/project-templates"].includes(location.pathname);
   const matchesContext = (item: NavigationItem) =>
     item.visible &&
     item.path.split("?")[0] === contextualPathname;
@@ -1731,7 +1763,7 @@ function SupportHubLayout() {
       <Box
         component="main"
         onClick={() => {
-          if (!mobile && !navigationCollapsed) {
+          if (!inProjectWorkspace && !mobile && !navigationCollapsed) {
             setNavigationCollapsed(true);
             window.localStorage.setItem(
               "support-hub-navigation-collapsed",
@@ -1747,7 +1779,7 @@ function SupportHubLayout() {
           maxWidth: "100%",
         }}
       >
-        {location.pathname !== "/support-workspace" &&
+        {!isProjectDetail && location.pathname !== "/support-workspace" &&
           activeSection &&
           activeItem && (
             <PageContextHeader
@@ -1757,7 +1789,7 @@ function SupportHubLayout() {
           )}
         <Outlet />
       </Box>
-      <QuickActions />
+      {!projectOnly && <QuickActions />}
       <NewsAnnouncementDialog />
       <Dialog
         open={Boolean(mentionNotifications.data?.length)}
@@ -1857,10 +1889,10 @@ function SupportHubLayout() {
               <InputLabel>Default page after login</InputLabel>
               <Select
                 value={
-                  user?.user_type === "CLIENT_PORTAL" ? "portal" : defaultPage
+                  user?.user_type === "CLIENT_PORTAL" ? "portal" : projectOnly ? "home" : defaultPage
                 }
                 label="Default page after login"
-                disabled={user?.user_type === "CLIENT_PORTAL"}
+                disabled={user?.user_type === "CLIENT_PORTAL" || projectOnly}
                 onChange={(event) => setDefaultPage(event.target.value)}
               >
                 {user?.user_type === "CLIENT_PORTAL"
@@ -1869,7 +1901,9 @@ function SupportHubLayout() {
                         Client portal
                       </MenuItem>,
                     ]
-                  : [
+                  : projectOnly ? [
+                      <MenuItem key="home" value="home">{t("navigation.projectWorkspace")}</MenuItem>,
+                    ] : [
                       <MenuItem key="home" value="home">
                         Support Now
                       </MenuItem>,

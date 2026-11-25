@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -83,6 +84,64 @@ class MilestoneScheduleWrite(BaseModel):
     model_config = ConfigDict(extra="forbid")
     expected_version: int = Field(ge=1)
     due_date: date | None
+
+
+class TaskScheduleWrite(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    expected_version: int = Field(ge=1)
+    planned_start_date: date
+    planned_end_date: date
+
+    @model_validator(mode="after")
+    def validate_order(self) -> "TaskScheduleWrite":
+        if self.planned_end_date < self.planned_start_date:
+            raise ValueError("Planned finish must be on or after the planned start.")
+        return self
+
+
+class MilestoneRevisionWrite(MilestoneScheduleWrite):
+    reason: str = Field(min_length=1, max_length=500)
+
+
+class TaskRevisionWrite(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    reason: str = Field(min_length=1, max_length=500)
+    schedule: TaskScheduleWrite | None = None
+    dependencies: "TaskDependenciesWrite | None" = None
+
+    @model_validator(mode="after")
+    def validate_change(self) -> "TaskRevisionWrite":
+        if (self.schedule is None) == (self.dependencies is None):
+            raise ValueError("Propose either task dates or task predecessors.")
+        return self
+
+
+class MilestoneRevisionDecision(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    decision: Literal["APPROVED", "REJECTED"]
+    expected_version: int = Field(ge=1)
+
+
+class ProjectRegisterWrite(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    kind: Literal["RISK", "CHANGE"]
+    title: str = Field(min_length=1, max_length=200)
+    impact: str = Field(min_length=1, max_length=2000)
+    due_date: date
+
+
+class ProjectRegisterDecision(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    status: Literal["MITIGATED", "APPROVED", "REJECTED"]
+    expected_version: int = Field(ge=1)
+    reason: str = Field(min_length=1, max_length=500)
+    revision_id: int | None = Field(default=None, ge=1)
+
+
+class TaskDependenciesWrite(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    expected_version: int = Field(ge=1)
+    predecessor_ids: list[int] = Field(max_length=200)
 
 
 class AssignmentRequestWrite(BaseModel):

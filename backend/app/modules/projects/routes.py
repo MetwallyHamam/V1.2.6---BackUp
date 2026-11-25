@@ -1,8 +1,9 @@
 import json
+from datetime import date, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, Query, status
-from sqlalchemy import func, select, true, update
+from sqlalchemy import delete, func, select, true, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -48,6 +49,8 @@ from app.modules.projects.models import (
 from app.modules.projects.schemas import (
     AssignmentRequestWrite,
     AssignmentResponseWrite,
+    MilestoneRevisionDecision,
+    MilestoneRevisionWrite,
     MilestoneScheduleWrite,
     MilestoneWrite,
     PhaseWrite,
@@ -55,11 +58,16 @@ from app.modules.projects.schemas import (
     ProjectCreate,
     ProjectHoldWrite,
     ProjectRead,
+    ProjectRegisterDecision,
+    ProjectRegisterWrite,
     ProjectResumeWrite,
     ProjectTransitionWrite,
     ProjectUpdate,
     ProjectWizardCreate,
     ProjectWizardResult,
+    TaskDependenciesWrite,
+    TaskRevisionWrite,
+    TaskScheduleWrite,
 )
 
 router = APIRouter(prefix="/projects", tags=["project portfolio"])
@@ -832,7 +840,7 @@ def update_milestone_schedule(
     ):
         raise ConflictError("INVALID_MILESTONE_DATE", "Milestone date must be within the project plan.")
     result = db.connection().execute(
-        update(CompanyProject.__table__)
+        update(CompanyProject)
         .where(
             CompanyProject.id == project_id,
             CompanyProject.status == "DRAFT",
@@ -854,6 +862,448 @@ def update_milestone_schedule(
     return _row_values(milestone)
 
 
+REVISION_REQUESTED = "project.milestone.revision_requested"
+TASK_REVISION_REQUESTED = "project.task.revision_requested"
+REVISION_DECIDED = "project.milestone.revision_decided"
+REVISION_STATES = {"AWAITING_IMPLEMENTATION_ACCEPTANCE", "READY_FOR_EXECUTION", "IN_EXECUTION", "ON_HOLD"}
+
+
+@router.get("/{project_id}/milestone-revisions")
+def list_milestone_revisions(
+    project_id: int,
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_permission("project.portfolio.view")),
+) -> list[dict[str, Any]]:
+    require_project_access(db, actor, project_id)
+    requests = db.scalars(select(AuditLog).where(
+        AuditLog.entity_type == "company_project",
+        AuditLog.entity_id == str(project_id),
+        AuditLog.action.in_([REVISION_REQUESTED, TASK_REVISION_REQUESTED])
+        if "implementation.task.view" in effective_permissions(db, actor).permissions
+        else AuditLog.action == REVISION_REQUESTED,
+    ).order_by(AuditLog.id.desc())).all()
+    decisions = {
+        row.entity_id: json.loads(row.new_values_json or "{}")["decision"]
+        for row in db.scalars(select(AuditLog).where(
+            AuditLog.entity_type == "project_milestone_revision",
+            AuditLog.action == REVISION_DECIDED,
+            AuditLog.entity_id.in_([str(request.id) for request in requests]),
+        ))
+    }
+    return [
+        {**json.loads(row.new_values_json or "{}"), "id": row.id,
+         "status": decisions.get(str(row.id), "PENDING"), "requested_by_user_id": row.actor_user_id}
+        for row in requests
+    ]
+
+
+@router.post("/{project_id}/milestones/{milestone_id}/revisions", status_code=201)
+def request_milestone_revision(
+    project_id: int,
+    milestone_id: int,
+    data: MilestoneRevisionWrite,
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_project_manager),
+) -> dict[str, bool]:
+    project = require_project_access(db, actor, project_id)
+    milestone = db.get(ProjectMilestone, milestone_id)
+    if milestone is None or milestone.project_id != project_id:
+        raise NotFoundError("Project milestone does not exist.")
+    if project.row_version != data.expected_version or project.status not in REVISION_STATES:
+        raise ConflictError("PROJECT_VERSION_CONFLICT", "Refresh the active published plan.")
+    if not data.reason.strip() or data.due_date == milestone.due_date:
+        raise ConflictError("INVALID_MILESTONE_REVISION", "Enter a different finish date and a reason.")
+    _audit(db, actor, project_id, REVISION_REQUESTED, {
+        "milestone_id": milestone_id, "previous_due_date": milestone.due_date,
+        "due_date": data.due_date, "reason": data.reason.strip(), "project_version": data.expected_version,
+    })
+    _commit(db)
+    return {"submitted": True}
+
+
+@router.post("/{project_id}/tasks/{task_id}/revisions", status_code=201)
+def request_task_revision(
+    project_id: int,
+    task_id: int,
+    data: TaskRevisionWrite,
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_project_manager),
+) -> dict[str, bool]:
+    project = require_project_access(db, actor, project_id)
+    task = db.get(ProjectTask, task_id)
+    if task is None or task.project_id != project_id or "implementation.task.view" not in effective_permissions(db, actor).permissions:
+        raise NotFoundError("Project task does not exist.")
+    change = data.schedule or data.dependencies
+    assert change is not None
+    if project.row_version != change.expected_version or project.status not in REVISION_STATES:
+        raise ConflictError("PROJECT_VERSION_CONFLICT", "Refresh the active published plan.")
+    if not data.reason.strip():
+        raise ConflictError("INVALID_TASK_REVISION", "Enter a revision reason.")
+    previous: dict[str, Any] = {
+        "planned_start_date": task.planned_start_date, "planned_end_date": task.planned_end_date,
+    }
+    if data.dependencies is not None:
+        previous = {"predecessor_ids": sorted(db.scalars(select(
+            ProjectTaskDependency.depends_on_task_id
+        ).where(ProjectTaskDependency.task_id == task_id)))}
+    _audit(db, actor, project_id, TASK_REVISION_REQUESTED, {
+        "task_id": task_id, "task_number": task.task_number, "task_title": task.title,
+        "reason": data.reason.strip(), "project_version": change.expected_version,
+        "kind": "TASK_SCHEDULE" if data.schedule is not None else "TASK_DEPENDENCIES",
+        "previous": previous, "proposed": change.model_dump(mode="json", exclude={"expected_version"}),
+    })
+    _commit(db)
+    return {"submitted": True}
+
+
+@router.post("/{project_id}/milestone-revisions/{revision_id}/decision")
+def decide_milestone_revision(
+    project_id: int,
+    revision_id: int,
+    data: MilestoneRevisionDecision,
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_permission("project.manage")),
+) -> dict[str, str]:
+    project = require_project_access(db, actor, project_id)
+    proposal = db.get(AuditLog, revision_id)
+    if (proposal is None or proposal.entity_type != "company_project"
+        or proposal.entity_id != str(project_id)
+        or proposal.action not in {REVISION_REQUESTED, TASK_REVISION_REQUESTED}):
+        raise NotFoundError("Milestone revision does not exist.")
+    if proposal.action == TASK_REVISION_REQUESTED and "implementation.task.view" not in effective_permissions(db, actor).permissions:
+        raise NotFoundError("Task revision does not exist.")
+    if proposal.actor_user_id == actor.id:
+        raise ConflictError("REVISION_SELF_DECISION", "A separate reviewer must decide this revision.")
+    result = db.connection().execute(update(CompanyProject).where(
+        CompanyProject.id == project_id, CompanyProject.row_version == data.expected_version,
+    ).values(row_version=data.expected_version + 1))
+    if result.rowcount != 1:
+        raise ConflictError("PROJECT_VERSION_CONFLICT", "Refresh the project before deciding.")
+    if db.scalar(select(AuditLog.id).where(
+        AuditLog.entity_type == "project_milestone_revision",
+        AuditLog.entity_id == str(revision_id), AuditLog.action == REVISION_DECIDED,
+    ).limit(1)) is not None:
+        raise ConflictError("REVISION_ALREADY_DECIDED", "This revision already has a decision.")
+    change = json.loads(proposal.new_values_json or "{}")
+    if data.decision == "APPROVED" and (
+        project.status not in REVISION_STATES or change["project_version"] != data.expected_version
+    ):
+        raise ConflictError("REVISION_STALE", "Submit a new revision for the current plan.")
+    if data.decision == "APPROVED" and proposal.action == TASK_REVISION_REQUESTED:
+        task = db.get(ProjectTask, change["task_id"])
+        if task is None or task.project_id != project_id:
+            raise ConflictError("REVISION_STALE", "The task is no longer in this project.")
+        if change["kind"] == "TASK_SCHEDULE":
+            schedule = TaskScheduleWrite.model_validate({
+                **change["proposed"], "expected_version": data.expected_version,
+            })
+            _apply_task_schedule(db, actor, project, task, schedule)
+        else:
+            _apply_task_dependencies(db, actor, project_id, task.id, set(change["proposed"]["predecessor_ids"]))
+    elif data.decision == "APPROVED":
+        milestone = db.get(ProjectMilestone, change["milestone_id"])
+        if (milestone is None or milestone.project_id != project_id
+            or project.status not in REVISION_STATES or change["project_version"] != data.expected_version
+            or (str(milestone.due_date) if milestone.due_date else None) != change["previous_due_date"]):
+            raise ConflictError("REVISION_STALE", "Submit a new revision for the current plan.")
+        due = date.fromisoformat(change["due_date"]) if change["due_date"] else None
+        if due and (
+            (project.planned_start_date and due < project.planned_start_date)
+            or (project.planned_end_date and due > project.planned_end_date)
+        ):
+            raise ConflictError("INVALID_MILESTONE_DATE", "Milestone date must be within the project plan.")
+        milestone.due_date = due
+    db.add(AuditLog(
+        actor_user_id=actor.id, entity_type="project_milestone_revision", entity_id=str(revision_id),
+        action=REVISION_DECIDED, new_values_json=json.dumps({"decision": data.decision}),
+    ))
+    _commit(db)
+    return {"status": data.decision}
+
+
+REGISTER_CREATED = "project.register.created"
+REGISTER_DECIDED = "project.register.decided"
+
+
+@router.get("/{project_id}/register")
+def list_project_register(
+    project_id: int,
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_permission("project.portfolio.view")),
+) -> list[dict[str, Any]]:
+    require_project_access(db, actor, project_id)
+    entries = db.scalars(select(AuditLog).where(
+        AuditLog.entity_type == "company_project", AuditLog.entity_id == str(project_id),
+        AuditLog.action == REGISTER_CREATED,
+    ).order_by(AuditLog.id.desc())).all()
+    decisions = {
+        item.entity_id: json.loads(item.new_values_json or "{}")
+        for item in db.scalars(select(AuditLog).where(
+            AuditLog.entity_type == "project_register_entry", AuditLog.action == REGISTER_DECIDED,
+            AuditLog.entity_id.in_([str(entry.id) for entry in entries]),
+        ))
+    }
+    return [{
+        **json.loads(entry.new_values_json or "{}"), "id": entry.id,
+        "owner_user_id": entry.actor_user_id, "status": "OPEN", **decisions.get(str(entry.id), {}),
+    } for entry in entries]
+
+
+@router.post("/{project_id}/register", status_code=201)
+def create_project_register_entry(
+    project_id: int,
+    data: ProjectRegisterWrite,
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_project_manager),
+) -> dict[str, bool]:
+    project = require_project_access(db, actor, project_id)
+    if project.status in {"CANCELLED", "COMPLETED"}:
+        raise ConflictError("PROJECT_REGISTER_CLOSED", "This project is closed.")
+    _audit(db, actor, project_id, REGISTER_CREATED, data.model_dump(mode="json"))
+    _commit(db)
+    return {"created": True}
+
+
+@router.post("/{project_id}/register/{entry_id}/decision")
+def decide_project_register_entry(
+    project_id: int,
+    entry_id: int,
+    data: ProjectRegisterDecision,
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_permission("project.manage")),
+) -> dict[str, str]:
+    project = require_project_access(db, actor, project_id)
+    entry = db.get(AuditLog, entry_id)
+    if (entry is None or entry.entity_type != "company_project"
+        or entry.entity_id != str(project_id) or entry.action != REGISTER_CREATED):
+        raise NotFoundError("Register entry does not exist.")
+    kind = json.loads(entry.new_values_json or "{}")["kind"]
+    if kind == "CHANGE" and entry.actor_user_id == actor.id:
+        raise ConflictError("REGISTER_SELF_DECISION", "A separate reviewer must decide changes.")
+    if (kind == "RISK") != (data.status == "MITIGATED"):
+        raise ConflictError("INVALID_REGISTER_DECISION", "Choose a decision appropriate for this entry.")
+    if data.revision_id is not None:
+        revision = db.get(AuditLog, data.revision_id)
+        if (data.status != "APPROVED" or revision is None or revision.entity_type != "company_project"
+            or revision.entity_id != str(project_id) or revision.action not in {REVISION_REQUESTED, TASK_REVISION_REQUESTED}):
+            raise ConflictError("INVALID_REGISTER_REVISION", "Link an approved change to a revision in this project.")
+    result = db.connection().execute(update(CompanyProject).where(
+        CompanyProject.id == project_id, CompanyProject.row_version == data.expected_version,
+        CompanyProject.status == project.status,
+    ).values(row_version=data.expected_version))
+    if result.rowcount != 1:
+        raise ConflictError("PROJECT_VERSION_CONFLICT", "Refresh the project before deciding.")
+    if db.scalar(select(AuditLog.id).where(
+        AuditLog.entity_type == "project_register_entry", AuditLog.entity_id == str(entry_id),
+        AuditLog.action == REGISTER_DECIDED,
+    ).limit(1)) is not None:
+        raise ConflictError("REGISTER_ALREADY_DECIDED", "This entry already has a decision.")
+    db.add(AuditLog(
+        actor_user_id=actor.id, entity_type="project_register_entry", entity_id=str(entry_id),
+        action=REGISTER_DECIDED, new_values_json=json.dumps({
+            "status": data.status, "decision_reason": data.reason, "revision_id": data.revision_id,
+        }),
+    ))
+    _commit(db)
+    return {"status": data.status}
+
+
+@router.get("/{project_id}/schedule-baseline")
+def get_schedule_baseline(
+    project_id: int,
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_permission("project.portfolio.view")),
+) -> dict[str, Any] | None:
+    require_project_access(db, actor, project_id)
+    record = db.scalar(
+        select(AuditLog).where(
+            AuditLog.entity_type == "company_project",
+            AuditLog.entity_id == str(project_id),
+            AuditLog.action == "project.schedule.baseline_captured",
+        ).order_by(AuditLog.id.desc()).limit(1)
+    )
+    if record is None:
+        return None
+    snapshot: dict[str, Any] = json.loads(record.new_values_json or "{}")
+    if "implementation.task.view" not in effective_permissions(db, actor).permissions:
+        snapshot.pop("Task", None)
+    return {"captured_at": record.created_at, "items": snapshot}
+
+
+@router.post("/{project_id}/schedule-baseline", status_code=201)
+def capture_schedule_baseline(
+    project_id: int,
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_project_manager),
+) -> dict[str, bool]:
+    project = require_project_access(db, actor, project_id)
+    if project.status != "DRAFT":
+        raise ConflictError("PROJECT_PLAN_PUBLISHED", "Capture the baseline while the project is a draft.")
+    snapshot: dict[str, object] = {}
+    for kind, items in (
+        ("Phase", db.scalars(select(ProjectPhase).where(ProjectPhase.project_id == project_id))),
+        ("Task", db.scalars(select(ProjectTask).where(ProjectTask.project_id == project_id))),
+        ("Milestone", db.scalars(select(ProjectMilestone).where(ProjectMilestone.project_id == project_id))),
+    ):
+        snapshot[kind] = {
+            str(item.id): {
+                "start": getattr(item, "planned_start_at", None)
+                or getattr(item, "planned_start_date", None) or getattr(item, "due_date", None),
+                "end": getattr(item, "planned_end_at", None)
+                or getattr(item, "planned_end_date", None) or getattr(item, "due_date", None),
+            }
+            for item in items
+        }
+    _audit(db, actor, project_id, "project.schedule.baseline_captured", snapshot)
+    _commit(db)
+    return {"captured": True}
+
+
+@router.patch("/{project_id}/tasks/{task_id}/schedule")
+def update_task_schedule(
+    project_id: int,
+    task_id: int,
+    data: TaskScheduleWrite,
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_project_manager),
+) -> dict[str, Any]:
+    project = require_project_access(db, actor, project_id)
+    task = db.get(ProjectTask, task_id)
+    if task is None or task.project_id != project_id:
+        raise NotFoundError("Project task does not exist.")
+    if project.status != "DRAFT":
+        raise ConflictError("PROJECT_PLAN_PUBLISHED", "Only draft task dates can be edited directly.")
+    result = db.connection().execute(update(CompanyProject).where(
+        CompanyProject.id == project_id, CompanyProject.status == "DRAFT",
+        CompanyProject.row_version == data.expected_version,
+    ).values(row_version=data.expected_version + 1))
+    if result.rowcount != 1:
+        raise ConflictError("PROJECT_VERSION_CONFLICT", "Refresh the draft before editing.")
+    _apply_task_schedule(db, actor, project, task, data)
+    _commit(db)
+    db.refresh(task)
+    return _row_values(task)
+
+
+def _apply_task_schedule(
+    db: Session, actor: User, project: CompanyProject, task: ProjectTask, data: TaskScheduleWrite,
+) -> None:
+    project_id, task_id = project.id, task.id
+    start, end = data.planned_start_date, data.planned_end_date
+    phase = db.get(ProjectPhase, task.phase_id) if task.phase_id else None
+    for window in (project, phase):
+        if window and (
+            (window.planned_start_date and start < window.planned_start_date)
+            or (window.planned_end_date and end > window.planned_end_date)
+        ):
+            raise ConflictError("INVALID_TASK_WINDOW", "Task dates must fit within the project and phase.")
+    start_at = datetime.combine(start, task.planned_start_at.timetz()) if task.planned_start_at else None
+    end_at = datetime.combine(end, task.planned_end_at.timetz()) if task.planned_end_at else None
+    if start_at and end_at and start_at.replace(tzinfo=None) > end_at.replace(tzinfo=None):
+        raise ConflictError("INVALID_TASK_WINDOW", "The preserved finish time precedes the start time.")
+    for relation in db.scalars(select(ProjectTaskDependency).where(
+        (ProjectTaskDependency.task_id == task_id) | (ProjectTaskDependency.depends_on_task_id == task_id)
+    )):
+        predecessor = relation.task_id == task_id
+        related = db.get(ProjectTask, relation.depends_on_task_id if predecessor else relation.task_id)
+        if related is None or related.project_id != project_id:
+            continue
+        earlier_at = related.planned_end_at if predecessor else end_at
+        later_at = start_at if predecessor else related.planned_start_at
+        earlier = earlier_at.date() if earlier_at else (related.planned_end_date if predecessor else end)
+        later = later_at.date() if later_at else (start if predecessor else related.planned_start_date)
+        if earlier and later and (earlier > later or (
+            earlier == later and earlier_at and later_at
+            and earlier_at.replace(tzinfo=None) > later_at.replace(tzinfo=None)
+        )):
+            raise ConflictError("INVALID_TASK_DEPENDENCY_DATES", "Task dates overlap a finish-to-start dependency.")
+    _audit(db, actor, project_id, "project.task.rescheduled", {
+        "task_id": task_id, "previous_start": task.planned_start_date, "previous_finish": task.planned_end_date,
+        "planned_start_date": start, "planned_end_date": end,
+    })
+    task.planned_start_date, task.planned_end_date = start, end
+    task.planned_start_at, task.planned_end_at = start_at, end_at
+
+
+@router.put("/{project_id}/tasks/{task_id}/dependencies")
+def replace_task_dependencies(
+    project_id: int,
+    task_id: int,
+    data: TaskDependenciesWrite,
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_project_manager),
+) -> dict[str, int]:
+    require_project_access(db, actor, project_id)
+    result = db.connection().execute(
+        update(CompanyProject)
+        .where(
+            CompanyProject.id == project_id,
+            CompanyProject.status == "DRAFT",
+            CompanyProject.row_version == data.expected_version,
+        )
+        .values(row_version=data.expected_version + 1)
+    )
+    if result.rowcount != 1:
+        raise ConflictError("PROJECT_VERSION_CONFLICT", "Refresh the current draft before editing.")
+    _apply_task_dependencies(db, actor, project_id, task_id, set(data.predecessor_ids))
+    _commit(db)
+    return {"row_version": data.expected_version + 1}
+
+
+def _apply_task_dependencies(
+    db: Session, actor: User, project_id: int, task_id: int, proposed: set[int],
+) -> None:
+    task_ids = set(db.scalars(select(ProjectTask.id).where(ProjectTask.project_id == project_id)))
+    if task_id not in task_ids:
+        raise NotFoundError("Project task does not exist.")
+    if task_id in proposed or not proposed <= task_ids:
+        raise ConflictError("INVALID_TASK_DEPENDENCY", "Choose other tasks from this project.")
+    edges: dict[int, set[int]] = {}
+    for edge in db.scalars(
+        select(ProjectTaskDependency).where(
+            ProjectTaskDependency.task_id.in_(select(ProjectTask.id).where(
+                ProjectTask.project_id == project_id
+            ))
+        )
+    ):
+        edges.setdefault(edge.task_id, set()).add(edge.depends_on_task_id)
+    previous = edges.get(task_id, set())
+    pending = list(proposed)
+    visited: set[int] = set()
+    while pending:
+        candidate = pending.pop()
+        if candidate == task_id:
+            raise ConflictError("TASK_DEPENDENCY_CYCLE", "This change would create a dependency cycle.")
+        if candidate not in visited:
+            visited.add(candidate)
+            pending.extend(edges.get(candidate, set()) - visited)
+    task = db.get(ProjectTask, task_id)
+    assert task is not None
+    for predecessor_id in proposed - previous:
+        predecessor_task = db.get(ProjectTask, predecessor_id)
+        assert predecessor_task is not None
+        finish_at = predecessor_task.planned_end_at
+        start_at = task.planned_start_at
+        finish = finish_at.date() if finish_at else predecessor_task.planned_end_date
+        start = start_at.date() if start_at else task.planned_start_date
+        if finish and start and (finish > start or (
+            finish == start and finish_at and start_at
+            and finish_at.replace(tzinfo=None) > start_at.replace(tzinfo=None)
+        )):
+            raise ConflictError("INVALID_TASK_DEPENDENCY_DATES", "A predecessor finishes after the task starts.")
+    db.execute(delete(ProjectTaskDependency).where(
+        ProjectTaskDependency.task_id == task_id,
+        ProjectTaskDependency.depends_on_task_id.in_(previous - proposed),
+    ))
+    db.add_all(
+        ProjectTaskDependency(task_id=task_id, depends_on_task_id=predecessor)
+        for predecessor in proposed - previous
+    )
+    _audit(db, actor, project_id, "project.task.dependencies_updated", {
+        "task_id": task_id, "previous": sorted(previous), "predecessor_ids": sorted(proposed),
+    })
+
+
 @router.post("/{project_id}/request-implementation", status_code=201)
 def request_implementation(
     project_id: int,
@@ -861,11 +1311,18 @@ def request_implementation(
     db: Session = Depends(get_db),
     actor: User = Depends(require_permission("project.assignment.request")),
 ) -> Any:
-    require_project_access(db, actor, project_id)
+    project = require_project_access(db, actor, project_id)
+    if (
+        project.project_manager_user_id != actor.id
+        and "project.manage" not in effective_permissions(db, actor).permissions
+    ):
+        raise NotFoundError("Project does not exist.")
     if not db.get(Department, data.requested_department_id):
         raise NotFoundError("Requested department does not exist.")
-    if data.requested_team_id and not db.get(SupportTeam, data.requested_team_id):
-        raise NotFoundError("Requested team does not exist.")
+    if data.requested_team_id:
+        team = db.get(SupportTeam, data.requested_team_id)
+        if team is None or team.department_id != data.requested_department_id:
+            raise NotFoundError("Requested team does not belong to the requested department.")
     row = ProjectAssignmentRequest(
         project_id=project_id, requested_by_user_id=actor.id, **data.model_dump()
     )

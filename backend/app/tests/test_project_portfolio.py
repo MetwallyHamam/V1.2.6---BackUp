@@ -385,6 +385,36 @@ def test_project_rejects_mixed_customer_hierarchy(client, admin_headers, databas
     assert response.status_code == 409
 
 
+def test_assigned_project_manager_can_create_a_department_owned_client(
+    client, admin_headers, database
+):
+    _, organization, _ = _scope(client, admin_headers, database)
+    department = Department(code="PM_CLIENT", name="Project Management", is_active=True)
+    other = Department(code="OTHER_CLIENT", name="Other department", is_active=True)
+    database.add_all([department, other])
+    database.commit()
+    _, headers = _scoped_user_headers(
+        database, department, "project.manage.assigned", "project.create", "client.view"
+    )
+    payload = {
+        "name": "Project customer",
+        "status_id": database.scalar(select(ClientStatus.id)),
+        "organization_id": organization["id"],
+    }
+    assert client.post("/api/v1/clients", headers=headers, json={
+        **payload, "owner_department_id": other.id,
+    }).status_code == 403
+    assert client.post("/api/v1/clients", headers=headers, json={
+        **payload, "shared_department_ids": [other.id],
+    }).status_code == 403
+    created = client.post("/api/v1/clients", headers=headers, json=payload)
+    assert created.status_code == 201, created.text
+    assert created.json()["owner_department_id"] == department.id
+    assert client.patch(
+        f"/api/v1/clients/{created.json()['id']}", headers=headers, json={"name": "Renamed"}
+    ).status_code == 403
+
+
 def test_project_detail_and_summary_use_the_same_department_scope(
     client, admin_headers, database
 ):
@@ -415,7 +445,8 @@ def test_project_detail_and_summary_use_the_same_department_scope(
     visible = create("SCOPE-VISIBLE", implementation.id)
     hidden = create("SCOPE-HIDDEN", unrelated.id)
     scoped_user, scoped_headers = _scoped_user_headers(
-        database, implementation, "project.portfolio.view", "project.manage.assigned"
+        database, implementation, "project.portfolio.view", "project.manage.assigned",
+        "project.assignment.request",
     )
 
     portfolio = client.get("/api/v1/projects", headers=scoped_headers)
@@ -433,6 +464,10 @@ def test_project_detail_and_summary_use_the_same_department_scope(
         f"/api/v1/projects/{hidden['id']}/plan", headers=scoped_headers
     ).status_code == 404
     visible_url = f"/api/v1/projects/{visible['id']}"
+    request_body = {"requested_department_id": implementation.id}
+    assert client.post(
+        f"{visible_url}/request-implementation", headers=scoped_headers, json=request_body,
+    ).status_code == 404
     assert client.patch(
         visible_url, headers=scoped_headers, json={"name": "Unauthorized edit"}
     ).status_code == 404
@@ -442,6 +477,9 @@ def test_project_detail_and_summary_use_the_same_department_scope(
     edited = client.patch(visible_url, headers=scoped_headers, json={"name": "Managed Project"})
     assert edited.status_code == 200, edited.text
     assert edited.json()["name"] == "Managed Project"
+    assert client.post(
+        f"{visible_url}/request-implementation", headers=scoped_headers, json=request_body,
+    ).status_code == 201
 
     managed_project.status = "DRAFT"
     database.commit()
@@ -457,11 +495,72 @@ def test_project_detail_and_summary_use_the_same_department_scope(
     )
     assert saved.status_code == 200, saved.text
     assert saved.json()["due_date"] == "2026-12-01"
+    baseline_url = f"{visible_url}/schedule-baseline"
+    assert client.post(baseline_url, headers=scoped_headers).status_code == 201
+    baseline = client.get(baseline_url, headers=scoped_headers)
+    assert baseline.status_code == 200
+    assert baseline.json()["items"]["Milestone"][str(milestone.json()["id"])]["end"] == "2026-12-01"
+    assert "Task" not in baseline.json()["items"]
     stale = client.patch(
         schedule_url, headers=scoped_headers,
         json={"expected_version": version, "due_date": None},
     )
     assert stale.status_code == 409
+    rescheduled = client.patch(
+        schedule_url, headers=scoped_headers,
+        json={"expected_version": version + 1, "due_date": "2026-12-02"},
+    )
+    assert rescheduled.status_code == 200, rescheduled.text
+    assert client.get(baseline_url, headers=scoped_headers).json() == baseline.json()
+    database.expire_all()
+    managed_project.status = "READY_FOR_EXECUTION"
+    database.commit()
+    published_version = client.get(visible_url, headers=scoped_headers).json()["row_version"]
+    revisions_url = f"{visible_url}/milestone-revisions"
+    proposal = client.post(
+        f"{visible_url}/milestones/{milestone.json()['id']}/revisions",
+        headers=scoped_headers,
+        json={"expected_version": published_version, "due_date": "2026-12-03", "reason": "Delivery window changed"},
+    )
+    assert proposal.status_code == 201, proposal.text
+    [revision] = client.get(revisions_url, headers=scoped_headers).json()
+    assert revision["status"] == "PENDING"
+    decision_url = f"{revisions_url}/{revision['id']}/decision"
+    approval = {"expected_version": published_version, "decision": "APPROVED"}
+    assert client.post(decision_url, headers=scoped_headers, json=approval).status_code == 403
+    approved = client.post(decision_url, headers=admin_headers, json=approval)
+    assert approved.status_code == 200, approved.text
+    stale_approval = client.post(decision_url, headers=admin_headers, json=approval)
+    assert stale_approval.status_code == 409
+    assert stale_approval.json()["error"]["code"] == "PROJECT_VERSION_CONFLICT"
+    duplicate = client.post(
+        decision_url, headers=admin_headers,
+        json={"expected_version": published_version + 1, "decision": "APPROVED"},
+    )
+    assert duplicate.status_code == 409
+    assert duplicate.json()["error"]["code"] == "REVISION_ALREADY_DECIDED"
+    assert client.get(revisions_url, headers=scoped_headers).json()[0]["status"] == "APPROVED"
+    assert client.get(f"{visible_url}/plan", headers=scoped_headers).json()["milestones"][0]["due_date"] == "2026-12-03"
+    assert client.get(baseline_url, headers=scoped_headers).json() == baseline.json()
+    register = f"{visible_url}/register"
+    added = client.post(register, headers=scoped_headers, json={
+        "kind": "CHANGE", "title": "Delivery window", "impact": "Moves verification",
+        "due_date": "2026-12-03",
+    })
+    assert added.status_code == 201, added.text
+    [entry] = client.get(register, headers=scoped_headers).json()
+    assert entry["owner_user_id"] == scoped_user.id
+    assert client.get(f"/api/v1/projects/{hidden['id']}/register", headers=scoped_headers).status_code == 404
+    register_decision = f"{register}/{entry['id']}/decision"
+    body = {
+        "expected_version": published_version + 1, "status": "APPROVED",
+        "reason": "Customer confirmed the new window", "revision_id": revision["id"],
+    }
+    assert client.post(register_decision, headers=scoped_headers, json=body).status_code == 403
+    assert client.post(register_decision, headers=admin_headers, json=body).status_code == 200
+    assert client.post(register_decision, headers=admin_headers, json=body).status_code == 409
+    [entry] = client.get(register, headers=scoped_headers).json()
+    assert entry["status"] == "APPROVED" and entry["revision_id"] == revision["id"]
 
 
 def test_assignment_response_is_hidden_from_other_departments(

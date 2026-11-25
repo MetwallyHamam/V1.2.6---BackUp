@@ -241,6 +241,25 @@ def list_tasks(
     return result
 
 
+@router.get("/projects/{project_id}/task-dependencies")
+def list_task_dependencies(
+    project_id: int,
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_permission("implementation.task.view")),
+) -> list[dict[str, Any]]:
+    require_project_access(db, actor, project_id)
+    task_ids = select(ProjectTask.id).where(ProjectTask.project_id == project_id)
+    rows = db.scalars(
+        select(ProjectTaskDependency)
+        .where(
+            ProjectTaskDependency.task_id.in_(task_ids),
+            ProjectTaskDependency.depends_on_task_id.in_(task_ids),
+        )
+        .order_by(ProjectTaskDependency.id)
+    )
+    return [_values(row) for row in rows]
+
+
 @router.get("/project-tasks/my-work")
 def my_work(
     db: Session = Depends(get_db),

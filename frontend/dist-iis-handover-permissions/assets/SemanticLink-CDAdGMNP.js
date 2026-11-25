@@ -1,0 +1,1 @@
+import{j as r,L as m}from"./vendor-NdUIp2s-.js";import{bo as s}from"./mui-eYOKCTBp.js";function p({to:n,state:o,children:t,...i}){return r.jsx(s,{component:m,to:n,state:o,...i,children:t})}export{p as S};

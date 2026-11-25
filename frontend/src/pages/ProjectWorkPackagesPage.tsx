@@ -10,17 +10,296 @@ import { useAuth } from "../auth/AuthContext";
 import type { Project } from "./ProjectWorkspacePage";
 
 type Milestone = { id: number; name: string; status: string; due_date: string | null };
+type Dependency = { task_id: number; depends_on_task_id: number; dependency_type: string };
+type MilestoneRevision = {
+  id: number; milestone_id: number; previous_due_date: string | null; due_date: string | null;
+  reason: string; status: string; requested_by_user_id: number; project_version: number;
+  task_id?: number; task_number?: string; task_title?: string;
+  previous?: RevisionPlan; proposed?: RevisionPlan;
+};
+type RevisionPlan = { planned_start_date?: string | null; planned_end_date?: string | null; predecessor_ids?: number[] };
+
+function revisionPlan(plan?: RevisionPlan) {
+  if (plan?.predecessor_ids) return plan.predecessor_ids.length
+    ? `Predecessor IDs ${plan.predecessor_ids.join(", ")}` : "No predecessors";
+  return `${plan?.planned_start_date ?? "Unscheduled"} → ${plan?.planned_end_date ?? "Unscheduled"}`;
+}
+
+function useMilestoneRevisions(projectId: number) {
+  return useQuery({
+    queryKey: ["project-milestone-revisions", projectId],
+    queryFn: async () => (await api.get<MilestoneRevision[]>(`/projects/${projectId}/milestone-revisions`)).data,
+  });
+}
+
+function proposedVariance(baseline: string | null | undefined, proposed: string | null) {
+  if (!baseline || !proposed) return "—";
+  const days = (Date.parse(proposed) - Date.parse(baseline)) / 86_400_000;
+  if (!Number.isFinite(days)) return "—";
+  if (days === 0) return "On baseline";
+  const distance = Math.abs(days);
+  return `${distance} ${distance === 1 ? "day" : "days"} ${days > 0 ? "later" : "earlier"}`;
+}
+
+export function ProjectRevisionQueue() {
+  const project = useOutletContext<Project>();
+  const [params] = useSearchParams();
+  const revisionFilter = params.get("revision");
+  const revisions = useMilestoneRevisions(project.id);
+  const plan = useQuery({
+    queryKey: ["project-plan", String(project.id)],
+    queryFn: async () => (await api.get<{ milestones: Milestone[] }>(`/projects/${project.id}/plan`)).data,
+  });
+  const baseline = useQuery({
+    queryKey: ["project-schedule-baseline", String(project.id)],
+    queryFn: async () => (await api.get<{
+      items: { Milestone?: Record<string, { end: string | null }> };
+    } | null>(`/projects/${project.id}/schedule-baseline`)).data,
+  });
+  const [status, setStatus] = useState(revisionFilter ? "" : "PENDING");
+  const milestones = new Map((plan.data?.milestones ?? []).map((item) => [item.id, item.name]));
+  const rows = (revisions.data ?? []).filter((revision) =>
+    (!status || revision.status === status) && (!revisionFilter || String(revision.id) === revisionFilter));
+  const error = revisions.error ?? plan.error;
+
+  return (
+    <Stack spacing={2}>
+      <Typography component="h2" variant="h6">Schedule revisions</Typography>
+      <TextField select size="small" label="Revision status" value={status} sx={{ alignSelf: "flex-start", minWidth: 170 }}
+        onChange={(event) => setStatus(event.target.value)}>
+        <MenuItem value="">All statuses</MenuItem>
+        <MenuItem value="PENDING">Pending</MenuItem>
+        <MenuItem value="APPROVED">Approved</MenuItem>
+        <MenuItem value="REJECTED">Rejected</MenuItem>
+      </TextField>
+      {revisionFilter && <Button component={Link} to="../revisions" sx={{ alignSelf: "flex-start" }}>Show all revisions</Button>}
+      {(revisions.isPending || plan.isPending) && <LinearProgress aria-label="Loading schedule revisions" />}
+      {error && <Alert severity="error">{apiErrorMessage(error)}</Alert>}
+      {baseline.isError && <Alert severity="warning">The schedule baseline could not be loaded.</Alert>}
+      {revisions.isSuccess && !rows.length && <Typography>No matching revisions.</Typography>}
+      <TableContainer>
+        <Table size="small" aria-label="Project schedule revisions">
+          <TableHead><TableRow>
+            <TableCell>Work package</TableCell>
+            {baseline.data && <TableCell>Baseline finish</TableCell>}
+            <TableCell>Previous plan</TableCell>
+            <TableCell>Proposed plan</TableCell>
+            {baseline.data && <TableCell>Proposed variance</TableCell>}
+            <TableCell>Status</TableCell><TableCell>Reason</TableCell>
+          </TableRow></TableHead>
+          <TableBody>{rows.map((revision) => (
+            <TableRow key={revision.id}>
+              <TableCell component="th" scope="row">
+                <Button component={Link} to={`../work-packages?item=${revision.task_id ? `task-${revision.task_id}` : `milestone-${revision.milestone_id}`}`}
+                  sx={{ textTransform: "none", textAlign: "start" }}>
+                  {revision.task_id ? `${revision.task_number} · ${revision.task_title}` : milestones.get(revision.milestone_id) ?? `Milestone #${revision.milestone_id}`}
+                </Button>
+              </TableCell>
+              {baseline.data && (
+                <TableCell>{baseline.data.items.Milestone?.[revision.milestone_id]?.end ?? "—"}</TableCell>
+              )}
+              <TableCell>{revision.task_id ? revisionPlan(revision.previous) : revision.previous_due_date ?? "Unscheduled"}</TableCell>
+              <TableCell>{revision.task_id ? revisionPlan(revision.proposed) : revision.due_date ?? "Unscheduled"}</TableCell>
+              {baseline.data && (
+                <TableCell>{proposedVariance(baseline.data.items.Milestone?.[revision.milestone_id]?.end, revision.due_date)}</TableCell>
+              )}
+              <TableCell>
+                {revision.status}
+                {revision.status === "PENDING" && revision.project_version !== project.row_version && (
+                  <Typography variant="caption" display="block" color="warning.main">Plan version changed</Typography>
+                )}
+              </TableCell>
+              <TableCell sx={{ overflowWrap: "anywhere" }}>{revision.reason}</TableCell>
+            </TableRow>
+          ))}</TableBody>
+        </Table>
+      </TableContainer>
+    </Stack>
+  );
+}
 type Task = {
   id: number;
   task_number: string;
   title: string;
   status: string;
+  planned_start_date: string | null;
+  planned_start_at?: string | null;
   planned_end_date: string | null;
   planned_end_at?: string | null;
   owner_user_id: number;
   progress_percent: number;
   actual_minutes: number;
 };
+
+function DependencyEditor({ project, taskId, tasks, predecessors }: {
+  project: Project; taskId: number; tasks: Task[]; predecessors: number[];
+}) {
+  const client = useQueryClient();
+  const [version, setVersion] = useState(project.row_version);
+  const [selected, setSelected] = useState(predecessors);
+  const [reason, setReason] = useState("");
+  const published = project.status !== "DRAFT";
+  const save = useMutation({
+    mutationFn: async () => published
+      ? (await api.post(`/projects/${project.id}/tasks/${taskId}/revisions`, {
+        reason: reason.trim(), dependencies: { expected_version: version, predecessor_ids: selected },
+      })).data
+      : (await api.put<{ row_version: number }>(
+      `/projects/${project.id}/tasks/${taskId}/dependencies`,
+      { expected_version: version, predecessor_ids: selected },
+    )).data,
+    onSuccess: async (result) => {
+      if (published) {
+        setReason("");
+        await client.invalidateQueries({ queryKey: ["project-milestone-revisions", project.id] });
+        return;
+      }
+      setVersion(result.row_version);
+      await Promise.all([
+        client.invalidateQueries({ queryKey: ["project", project.id] }),
+        client.invalidateQueries({ queryKey: ["project-task-dependencies", String(project.id)] }),
+      ]);
+    },
+  });
+  return (
+    <Stack component="form" spacing={1} onSubmit={(event) => { event.preventDefault(); save.mutate(); }}>
+      <Typography component="label" htmlFor="task-predecessors">Task predecessors</Typography>
+      <select id="task-predecessors" multiple value={selected.map(String)} disabled={save.isPending}
+        onChange={(event) => setSelected(Array.from(event.target.selectedOptions, (option) => Number(option.value)))}>
+        {tasks.filter((task) => task.id !== taskId).map((task) => (
+          <option key={task.id} value={task.id}>{task.task_number} · {task.title}</option>
+        ))}
+      </select>
+      {published && <TextField label="Dependency change reason" required value={reason}
+        onChange={(event) => setReason(event.target.value)} slotProps={{ htmlInput: { maxLength: 500 } }} />}
+      {save.isError && <Alert severity="error">{apiErrorMessage(save.error)}</Alert>}
+      {version !== project.row_version && !save.isPending && <Alert severity="warning">Reopen the task to load the latest plan.</Alert>}
+      <Button type="submit" disabled={save.isPending || version !== project.row_version || (published && !reason.trim())}>
+        {published ? "Propose predecessors" : "Save predecessors"}
+      </Button>
+    </Stack>
+  );
+}
+
+function MilestoneRevisions({ project, milestone, task }: { project: Project; milestone?: Milestone; task?: Task }) {
+  const { hasPermission, user } = useAuth();
+  const client = useQueryClient();
+  const [date, setDate] = useState(milestone?.due_date ?? "");
+  const [reason, setReason] = useState("");
+  const key = ["project-milestone-revisions", project.id];
+  const revisions = useMilestoneRevisions(project.id);
+  const request = useMutation({
+    mutationFn: () => api.post(`/projects/${project.id}/milestones/${milestone?.id}/revisions`, {
+      due_date: date || null, reason: reason.trim(), expected_version: project.row_version,
+    }),
+    onSuccess: async () => {
+      setReason("");
+      await client.invalidateQueries({ queryKey: key });
+    },
+  });
+  const decide = useMutation({
+    mutationFn: ({ id, decision }: { id: number; decision: "APPROVED" | "REJECTED" }) =>
+      api.post(`/projects/${project.id}/milestone-revisions/${id}/decision`, {
+        decision, expected_version: project.row_version,
+      }),
+    onSuccess: async () => {
+      await Promise.all([
+        client.invalidateQueries({ queryKey: key }),
+        client.invalidateQueries({ queryKey: ["project", project.id] }),
+        client.invalidateQueries({ queryKey: ["project-plan", String(project.id)] }),
+        client.invalidateQueries({ queryKey: ["project-tasks", project.id] }),
+        client.invalidateQueries({ queryKey: ["project-schedule-tasks", String(project.id)] }),
+        client.invalidateQueries({ queryKey: ["project-task-dependencies", String(project.id)] }),
+      ]);
+    },
+  });
+  const reviewer = hasPermission("project.manage");
+  const canRequest = ["AWAITING_IMPLEMENTATION_ACCEPTANCE", "READY_FOR_EXECUTION", "IN_EXECUTION", "ON_HOLD"].includes(project.status)
+    && (reviewer || (hasPermission("project.manage.assigned") && user?.id === project.project_manager_user_id));
+  const error = revisions.error ?? request.error ?? decide.error;
+  const rows = (revisions.data ?? []).filter((revision) => task
+    ? revision.task_id === task.id : revision.milestone_id === milestone?.id && !revision.task_id);
+  return (
+    <Stack spacing={1}>
+      <Typography component="h3" variant="subtitle1">Schedule revisions</Typography>
+      {error && <Alert severity="error">{apiErrorMessage(error)}</Alert>}
+      {revisions.isPending && <LinearProgress aria-label="Loading revisions" />}
+      {revisions.isSuccess && !rows.length && <Typography>No schedule revisions.</Typography>}
+      {rows.map((revision) => (
+        <Stack key={revision.id} spacing={0.5}>
+          <Typography>{revision.task_id ? revisionPlan(revision.previous) : revision.previous_due_date ?? "Unscheduled"} → {revision.task_id ? revisionPlan(revision.proposed) : revision.due_date ?? "Unscheduled"} · {revision.status}</Typography>
+          <Typography variant="body2" sx={{ overflowWrap: "anywhere" }}>{revision.reason}</Typography>
+          {reviewer && revision.status === "PENDING" && revision.requested_by_user_id !== user?.id && (
+            <Stack direction="row">
+              <Button disabled={decide.isPending || revision.project_version !== project.row_version}
+                onClick={() => decide.mutate({ id: revision.id, decision: "APPROVED" })}>Approve</Button>
+              <Button disabled={decide.isPending}
+                onClick={() => decide.mutate({ id: revision.id, decision: "REJECTED" })}>Reject</Button>
+            </Stack>
+          )}
+        </Stack>
+      ))}
+      {canRequest && milestone && (
+        <Stack component="form" spacing={1} onSubmit={(event) => { event.preventDefault(); request.mutate(); }}>
+          <TextField type="date" label="Proposed finish" slotProps={{ inputLabel: { shrink: true } }}
+            value={date} onChange={(event) => setDate(event.target.value)} />
+          <TextField label="Reason" required multiline value={reason} onChange={(event) => setReason(event.target.value)}
+            slotProps={{ htmlInput: { maxLength: 500 } }} />
+          <Button type="submit" disabled={request.isPending || !reason.trim() || date === (milestone.due_date ?? "")}>Request revision</Button>
+        </Stack>
+      )}
+    </Stack>
+  );
+}
+
+function TaskScheduleEditor({ project, task }: { project: Project; task: Task }) {
+  const client = useQueryClient();
+  const [start, setStart] = useState((task.planned_start_at ?? task.planned_start_date)?.slice(0, 10) ?? "");
+  const [end, setEnd] = useState((task.planned_end_at ?? task.planned_end_date)?.slice(0, 10) ?? "");
+  const [version, setVersion] = useState(project.row_version);
+  const [reason, setReason] = useState("");
+  const published = project.status !== "DRAFT";
+  const save = useMutation({
+    mutationFn: async () => {
+      const schedule = { expected_version: version, planned_start_date: start, planned_end_date: end };
+      if (published) {
+        await api.post(`/projects/${project.id}/tasks/${task.id}/revisions`, { reason: reason.trim(), schedule });
+      } else {
+        await api.patch(`/projects/${project.id}/tasks/${task.id}/schedule`, schedule);
+      }
+    },
+    onSuccess: async () => {
+      if (published) {
+        setReason("");
+        await client.invalidateQueries({ queryKey: ["project-milestone-revisions", project.id] });
+        return;
+      }
+      setVersion(version + 1);
+      await Promise.all([
+        client.invalidateQueries({ queryKey: ["project", project.id] }),
+        client.invalidateQueries({ queryKey: ["project-tasks", project.id] }),
+        client.invalidateQueries({ queryKey: ["project-schedule-tasks", String(project.id)] }),
+      ]);
+    },
+  });
+  return (
+    <Stack component="form" spacing={1} onSubmit={(event) => { event.preventDefault(); save.mutate(); }}>
+      <Typography component="h3" variant="subtitle1">Task schedule</Typography>
+      <TextField type="date" required label="Planned start" slotProps={{ inputLabel: { shrink: true } }}
+        value={start} onChange={(event) => setStart(event.target.value)} />
+      <TextField type="date" required label="Planned finish" slotProps={{ inputLabel: { shrink: true } }}
+        value={end} onChange={(event) => setEnd(event.target.value)} />
+      {save.isError && <Alert severity="error">{apiErrorMessage(save.error)}</Alert>}
+      {published && <TextField label="Schedule change reason" required value={reason} onChange={(event) => setReason(event.target.value)}
+        slotProps={{ htmlInput: { maxLength: 500 } }} />}
+      {save.isSuccess && <Alert severity="success">{published ? "Schedule revision submitted." : "Task schedule saved."}</Alert>}
+      {version !== project.row_version && !save.isPending && <Alert severity="warning">Reopen the task to load the latest plan.</Alert>}
+      <Button type="submit" disabled={save.isPending || !start || !end || end < start || version !== project.row_version || (published && !reason.trim())}>
+        {published ? "Propose task schedule" : "Save task schedule"}
+      </Button>
+    </Stack>
+  );
+}
 
 function MilestoneScheduleEditor({ project, milestone }: { project: Project; milestone: Milestone }) {
   const queryClient = useQueryClient();
@@ -60,10 +339,12 @@ export function ProjectWorkPackagesPage() {
   const [params, setParams] = useSearchParams();
   const { hasPermission, user } = useAuth();
   const project = useOutletContext<Project>();
-  const canEditSchedule = project.status === "DRAFT" && (
+  const canManagePlan = (
     hasPermission("project.manage")
     || (hasPermission("project.manage.assigned") && project.project_manager_user_id === user?.id)
   );
+  const canEditSchedule = project.status === "DRAFT" && canManagePlan;
+  const canPropose = canManagePlan && ["AWAITING_IMPLEMENTATION_ACCEPTANCE", "READY_FOR_EXECUTION", "IN_EXECUTION", "ON_HOLD"].includes(project.status);
   const canViewTasks = hasPermission("implementation.task.view");
   const [search, setSearch] = useState("");
   const [kind, setKind] = useState("");
@@ -97,6 +378,23 @@ export function ProjectWorkPackagesPage() {
   const error = plan.error ?? (canViewTasks ? tasks.error : null);
   const itemKey = params.get("item");
   const selected = rows.find((row) => row.key === itemKey);
+  const taskId = selected?.task?.id;
+  const dependencies = useQuery({
+    queryKey: ["project-task-dependencies", id],
+    queryFn: async () => (await api.get<Dependency[]>(`/projects/${id}/task-dependencies`)).data,
+    enabled: canViewTasks && taskId !== undefined,
+  });
+  const taskById = new Map((canViewTasks ? tasks.data ?? [] : []).map((task) => [task.id, task]));
+  const relations = (dependencies.data ?? []).flatMap((dependency) => {
+    const predecessor = dependency.task_id === taskId;
+    if (!predecessor && dependency.depends_on_task_id !== taskId) return [];
+    const related = taskById.get(predecessor ? dependency.depends_on_task_id : dependency.task_id);
+    return related ? [{
+      task: related,
+      direction: predecessor ? "Predecessor" : "Successor",
+      type: dependency.dependency_type.replaceAll("_", " ").toLowerCase(),
+    }] : [];
+  });
   const owners = useQuery({
     queryKey: ["project-options"],
     queryFn: async () => (await api.get<{ managers: { id: number; name: string }[] }>("/projects/options")).data,
@@ -170,12 +468,34 @@ export function ProjectWorkPackagesPage() {
                 <>
                   <Typography>Owner {owner?.name ?? `#${ownerId}`}</Typography>
                   <Typography>{selected.task.progress_percent}% complete · {selected.task.actual_minutes ?? 0} min logged</Typography>
+                  {(canEditSchedule || canPropose) && <TaskScheduleEditor key={selected.key} project={project} task={selected.task} />}
+                  {project.status !== "DRAFT" && <MilestoneRevisions key={`revisions-${selected.key}`} project={project} task={selected.task} />}
+                  <Typography component="h3" variant="subtitle1">Dependencies</Typography>
+                  {dependencies.isPending && <LinearProgress aria-label="Loading dependencies" />}
+                  {dependencies.isError && <Alert severity="error">{apiErrorMessage(dependencies.error)}</Alert>}
+                  {dependencies.isSuccess && !relations.length && <Typography>No task dependencies.</Typography>}
+                  {relations.map(({ task, direction, type }) => (
+                    <Stack key={`${direction}-${task.id}`}>
+                      <Typography variant="caption">{direction} · {type}</Typography>
+                      <Button component={Link} to={itemLocation(`task-${task.id}`)} sx={{ alignSelf: "flex-start", textTransform: "none" }}>
+                        {task.task_number} · {task.title}
+                      </Button>
+                    </Stack>
+                  ))}
+                  {(canEditSchedule || canPropose) && dependencies.isSuccess && (
+                      <DependencyEditor key={`dependencies-${selected.key}`} project={project} taskId={selected.task.id}
+                      tasks={tasks.data ?? []}
+                      predecessors={relations.filter((relation) => relation.direction === "Predecessor").map((relation) => relation.task.id)} />
+                  )}
                   <Button component={Link} to="../execution" sx={{ alignSelf: "flex-start" }}>Open Implementation board</Button>
                 </>
               )}
               {!selected.task && <Button component={Link} to="../schedule" sx={{ alignSelf: "flex-start" }}>Open schedule</Button>}
               {canEditSchedule && selected.milestone && (
                 <MilestoneScheduleEditor key={selected.key} project={project} milestone={selected.milestone} />
+              )}
+              {project.status !== "DRAFT" && selected.milestone && (
+                <MilestoneRevisions key={selected.key} project={project} milestone={selected.milestone} />
               )}
             </>
           ) : loading ? <LinearProgress aria-label="Loading work package" /> : (

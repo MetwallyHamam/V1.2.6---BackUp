@@ -17,7 +17,7 @@ import {
 } from "@mui/material";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { api, apiErrorMessage } from "../api/client";
 
 type IntakeRequest = {
@@ -62,7 +62,9 @@ function statusColor(status: string): "default" | "info" | "success" | "warning"
 
 export function ImplementationIntakePage() {
   const queryClient = useQueryClient();
-  const [status, setStatus] = useState("PENDING");
+  const [params] = useSearchParams();
+  const projectFilter = params.get("project");
+  const [status, setStatus] = useState(projectFilter ? "ALL" : "PENDING");
   const [selected, setSelected] = useState<IntakeRequest | null>(null);
   const [decision, setDecision] = useState<Decision>("ACCEPTED");
   const [teamId, setTeamId] = useState("");
@@ -76,7 +78,9 @@ export function ImplementationIntakePage() {
     queryKey: ["project-options", "implementation-intake"],
     queryFn: async () => (await api.get<ProjectOptions>("/projects/options")).data,
   });
-  const visible = useMemo(() => filterIntakeRequests(inbox.data ?? [], status), [inbox.data, status]);
+  const visible = useMemo(() => filterIntakeRequests(inbox.data ?? [], status).filter(
+    (request) => !projectFilter || String(request.project_id) === projectFilter,
+  ), [inbox.data, projectFilter, status]);
   const teams = (options.data?.teams ?? []).filter(
     (team) => team.department_id === selected?.requested_department_id,
   );
@@ -92,6 +96,7 @@ export function ImplementationIntakePage() {
       });
     },
     onSuccess: async () => {
+      const projectId = selected?.project_id;
       setSelected(null);
       setTeamId("");
       setNotes("");
@@ -99,6 +104,10 @@ export function ImplementationIntakePage() {
         queryClient.invalidateQueries({ queryKey: ["implementation-intake"] }),
         queryClient.invalidateQueries({ queryKey: ["projects"] }),
         queryClient.invalidateQueries({ queryKey: ["project-summary"] }),
+        ...(projectId ? [
+          queryClient.invalidateQueries({ queryKey: ["project", projectId] }),
+          queryClient.invalidateQueries({ queryKey: ["project-plan", String(projectId)] }),
+        ] : []),
       ]);
     },
   });
@@ -139,6 +148,7 @@ export function ImplementationIntakePage() {
             {['PENDING', 'PROPOSED', 'ACCEPTED', 'RETURNED', 'REJECTED', 'ALL'].map((value) => <MenuItem key={value} value={value}>{label(value)}</MenuItem>)}
           </TextField>
           <Chip size="small" label={`${visible.length} request${visible.length === 1 ? "" : "s"}`} />
+          {projectFilter && <Button component={Link} to="/implementation-intake">Show all projects</Button>}
           <Typography variant="caption" color="text.secondary">
             Only requests addressed to your authorized department are shown.
           </Typography>
@@ -170,7 +180,7 @@ export function ImplementationIntakePage() {
                 {(request.status === "PENDING" || request.status === "PROPOSED") && (
                   <Button variant="contained" onClick={() => openDecision(request)}>Review request</Button>
                 )}
-                <Button component={Link} to={`/projects/${request.project_id}/execution`} variant="outlined">Open project</Button>
+                <Button component={Link} to={`/projects/${request.project_id}/intake`} variant="outlined">Open project intake</Button>
               </Stack>
             </Stack>
           </Paper>

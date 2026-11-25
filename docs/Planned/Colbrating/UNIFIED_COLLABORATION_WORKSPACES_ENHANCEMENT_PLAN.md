@@ -313,6 +313,8 @@ Exit gate:
 
 #### Work packages delivery plan
 
+Current delivery covers the searchable Work Packages list, shareable task and milestone details, draft milestone dates, draft predecessor edits, and schedule baseline capture and comparison. Project managers can review Implementation requests and decisions in the project workspace. Support readiness and decisions are available in Support Handover. Published-plan revision, typed risks and changes, and signed-in IIS acceptance remain open.
+
 1. **Read-only list.** Show project tasks and milestones in one searchable table with type, status and planned finish. Reuse the scoped Project plan and task APIs. Verify that a user without task visibility can still browse milestones.
 2. **Planning and execution.** Add work-package detail links, ownership, filters and governed edits. Enforce Project Manager scope for planning and assignment scope for engineer actions. Verify that concurrent updates cannot overwrite each other.
 3. **Dependencies and baselines.** Show predecessor and successor relationships in the table and schedule. Validate dependency cycles and compare approved baseline dates with the current plan.

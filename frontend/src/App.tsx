@@ -6,10 +6,13 @@ import { api } from "./api/client";
 import { AppLayout } from "./layouts/AppLayout";
 import { ProjectManagementPage } from "./pages/ProjectManagementPage";
 import { ProjectSchedulePage } from "./pages/ProjectSchedulePage";
-import { ProjectWorkPackagesPage } from "./pages/ProjectWorkPackagesPage";
+import { ProjectRevisionQueue, ProjectWorkPackagesPage } from "./pages/ProjectWorkPackagesPage";
+import { ProjectRegisterPage } from "./pages/ProjectRegisterPage";
+import { projectMyWorkPath, projectWorkspacePath } from "./auth/projectWorkspaceAccess";
 import {
   ProjectWorkspaceCollaboration,
   ProjectWorkspaceHandover,
+  ProjectWorkspaceIntake,
   ProjectWorkspaceOverview,
   ProjectWorkspacePage,
 } from "./pages/ProjectWorkspacePage";
@@ -577,12 +580,19 @@ export function App() {
             </Route>
             <Route path="onboarding" element={<OnboardingPage />} />
             <Route element={<PermissionRoute anyOf={["project.portfolio.view"]} />}>
-              <Route path="project-management" element={<ProjectManagementPage />} />
+              <Route path={projectWorkspacePath.slice(1)} element={<ProjectManagementPage key="overview" />} />
+              <Route element={<PermissionRoute anyOf={["project.manage.assigned", "project.manage"]} />}>
+                <Route path={projectMyWorkPath.slice(1)} element={<ProjectManagementPage key="my-work" personal />} />
+              </Route>
+              <Route path="project-management" element={<Navigate to={projectWorkspacePath} replace />} />
               <Route path="projects" element={<ProjectsPage />} />
               <Route path="projects/:id" element={<ProjectWorkspacePage />}>
                 <Route index element={<ProjectWorkspaceOverview />} />
                 <Route path="work-packages" element={<ProjectWorkPackagesPage />} />
+                <Route path="revisions" element={<ProjectRevisionQueue />} />
+                <Route path="register" element={<ProjectRegisterPage />} />
                 <Route path="schedule" element={<ProjectSchedulePage />} />
+                <Route path="intake" element={<ProjectWorkspaceIntake />} />
                 <Route element={<PermissionRoute anyOf={["implementation.task.view"]} />}>
                   <Route path="execution" element={<ProjectExecutionPage />} />
                 </Route>

@@ -3,6 +3,7 @@ from sqlalchemy import select
 from app.modules.clients.models import ClientStatus
 from app.modules.iam.models import Department, User
 from app.modules.projects.models import CompanyProject, ProjectStatusTransition
+from app.tests.test_project_portfolio import _scoped_user_headers
 
 
 def _project(client, headers, database):
@@ -43,6 +44,99 @@ def _project(client, headers, database):
     database.commit()
     project["status"] = row.status
     return project, manager_id
+
+
+def test_project_task_dependencies_preserve_predecessor_direction(client, admin_headers, database):
+    project, manager_id = _project(client, admin_headers, database)
+    url = f"/api/v1/projects/{project['id']}"
+    predecessor = client.post(
+        f"{url}/tasks", headers=admin_headers,
+        json={"task_number": "T-001", "title": "Install", "owner_user_id": manager_id},
+    )
+    assert predecessor.status_code == 201, predecessor.text
+    successor = client.post(
+        f"{url}/tasks", headers=admin_headers,
+        json={
+            "task_number": "T-002", "title": "Verify", "owner_user_id": manager_id,
+            "dependency_ids": [predecessor.json()["id"]],
+        },
+    )
+    assert successor.status_code == 201, successor.text
+    response = client.get(f"{url}/task-dependencies", headers=admin_headers)
+    assert response.status_code == 200, response.text
+    [relation] = response.json()
+    assert relation["task_id"] == successor.json()["id"]
+    assert relation["depends_on_task_id"] == predecessor.json()["id"]
+    assert relation["dependency_type"] == "FINISH_TO_START"
+
+    draft = database.get(CompanyProject, project["id"])
+    draft.status = "DRAFT"
+    database.commit()
+    version = draft.row_version
+    predecessor_schedule = f"{url}/tasks/{predecessor.json()['id']}/schedule"
+    successor_schedule = f"{url}/tasks/{successor.json()['id']}/schedule"
+    first_window = {
+        "expected_version": version,
+        "planned_start_date": "2026-12-01",
+        "planned_end_date": "2026-12-03",
+    }
+    assert client.patch(predecessor_schedule, headers=admin_headers, json=first_window).status_code == 200
+    assert client.patch(predecessor_schedule, headers=admin_headers, json=first_window).status_code == 409
+    version += 1
+    overlap = client.patch(
+        successor_schedule, headers=admin_headers,
+        json={**first_window, "expected_version": version},
+    )
+    assert overlap.status_code == 409
+    assert overlap.json()["error"]["code"] == "INVALID_TASK_DEPENDENCY_DATES"
+    scheduled = client.patch(
+        successor_schedule, headers=admin_headers,
+        json={"expected_version": version, "planned_start_date": "2026-12-04", "planned_end_date": "2026-12-05"},
+    )
+    assert scheduled.status_code == 200, scheduled.text
+    assert scheduled.json()["planned_end_date"] == "2026-12-05"
+    version += 1
+    cycle = client.put(
+        f"{url}/tasks/{predecessor.json()['id']}/dependencies",
+        headers=admin_headers,
+        json={"expected_version": version, "predecessor_ids": [successor.json()["id"]]},
+    )
+    assert cycle.status_code == 409
+    edit_url = f"{url}/tasks/{successor.json()['id']}/dependencies"
+    removed = client.put(
+        edit_url, headers=admin_headers, json={"expected_version": version, "predecessor_ids": []}
+    )
+    assert removed.status_code == 200, removed.text
+    assert client.get(f"{url}/task-dependencies", headers=admin_headers).json() == []
+    stale = client.put(
+        edit_url, headers=admin_headers,
+        json={"expected_version": version, "predecessor_ids": [predecessor.json()["id"]]},
+    )
+    assert stale.status_code == 409
+    database.expire_all()
+    draft.status = "READY_FOR_EXECUTION"
+    department = database.get(Department, draft.owning_department_id)
+    _, reviewer = _scoped_user_headers(database, department, "project.manage", "implementation.task.view")
+    version += 1
+    revisions_url = f"{url}/milestone-revisions"
+    task_revisions_url = f"{url}/tasks/{successor.json()['id']}/revisions"
+    for field, proposed in (
+        ("schedule", {"planned_start_date": "2026-12-06", "planned_end_date": "2026-12-07"}),
+        ("dependencies", {"predecessor_ids": [predecessor.json()["id"]]}),
+    ):
+        submitted = client.post(task_revisions_url, headers=admin_headers, json={
+            "reason": "Updated delivery plan", field: {"expected_version": version, **proposed},
+        })
+        assert submitted.status_code == 201, submitted.text
+        latest = client.get(revisions_url, headers=admin_headers).json()[0]
+        assert latest["proposed"] == proposed
+        approved = client.post(
+            f"{revisions_url}/{latest['id']}/decision", headers=reviewer,
+            json={"expected_version": version, "decision": "APPROVED"},
+        )
+        assert approved.status_code == 200, approved.text
+        version += 1
+    assert client.get(f"{url}/task-dependencies", headers=admin_headers).json()[0]["depends_on_task_id"] == predecessor.json()["id"]
 
 
 def test_planned_task_execution_worklog_blocker_evidence_and_review(

@@ -6,10 +6,12 @@ from app.modules.clients.models import Client, ClientStatus
 from app.modules.iam.models import Department, User
 from app.modules.projects.models import (
     CompanyProject,
+    ProjectDepartment,
     ProjectEvidence,
     ProjectStabilizationPlan,
     ProjectStatusTransition,
 )
+from app.tests.test_project_portfolio import _scoped_user_headers
 
 
 def _project(client, headers, database):
@@ -92,9 +94,30 @@ def test_handover_requires_readiness_acceptance_and_stabilization(client, admin_
         f"/api/v1/projects/{project['id']}/handover/submit", headers=admin_headers
     )
     assert submitted.status_code == 200 and submitted.json()["readiness_percent"] == 100
+    observers = Department(code="REVIEW_ONLY", name="Review only", is_active=True)
+    database.add(observers)
+    database.flush()
+    database.add(ProjectDepartment(project_id=project["id"], department_id=observers.id, role="SUPPORT"))
+    _, observer_headers = _scoped_user_headers(database, observers, "handover.view", "handover.review")
+    for outcome in ("ACCEPT", "CONDITIONAL_ACCEPT"):
+        denied_acceptance = client.post(
+            f"/api/v1/projects/{project['id']}/handover/support-decision",
+            headers=observer_headers,
+            json={"decision": outcome, "notes": "Reviewed"},
+        )
+        assert denied_acceptance.status_code == 403, denied_acceptance.text
+    support = Department(code="REVIEW", name="Receiving Support", is_active=True)
+    database.add(support)
+    database.flush()
+    database.add(ProjectDepartment(project_id=project["id"], department_id=support.id, role="SUPPORT"))
+    _, reviewer_headers = _scoped_user_headers(database, support, "handover.view", "handover.review", "handover.accept")
+    denied = client.post(
+        f"/api/v1/projects/{project['id']}/handover/activate-support", headers=reviewer_headers
+    )
+    assert denied.status_code == 403
     decision = client.post(
         f"/api/v1/projects/{project['id']}/handover/support-decision",
-        headers=admin_headers,
+        headers=reviewer_headers,
         json={"decision": "ACCEPT", "notes": "Support readiness verified"},
     )
     assert decision.status_code == 200

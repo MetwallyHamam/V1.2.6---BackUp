@@ -1,0 +1,1 @@
+import{j as t}from"./vendor-hF5e91CM.js";import{O as o}from"./OutlookEmailSettings-CYEMKEXj.js";import{S as r}from"./mui-BbjOBpbP.js";import"./query-CqmvLVu3.js";import"./index-BG93Jnei.js";function p(){return t.jsx(r,{spacing:2,children:t.jsx(o,{})})}export{p as EmailIntegrationPage};

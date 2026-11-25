@@ -32,7 +32,7 @@ import axios from 'axios'
 import { FormEvent, useEffect, useState } from 'react'
 import { Link as RouterLink, useLocation, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { api } from '../api/client'
+import { api, apiErrorMessage } from '../api/client'
 import { MobileMultiAutocomplete } from '../components/MobileMultiAutocomplete'
 import { useAuth } from '../auth/AuthContext'
 import { InactiveClientsKpi } from '../components/InactiveClientsKpi'
@@ -86,6 +86,9 @@ export function ClientsPage() {
   const language = i18n.resolvedLanguage === 'ar' ? 'ar' : 'en'
   const queryClient = useQueryClient()
   const { hasPermission } = useAuth()
+  const canManageClients = hasPermission('client.manage')
+  const canCreateProjectClient = hasPermission('project.portfolio.view')
+    && hasPermission('project.manage.assigned') && hasPermission('project.create')
   const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
   const [search, setSearch] = useState(()=>searchParams.get('search')??'')
@@ -100,6 +103,27 @@ export function ClientsPage() {
   const [selectedClientIds, setSelectedClientIds] = useState<number[]>([])
   const [bulkCountry, setBulkCountry] = useState<Country | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [projectClientOpen, setProjectClientOpen] = useState(false)
+  const projectClientOptions = useQuery({
+    queryKey: ['project-client-organizations'],
+    queryFn: async () => (await api.get<{ organizations: { id: number; name: string }[] }>('/projects/options')).data.organizations,
+    enabled: projectClientOpen,
+  })
+  const createProjectClient = useMutation({
+    mutationFn: (form: FormData) => api.post('/clients', {
+      name: String(form.get('name') ?? '').trim(),
+      organization_id: Number(form.get('organization_id')),
+      status_id: Number(form.get('status_id')),
+    }),
+    onSuccess: async () => {
+      setProjectClientOpen(false)
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['clients'] }),
+        queryClient.invalidateQueries({ queryKey: ['clients-page'] }),
+        queryClient.invalidateQueries({ queryKey: ['project-options'] }),
+      ])
+    },
+  })
   const [countryOpen, setCountryOpen] = useState(false)
   const [cityOpen,setCityOpen]=useState(false)
   const [deleteError, setDeleteError] = useState('')
@@ -254,10 +278,13 @@ export function ClientsPage() {
           </Stack>
           <Typography color="text.secondary">{t('clients.subtitle')}</Typography>
         </Box>
-        {hasPermission('client.manage') && (
+        {(canManageClients || canCreateProjectClient) && (
           <Stack direction={{ xs: 'column', sm: 'row' }} gap={1}>
-            <Button variant="outlined" onClick={() => setCountryOpen(true)}>{t('clients.countryMaster')}</Button>
-            <Button variant="contained" startIcon={<Add />} onClick={() => setDialogOpen(true)}>{t('clients.addClient')}</Button>
+            {canManageClients && <Button variant="outlined" onClick={() => setCountryOpen(true)}>{t('clients.countryMaster')}</Button>}
+            <Button variant="contained" startIcon={<Add />} onClick={() => {
+              if (canManageClients) setDialogOpen(true)
+              else { createProjectClient.reset(); setProjectClientOpen(true) }
+            }}>{t('clients.addClient')}</Button>
           </Stack>
         )}
       </Stack>
@@ -357,6 +384,30 @@ export function ClientsPage() {
         </Paper>
       )}
 
+      <Dialog open={projectClientOpen} onClose={() => setProjectClientOpen(false)} fullWidth maxWidth="xs">
+        <Box component="form" onSubmit={(event) => {
+          event.preventDefault()
+          createProjectClient.mutate(new FormData(event.currentTarget))
+        }}>
+          <DialogTitle>{t('clients.addClient')}</DialogTitle>
+          <DialogContent>
+            {(projectClientOptions.isError || createProjectClient.isError) && (
+              <Alert severity="error">{apiErrorMessage(projectClientOptions.error ?? createProjectClient.error)}</Alert>
+            )}
+            <TextField name="name" label={t('clients.clientName')} required fullWidth margin="normal" />
+            <TextField name="organization_id" label={t('clients.organization', { defaultValue: 'Organization' })} select required fullWidth margin="normal" defaultValue="">
+              {projectClientOptions.data?.map((item) => <MenuItem key={item.id} value={item.id}>{item.name}</MenuItem>)}
+            </TextField>
+            <TextField name="status_id" label={t('clients.status')} select required fullWidth margin="normal" defaultValue="">
+              {statuses.data?.map((item) => <MenuItem key={item.id} value={item.id}>{getLocalizedName(item, language)}</MenuItem>)}
+            </TextField>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setProjectClientOpen(false)}>{t('clients.cancel')}</Button>
+            <Button type="submit" variant="contained" disabled={createProjectClient.isPending || !projectClientOptions.data?.length}>{t('clients.addClient')}</Button>
+          </DialogActions>
+        </Box>
+      </Dialog>
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} fullWidth maxWidth="sm">
         <Box component="form" onSubmit={submit}>
           <DialogTitle>{t('clients.addClient')}</DialogTitle>

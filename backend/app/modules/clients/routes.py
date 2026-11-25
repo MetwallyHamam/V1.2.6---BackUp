@@ -12,7 +12,7 @@ from sqlalchemy.sql.elements import ColumnElement
 from app.api.dependencies import require_any_permission, require_permission
 from app.core.clock import server_now
 from app.core.config import Settings, get_settings
-from app.core.exceptions import ConflictError, NotFoundError
+from app.core.exceptions import AuthorizationError, ConflictError, NotFoundError
 from app.db.base import Base
 from app.db.session import get_db
 from app.modules.clients.credentials import decrypt_password, encrypt_password
@@ -540,8 +540,22 @@ def ticket_client_options(
 def create_client(
     data: ClientCreate,
     db: Session = Depends(get_db),
-    actor: User = Depends(require_permission("client.manage")),
+    actor: User = Depends(require_any_permission("client.manage", "project.manage.assigned")),
 ) -> Client:
+    permissions = effective_permissions(db, actor).permissions
+    if "client.manage" not in permissions:
+        if "project.create" not in permissions or actor.department_id is None:
+            raise AuthorizationError("Client creation requires Project Management and an owning department.")
+        if (
+            data.owner_department_id not in (None, actor.department_id)
+            or data.shared_department_ids
+            or data.parent_client_id is not None
+            or data.primary_location_id is not None
+        ):
+            raise AuthorizationError("Project managers can create clients for their own department only.")
+        if data.organization_id is None:
+            raise ConflictError("CLIENT_ORGANIZATION_REQUIRED", "Select an organization for the new client.")
+        data = data.model_copy(update={"owner_department_id": actor.department_id})
     validate_parent_change(db, None, data.parent_client_id)
     if data.organization_id is not None and not db.get(Organization, data.organization_id):
         raise NotFoundError("Organization does not exist.")
