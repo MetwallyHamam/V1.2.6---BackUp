@@ -252,6 +252,44 @@ function MilestoneRevisions({ project, milestone, task }: { project: Project; mi
   );
 }
 
+function DeliveryOwnerEditor({ project, task }: { project: Project; task: Task }) {
+  const client = useQueryClient();
+  const [owner, setOwner] = useState("");
+  const options = useQuery({
+    queryKey: ["delivery-owner-options", project.id],
+    queryFn: async () => (await api.get<{ id: number; name: string }[]>(
+      `/projects/${project.id}/delivery-owner-options`,
+    )).data,
+    retry: false,
+  });
+  const save = useMutation({
+    mutationFn: () => api.put(`/project-tasks/${task.id}/owner`, {
+      expected_owner_user_id: task.owner_user_id, owner_user_id: Number(owner),
+    }),
+    onSuccess: async () => {
+      setOwner("");
+      await Promise.all([
+        client.invalidateQueries({ queryKey: ["project-tasks", project.id] }),
+        client.invalidateQueries({ queryKey: ["implementation-my-work"] }),
+        client.invalidateQueries({ queryKey: ["implementation-delivery-attention"] }),
+      ]);
+    },
+  });
+  if (options.isPending) return <LinearProgress aria-label="Loading eligible engineers" />;
+  if (options.isError) return <Alert severity="info">Owner assignment is unavailable for this delivery team.</Alert>;
+  const eligible = options.data.filter((option) => option.id !== task.owner_user_id);
+  if (!eligible.length) return <Typography variant="body2" color="text.secondary">No other eligible owner is available.</Typography>;
+  return (
+    <Stack component="form" spacing={1} onSubmit={(event) => { event.preventDefault(); save.mutate(); }}>
+      <TextField select label="New accountable owner" value={owner} onChange={(event) => setOwner(event.target.value)}>
+        {eligible.map((option) => <MenuItem key={option.id} value={String(option.id)}>{option.name}</MenuItem>)}
+      </TextField>
+      {save.isError && <Alert severity="error">{apiErrorMessage(save.error)}</Alert>}
+      <Button type="submit" disabled={!owner || save.isPending}>Change task owner</Button>
+    </Stack>
+  );
+}
+
 function TaskScheduleEditor({ project, task }: { project: Project; task: Task }) {
   const client = useQueryClient();
   const [start, setStart] = useState((task.planned_start_at ?? task.planned_start_date)?.slice(0, 10) ?? "");
@@ -468,6 +506,11 @@ export function ProjectWorkPackagesPage() {
                 <>
                   <Typography>Owner {owner?.name ?? `#${ownerId}`}</Typography>
                   <Typography>{selected.task.progress_percent}% complete · {selected.task.actual_minutes ?? 0} min logged</Typography>
+                  {hasPermission("implementation.task.assign")
+                    && ["READY_FOR_EXECUTION", "IN_EXECUTION"].includes(project.status)
+                    && ["BACKLOG", "READY"].includes(selected.task.status) && (
+                    <DeliveryOwnerEditor key={`owner-${selected.key}`} project={project} task={selected.task} />
+                  )}
                   {(canEditSchedule || canPropose) && <TaskScheduleEditor key={selected.key} project={project} task={selected.task} />}
                   {project.status !== "DRAFT" && <MilestoneRevisions key={`revisions-${selected.key}`} project={project} task={selected.task} />}
                   <Typography component="h3" variant="subtitle1">Dependencies</Typography>

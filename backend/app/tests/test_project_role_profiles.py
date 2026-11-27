@@ -19,6 +19,16 @@ def test_project_role_profiles_are_seeded_without_company_wide_project_access():
     assert "handover.activate_support" not in PROFILE_MAP["SUPPORT_HANDOVER_REVIEWER"]
 
 
+def test_workspace_grants_are_separate_from_workflow_permissions():
+    project = PROFILE_MAP["PROJECT_MANAGER"]
+    assert {"workspace.project_management.access", "project.create", "implementation.task.view"} <= project
+    assert "workspace.implementation.access" not in project
+    for code in ("IMPLEMENTATION_MANAGER", "IMPLEMENTATION_TEAM_LEADER", "IMPLEMENTATION_ENGINEER"):
+        assert "workspace.implementation.access" in PROFILE_MAP[code]
+        assert "workspace.project_management.access" not in PROFILE_MAP[code]
+    assert "workspace.support.access" in PROFILE_MAP["L1_SUPPORT"]
+
+
 def test_profile_preview_reports_permission_deltas_without_applying_a_mapping():
     delta = permission_delta(
         {"project.manage", "project.portfolio.view"}, "PROJECT_MANAGER"

@@ -1102,10 +1102,19 @@ def create_branch(
     client_id: int,
     data: BranchCreate,
     db: Session = Depends(get_db),
-    actor: User = Depends(require_permission("client.manage")),
+    actor: User = Depends(require_any_permission("client.manage", "project.manage.assigned")),
 ) -> Branch:
-    if not db.get(Client, client_id):
+    client = db.get(Client, client_id)
+    if not client:
         raise NotFoundError()
+    access = effective_permissions(db, actor)
+    if "client.manage" not in access.permissions:
+        if "project.create" not in access.permissions or actor.department_id is None:
+            raise AuthorizationError("Branch creation requires Project Management and an owning department.")
+        if client.owner_department_id != actor.department_id or (
+            access.client_scope_ids and client_id not in access.client_scope_ids
+        ):
+            raise AuthorizationError("Project managers can add branches only to clients they can manage in their own department.")
     if data.escalation_contact_id:
         contact = db.get(Contact, data.escalation_contact_id)
         if not contact or contact.client_id != client_id:

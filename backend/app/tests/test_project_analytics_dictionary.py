@@ -13,12 +13,14 @@ from app.modules.iam.models import (
 )
 from app.modules.iam.security import hash_password
 from app.modules.projects.models import (
+    CompanyProject,
     ProjectKpiDefinition,
     ProjectTask,
     ProjectTaskAssignee,
     ProjectTeam,
     ProjectWorkLog,
 )
+from app.tests.test_project_portfolio import _scoped_user_headers
 
 
 def _definition(**overrides) -> ProjectKpiDefinition:
@@ -327,8 +329,23 @@ def test_team_and_engineer_filters_scope_work_evidence(client, admin_headers, da
     assert response.json()["scope"]["user_id"] == engineer.id
 
 
+def test_dedicated_implementation_engineer_analytics_is_personal(client, admin_headers, database):
+    _, department, _ = _project(client, admin_headers, database)
+    engineer, headers = _scoped_user_headers(
+        database, department, "analytics.implementation.view", "workspace.implementation.access",
+    )
+    url = "/api/v1/project-analytics/projections/IMPLEMENTATION?period_start=2026-11-01&period_end=2026-11-30"
+    response = client.get(url, headers=headers)
+    assert response.status_code == 200, response.text
+    assert response.json()["scope"]["user_id"] == engineer.id
+    other_id = database.scalar(select(User.id).where(User.username == "admin"))
+    assert client.get(f"{url}&user_id={other_id}", headers=headers).status_code == 403
+
+
 def test_support_readiness_queue_explains_activation_risk(client, admin_headers, database):
     project, _, _ = _project(client, admin_headers, database)
+    database.get(CompanyProject, project["id"]).status = "DELIVERY_REVIEW"
+    database.commit()
     initialized = client.post(
         f"/api/v1/projects/{project['id']}/handover/initialize", headers=admin_headers
     )
@@ -362,6 +379,8 @@ def test_executive_portfolio_aggregates_account_and_organization(
         json={"health": "AT_RISK", "progress_percent": 40},
     )
     assert update.status_code == 200
+    database.get(CompanyProject, project["id"]).status = "DELIVERY_REVIEW"
+    database.commit()
     initialized = client.post(
         f"/api/v1/projects/{project['id']}/handover/initialize", headers=admin_headers
     )

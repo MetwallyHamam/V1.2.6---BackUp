@@ -1,5 +1,6 @@
-import { Alert, Box, Button, LinearProgress, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography } from "@mui/material";
+import { Alert, Box, Button, Chip, LinearProgress, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography } from "@mui/material";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api, apiErrorMessage } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
@@ -31,11 +32,19 @@ const variance = (planned: string | null, actual: string | null) => {
   const days = (Date.parse(actual) - Date.parse(planned)) / 86_400_000;
   return days === 0 ? "On plan" : `${Math.abs(days)} days ${days > 0 ? "late" : "early"}`;
 };
+export function forecastVariance(baseline: string | null | undefined, forecast: string | null) {
+  if (!baseline || !forecast) return null;
+  const baselineDay = Date.parse(baseline.slice(0, 10));
+  const forecastDay = Date.parse(forecast.slice(0, 10));
+  const days = (forecastDay - baselineDay) / 86_400_000;
+  return Number.isFinite(days) ? days : null;
+}
 
 export function ProjectSchedulePage() {
   const { id } = useParams();
   const { hasPermission, user } = useAuth();
   const queryClient = useQueryClient();
+  const [milestonesOnly, setMilestonesOnly] = useState(false);
   const canViewTasks = hasPermission("implementation.task.view");
   const datesQuery = useQuery({
     queryKey: ["project-schedule-dates", id],
@@ -70,18 +79,21 @@ export function ProjectSchedulePage() {
   });
   const taskNumbers = new Map((canViewTasks ? tasks.data ?? [] : []).map((task) => [task.id, task.task_number]));
   const predecessorNumbers = new Map<number, string[]>();
+  const successorNumbers = new Map<number, string[]>();
   for (const edge of dependencies.data ?? []) {
     const number = taskNumbers.get(edge.depends_on_task_id);
     if (number) predecessorNumbers.set(edge.task_id, [...(predecessorNumbers.get(edge.task_id) ?? []), number]);
+    const successor = taskNumbers.get(edge.task_id);
+    if (successor) successorNumbers.set(edge.depends_on_task_id, [...(successorNumbers.get(edge.depends_on_task_id) ?? []), successor]);
   }
   const rows = [
     ...(plan.data?.phases ?? []).map((phase) => ({ ...phase, label: phase.name, kind: "Phase" })),
-    ...(tasks.data ?? []).map((task) => ({ ...task, label: `${task.task_number} · ${task.title}`, kind: "Task" })),
+    ...(canViewTasks ? tasks.data ?? [] : []).map((task) => ({ ...task, label: `${task.task_number} · ${task.title}`, kind: "Task" })),
     ...(plan.data?.milestones ?? []).map((milestone) => ({
       ...milestone, label: milestone.name, kind: "Milestone", planned_start_date: milestone.due_date,
       planned_end_date: milestone.due_date, planned_start_at: null, planned_end_at: null,
     })),
-  ].map((row) => {
+  ].filter((row) => !milestonesOnly || row.kind === "Milestone").map((row) => {
     const start = row.planned_start_at ?? row.planned_start_date;
     const end = row.planned_end_at ?? row.planned_end_date ?? start;
     return { ...row, start, end };
@@ -97,16 +109,19 @@ export function ProjectSchedulePage() {
   const error = datesQuery.error ?? plan.error ?? tasks.error ?? baseline.error ?? capture.error
     ?? (canViewTasks ? dependencies.error : null);
   return (
-    <Box sx={{ p: { xs: 2, md: 3 } }}>
+    <Box sx={{ minWidth: 0 }}>
       <Stack direction="row" gap={1} mb={2}>
         <Button component={Link} to="/projects">Projects</Button>
-        <Button component={Link} to={`/projects/${id}/execution`}>Execution</Button>
+        {canViewTasks && <Button component={Link} to={`/projects/${id}/execution`}>Execution</Button>}
+        {datesQuery.data && datesQuery.data.status !== "DRAFT" && <Button component={Link} to={`/projects/${id}/revisions`}>Schedule revisions</Button>}
       </Stack>
       <Typography variant="h4" component="h1" gutterBottom>Gantt &amp; Schedule</Typography>
       <Stack direction="row" alignItems="center" gap={2} flexWrap="wrap" sx={{ mb: 2 }}>
+        <Button size="small" variant={milestonesOnly ? "contained" : "outlined"} aria-pressed={milestonesOnly}
+          onClick={() => setMilestonesOnly(!milestonesOnly)}>Milestones only</Button>
         {baseline.isSuccess && (
           <Typography variant="body2">{baseline.data
-            ? `Baseline captured ${new Date(baseline.data.captured_at).toLocaleString()}`
+            ? `${baseline.data.items.Agreement ? "Agreed baseline captured" : "Baseline captured"} ${new Date(baseline.data.captured_at).toLocaleString()}`
             : "No schedule baseline captured."}</Typography>
         )}
         {canCapture && baseline.isSuccess && (
@@ -136,15 +151,18 @@ export function ProjectSchedulePage() {
       )}
       {loading && <LinearProgress />}
       {error && <Alert severity="error">{apiErrorMessage(error)}</Alert>}
-      {!loading && !error && !rows.length && <Alert severity="info">This project has no schedule entries yet.</Alert>}
+      {!loading && !error && !rows.length && <Alert severity="info">
+        {milestonesOnly ? "This project has no milestones yet." : "This project has no schedule entries yet."}
+      </Alert>}
       {rows.length > 0 && (
         <TableContainer>
-          <Table size="small" aria-label="Project schedule">
+          <Table size="small" aria-label="Project schedule" sx={{ display: "table", width: "100%", minWidth: 860 }}>
             <TableHead><TableRow>
-              <TableCell>Item</TableCell><TableCell>Status</TableCell><TableCell>Planned start</TableCell>
-              <TableCell>Planned end</TableCell>
-              {baseline.data && <><TableCell>Baseline start</TableCell><TableCell>Baseline finish</TableCell></>}
-              {canViewTasks && <TableCell>Predecessors</TableCell>}<TableCell sx={{ minWidth: 240 }}>Timeline</TableCell>
+              <TableCell>Item</TableCell><TableCell>Status</TableCell><TableCell>Forecast start</TableCell>
+              <TableCell>Forecast finish</TableCell>
+              {baseline.data && <><TableCell>Baseline start</TableCell><TableCell>Baseline finish</TableCell><TableCell>Finish variance</TableCell></>}
+              {canViewTasks && <><TableCell>Predecessors</TableCell>{!milestonesOnly && <TableCell>Dependent tasks</TableCell>}</>}
+              <TableCell sx={{ minWidth: 240 }}>Timeline</TableCell>
             </TableRow></TableHead>
             <TableBody>{rows.map((row) => {
               const start = row.start ? Date.parse(row.start) : NaN;
@@ -152,16 +170,25 @@ export function ProjectSchedulePage() {
               const original = baseline.data?.items[row.kind]?.[row.id];
               const baselineStart = Date.parse(original?.start?.replace(" ", "T") ?? "");
               const baselineEnd = Date.parse(original?.end?.replace(" ", "T") ?? "");
+              const delta = forecastVariance(original?.end, row.end ?? null);
               return <TableRow key={`${row.kind}-${row.id}`}>
-                <TableCell component="th" scope="row">{row.kind} · {row.label}</TableCell>
+                <TableCell component="th" scope="row">
+                  {row.kind === "Phase" ? `${row.kind} · ${row.label}` :
+                    <Button component={Link} to={`/projects/${id}/work-packages?item=${row.kind.toLowerCase()}-${row.id}`}
+                      size="small" sx={{ textTransform: "none", textAlign: "start" }}>{row.kind} · {row.label}</Button>}
+                </TableCell>
                 <TableCell>{row.status.replaceAll("_", " ")}</TableCell>
                 <TableCell>{row.start?.slice(0, 16).replace("T", " ") ?? "—"}</TableCell>
                 <TableCell>{row.end?.slice(0, 16).replace("T", " ") ?? "—"}</TableCell>
                 {baseline.data && <>
                   <TableCell>{original?.start?.slice(0, 16).replace("T", " ") ?? "—"}</TableCell>
                   <TableCell>{original?.end?.slice(0, 16).replace("T", " ") ?? "—"}</TableCell>
+                  <TableCell>{delta === null ? "—" : <Chip size="small" variant="outlined"
+                    color={delta > 0 ? "warning" : delta < 0 ? "success" : "default"}
+                    label={delta === 0 ? "On baseline" : `${Math.abs(delta)}d ${delta > 0 ? "later" : "earlier"}`} />}</TableCell>
                 </>}
                 {canViewTasks && <TableCell>{row.kind === "Task" ? predecessorNumbers.get(row.id)?.join(", ") ?? "—" : "—"}</TableCell>}
+                {canViewTasks && !milestonesOnly && <TableCell>{row.kind === "Task" ? successorNumbers.get(row.id)?.join(", ") ?? "—" : "—"}</TableCell>}
                 <TableCell>
                   {Number.isFinite(start) && Number.isFinite(end) && (
                     <Box aria-hidden sx={{ position: "relative", height: 12, bgcolor: "action.hover" }}>

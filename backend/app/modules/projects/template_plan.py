@@ -9,7 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 class TemplateTask(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    task_number: str = Field(min_length=1, max_length=50)
+    task_number: str = Field(default="", max_length=50)
     title: str = Field(min_length=1, max_length=250)
     description: str | None = Field(default=None, max_length=4000)
     product_id: int = Field(gt=0)
@@ -41,15 +41,19 @@ class TemplatePlan(BaseModel):
     @model_validator(mode="after")
     def validate_plan(self) -> "TemplatePlan":
         tasks: dict[str, TemplateTask] = {}
+        all_tasks = []
         for phase in self.phases:
             if not set(phase.product_ids) <= set(self.product_ids) or not set(
                 phase.module_ids
             ) <= set(self.module_ids):
                 raise ValueError("Phase scope must belong to the template.")
             for task in phase.tasks:
-                if task.task_number in tasks:
-                    raise ValueError(f"Duplicate task number: {task.task_number}.")
-                tasks[task.task_number] = task
+                number = task.task_number.strip().upper()
+                if number:
+                    if number in tasks:
+                        raise ValueError(f"Duplicate task number: {number}.")
+                    tasks[number] = task
+                all_tasks.append(task)
                 if task.product_id not in phase.product_ids or (
                     task.product_module_id is not None
                     and task.product_module_id not in phase.module_ids
@@ -62,23 +66,21 @@ class TemplatePlan(BaseModel):
                 ):
                     raise ValueError(f"Task {task.task_number} is outside its phase schedule.")
         graph = {}
-        for number, task in tasks.items():
-            predecessors = set(task.predecessor_numbers)
+        for task in all_tasks:
+            number = task.task_number.strip().upper()
+            predecessors = {value.strip().upper() for value in task.predecessor_numbers}
             if predecessors - tasks.keys():
-                raise ValueError(f"Task {number} has an unknown predecessor.")
-            graph[number] = predecessors
+                raise ValueError(f"Task {number or task.title} has an unknown predecessor.")
+            if number:
+                graph[number] = predecessors
+            for predecessor in predecessors:
+                previous = tasks[predecessor]
+                if previous.start_offset_minutes + previous.duration_minutes > task.start_offset_minutes:
+                    raise ValueError(f"Task {number or task.title} starts before predecessor {predecessor} ends.")
         try:
             tuple(TopologicalSorter(graph).static_order())
         except CycleError as exc:
             raise ValueError("Task dependencies cannot contain a cycle.") from exc
-        for number, predecessors in graph.items():
-            for predecessor in predecessors:
-                previous = tasks[predecessor]
-                if (
-                    previous.start_offset_minutes + previous.duration_minutes
-                    > tasks[number].start_offset_minutes
-                ):
-                    raise ValueError(f"Task {number} starts before predecessor {predecessor} ends.")
         return self
 
 

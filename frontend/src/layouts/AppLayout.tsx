@@ -75,7 +75,7 @@ import {
   useNavigate,
 } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
-import { isProjectWorkspaceRoute, projectMyWorkPath, projectWorkspacePath, usesProjectWorkspace } from "../auth/projectWorkspaceAccess";
+import { authorizedWorkspaces, deliveryWorkspaceLanding, implementationWorkspacePath, implementationWorkspacePermission, isAllowedDeliveryRoute, projectMyWorkPath, projectWorkspacePath, projectWorkspacePermission, rememberWorkspace } from "../auth/projectWorkspaceAccess";
 import type { ThemePreset } from "../auth/AuthContext";
 import { api } from "../api/client";
 import {
@@ -132,7 +132,9 @@ function SupportHubLayout() {
     user,
   } = useAuth();
   const { i18n, t } = useTranslation();
-  const projectOnly = usesProjectWorkspace(user?.user_type, hasPermission);
+  const deliveryLanding = deliveryWorkspaceLanding(user?.user_type, hasPermission);
+  const workspaces = user?.user_type === "EMPLOYEE" ? authorizedWorkspaces(hasPermission) : [];
+  const projectOnly = Boolean(deliveryLanding);
   const [profileAnchor, setProfileAnchor] = useState<HTMLElement | null>(null);
   const [navigationMenuAnchor, setNavigationMenuAnchor] =
     useState<HTMLElement | null>(null);
@@ -518,9 +520,7 @@ function SupportHubLayout() {
           path: projectMyWorkPath,
           icon: <AssignmentTurnedIn />,
           color: "#3949ab",
-          visible: hasPermission("project.portfolio.view") && (
-            hasPermission("project.manage.assigned") || hasPermission("project.manage")
-          ),
+          visible: hasPermission("project.portfolio.view") && hasPermission(projectWorkspacePermission),
         },
         {
           label: "My Workspace",
@@ -740,7 +740,7 @@ function SupportHubLayout() {
           path: projectWorkspacePath,
           icon: <Dashboard />,
           color: "#3949ab",
-          visible: hasPermission("project.portfolio.view"),
+          visible: hasPermission("project.portfolio.view") && hasPermission(projectWorkspacePermission),
         },
         {
           label: t("navigation.projects"),
@@ -754,7 +754,7 @@ function SupportHubLayout() {
           path: "/project-templates",
           icon: <Description />,
           color: "#3949ab",
-          visible: hasPermission("project.create"),
+          visible: hasPermission("project.create") && hasPermission(projectWorkspacePermission),
         },
         {
           label: t("navigation.projectAnalytics", { defaultValue: "Project Analytics" }),
@@ -764,11 +764,18 @@ function SupportHubLayout() {
           visible: hasPermission("analytics.project.view"),
         },
         {
+          label: t("navigation.implementationWorkspace", { defaultValue: "Implementation Workspace" }),
+          path: implementationWorkspacePath,
+          icon: <WorkHistory />,
+          color: "#00796b",
+          visible: hasPermission(implementationWorkspacePermission),
+        },
+        {
           label: t("navigation.implementationIntake", { defaultValue: "Implementation Intake" }),
           path: "/implementation-intake",
           icon: <AssignmentTurnedIn />,
           color: "#00796b",
-          visible: hasPermission("project.assignment.respond"),
+          visible: hasPermission(implementationWorkspacePermission) && hasPermission("project.assignment.respond"),
         },
         {
           label: t("navigation.implementationAnalytics", { defaultValue: "Implementation Analytics" }),
@@ -776,6 +783,13 @@ function SupportHubLayout() {
           icon: <Assessment />,
           color: "#ef6c00",
           visible: hasPermission("analytics.implementation.view"),
+        },
+        {
+          label: t("navigation.supportHandoverInbox", { defaultValue: "Support Handover Inbox" }),
+          path: "/support-handover-inbox",
+          icon: <FactCheck />,
+          color: "#00838f",
+          visible: hasPermission("handover.review"),
         },
         {
           label: t("navigation.supportReadiness", { defaultValue: "Support Readiness" }),
@@ -1003,7 +1017,7 @@ function SupportHubLayout() {
   const sections = user?.user_type === "CLIENT_PORTAL" ? portalSections : projectOnly
     ? employeeSections.map((section) => ({
       ...section,
-      items: section.items.filter((item) => isProjectWorkspaceRoute(item.path.split("?")[0])),
+      items: section.items.filter((item) => isAllowedDeliveryRoute(item.path.split("?")[0], hasPermission)),
     }))
     : employeeSections;
   useEffect(() => {
@@ -1063,7 +1077,9 @@ function SupportHubLayout() {
   })();
   const contextualPathname = contextualParentPath.split("?")[0];
   const isProjectDetail = location.pathname.startsWith("/projects/");
-  const inProjectWorkspace = projectOnly || isProjectDetail || ["/projects", projectWorkspacePath, projectMyWorkPath, "/project-templates"].includes(location.pathname);
+  const isDeliveryPage = ["/projects", projectWorkspacePath, projectMyWorkPath, "/project-templates",
+    "/project-analytics", "/implementation-workspace", "/implementation-intake", "/implementation-analytics"].includes(location.pathname);
+  const inProjectWorkspace = projectOnly || isProjectDetail || isDeliveryPage;
   const matchesContext = (item: NavigationItem) =>
     item.visible &&
     item.path.split("?")[0] === contextualPathname;
@@ -1389,6 +1405,16 @@ function SupportHubLayout() {
             onClose={() => setProfileAnchor(null)}
           >
             <MenuItem disabled>{user?.full_name}</MenuItem>
+            {workspaces.length > 1 && workspaces.map((workspace) => (
+              <MenuItem key={workspace.id} onClick={() => {
+                if (!user) return;
+                rememberWorkspace(user.id, workspace.id);
+                setProfileAnchor(null);
+                navigate(workspace.path);
+              }}>
+                {workspace.label}
+              </MenuItem>
+            ))}
             <MenuItem
               onClick={() => {
                 setProfileAnchor(null);
@@ -1779,7 +1805,7 @@ function SupportHubLayout() {
           maxWidth: "100%",
         }}
       >
-        {!isProjectDetail && location.pathname !== "/support-workspace" &&
+        {!isProjectDetail && !isDeliveryPage && location.pathname !== "/support-workspace" &&
           activeSection &&
           activeItem && (
             <PageContextHeader
@@ -1902,7 +1928,9 @@ function SupportHubLayout() {
                       </MenuItem>,
                     ]
                   : projectOnly ? [
-                      <MenuItem key="home" value="home">{t("navigation.projectWorkspace")}</MenuItem>,
+                      <MenuItem key="home" value="home">{deliveryLanding === implementationWorkspacePath
+                        ? t("navigation.implementationWorkspace", { defaultValue: "Implementation Workspace" })
+                        : t("navigation.projectWorkspace")}</MenuItem>,
                     ] : [
                       <MenuItem key="home" value="home">
                         Support Now

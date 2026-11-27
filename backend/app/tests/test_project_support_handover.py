@@ -4,6 +4,7 @@ from sqlalchemy import select
 
 from app.modules.clients.models import Client, ClientStatus
 from app.modules.iam.models import Department, User
+from app.modules.notifications.models import Notification
 from app.modules.projects.models import (
     CompanyProject,
     ProjectDepartment,
@@ -81,6 +82,35 @@ def _ready_all(client, headers, database, project_id, manager_id):
             assert response.status_code == 200, response.text
 
 
+def test_project_manager_routes_handover_to_the_receiving_department(client, admin_headers, database):
+    project, _, _, manager_id = _project(client, admin_headers, database)
+    support = Department(code="RECEIVER", name="Receiving Support", is_active=True)
+    database.add(support)
+    database.flush()
+    receiving_user, receiver = _scoped_user_headers(
+        database, support, "project.portfolio.view", "handover.view", "handover.review", "handover.accept",
+    )
+    url = f"/api/v1/projects/{project['id']}"
+    routing = client.put(f"{url}/handover-routing", headers=admin_headers, json={"department_id": support.id})
+    assert routing.status_code == 200, routing.text
+    assert client.get(f"{url}/handover-routing", headers=receiver).json()["department"]["id"] == support.id
+    assert client.put(f"{url}/handover-routing", headers=admin_headers, json={"department_id": support.id}).status_code == 409
+    assert client.post(f"{url}/handover/initialize", headers=admin_headers).status_code == 201
+    _ready_all(client, admin_headers, database, project["id"], manager_id)
+    assert client.post(f"{url}/handover/submit", headers=admin_headers).status_code == 200
+    assert client.put(f"{url}/handover-routing", headers=admin_headers, json={
+        "department_id": support.id, "expected_department_id": support.id,
+    }).status_code == 409
+    inbox = client.get("/api/v1/project-handover-inbox", headers=receiver)
+    assert [item["project_id"] for item in inbox.json()] == [project["id"]]
+    notification = database.scalar(select(Notification).where(
+        Notification.recipient_user_id == receiving_user.id,
+        Notification.notification_type == "PROJECT_HANDOVER_SUBMITTED",
+    ))
+    assert notification is not None
+    assert notification.deep_link == f"/projects/{project['id']}/handover"
+
+
 def test_handover_requires_readiness_acceptance_and_stabilization(client, admin_headers, database):
     project, customer, _, manager_id = _project(client, admin_headers, database)
     initialized = client.post(
@@ -111,6 +141,19 @@ def test_handover_requires_readiness_acceptance_and_stabilization(client, admin_
     database.flush()
     database.add(ProjectDepartment(project_id=project["id"], department_id=support.id, role="SUPPORT"))
     _, reviewer_headers = _scoped_user_headers(database, support, "handover.view", "handover.review", "handover.accept")
+    inbox_url = "/api/v1/project-handover-inbox"
+    inbox = client.get(inbox_url, headers=reviewer_headers)
+    assert inbox.status_code == 200, inbox.text
+    assert [item["project_id"] for item in inbox.json()] == [project["id"]]
+    outside = Department(code="OUTSIDE_SUPPORT", name="Unrelated Support", is_active=True)
+    database.add(outside)
+    database.flush()
+    database.add(ProjectDepartment(project_id=project["id"], department_id=outside.id, role="COLLABORATION"))
+    _, outside_headers = _scoped_user_headers(
+        database, outside, "project.portfolio.view", "handover.review", "handover.activate_support",
+    )
+    assert client.get(inbox_url, headers=outside_headers).json() == []
+    assert client.get(f"/api/v1/projects/{project['id']}", headers=outside_headers).status_code == 200
     denied = client.post(
         f"/api/v1/projects/{project['id']}/handover/activate-support", headers=reviewer_headers
     )
@@ -121,6 +164,9 @@ def test_handover_requires_readiness_acceptance_and_stabilization(client, admin_
         json={"decision": "ACCEPT", "notes": "Support readiness verified"},
     )
     assert decision.status_code == 200
+    assert client.post(
+        f"/api/v1/projects/{project['id']}/handover/activate-support", headers=outside_headers
+    ).status_code == 404
     no_plan = client.post(
         f"/api/v1/projects/{project['id']}/handover/activate-support", headers=admin_headers
     )
@@ -151,6 +197,14 @@ def test_handover_requires_readiness_acceptance_and_stabilization(client, admin_
     database.commit()
     database.expire_all()
     project_row = database.get(CompanyProject, project["id"])
+    assert client.post(
+        f"/api/v1/projects/{project['id']}/handover/complete-stabilization",
+        headers=outside_headers,
+        json={
+            "expected_project_version": project_row.row_version,
+            "completion_notes": "Attempt outside the receiving department.",
+        },
+    ).status_code == 404
     completed = client.post(
         f"/api/v1/projects/{project['id']}/handover/complete-stabilization",
         headers=admin_headers,

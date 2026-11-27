@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, date, datetime, time
 from typing import Any
 
@@ -133,6 +133,8 @@ def _authorized_projects(
         statement = statement.where(CompanyProject.client_id == filters.client_id)
     if filters.project_id is not None:
         statement = statement.where(CompanyProject.id == filters.project_id)
+    if domain == "PROJECT" and not global_scope and "workspace.project_management.access" in permissions:
+        statement = statement.where(CompanyProject.project_manager_user_id == actor.id)
     projects = list(db.scalars(statement.order_by(CompanyProject.id)))
 
     if filters.team_id is not None:
@@ -194,6 +196,9 @@ def analytics_options(db: Session, actor: User, domain: str) -> AnalyticsOptions
     departments_query = select(Department).where(Department.is_active == true())
     teams_query = select(SupportTeam).where(SupportTeam.is_active == true())
     users_query = select(User).where(User.is_active == true(), User.user_type == "EMPLOYEE")
+    if normalized == "IMPLEMENTATION" and _implementation_self_scope(permissions):
+        users_query = users_query.where(User.id == actor.id)
+        teams_query = teams_query.where(SupportTeam.id == -1)
     if not global_scope:
         departments_query = departments_query.where(Department.id.in_(department_ids or {-1}))
         teams_query = teams_query.where(SupportTeam.department_id.in_(department_ids or {-1}))
@@ -594,12 +599,29 @@ def _calculate(
     return _unavailable(definition, "No approved projection implementation exists for this KPI code.")
 
 
+def _implementation_self_scope(permissions: list[str]) -> bool:
+    return "workspace.implementation.access" in permissions and not any(
+        code in permissions for code in ("project.assignment.respond", "analytics.executive.view")
+    )
+
+
+def _dashboard_filters(
+    db: Session, actor: User, domain: str, filters: ProjectionFilters,
+) -> ProjectionFilters:
+    if domain == "IMPLEMENTATION" and _implementation_self_scope(effective_permissions(db, actor).permissions):
+        if filters.user_id not in (None, actor.id) or filters.team_id is not None:
+            raise AuthorizationError("This Implementation dashboard is scoped to your own work.")
+        return replace(filters, user_id=actor.id)
+    return filters
+
+
 def projection(
     db: Session, actor: User, domain: str, filters: ProjectionFilters
 ) -> AnalyticsProjectionRead:
     normalized = domain.upper()
     if normalized not in DOMAIN_PERMISSIONS:
         raise NotFoundError("Analytics domain does not exist.")
+    filters = _dashboard_filters(db, actor, normalized, filters)
     projects, scope = _authorized_projects(db, actor, normalized, filters)
     definitions = list(db.scalars(select(ProjectKpiDefinition).where(ProjectKpiDefinition.domain == normalized, ProjectKpiDefinition.is_active == true()).order_by(ProjectKpiDefinition.code)))
     return AnalyticsProjectionRead(
@@ -618,6 +640,7 @@ def drilldown(
     definition = db.scalar(select(ProjectKpiDefinition).where(ProjectKpiDefinition.code == code.upper(), ProjectKpiDefinition.is_active == true()))
     if definition is None:
         raise NotFoundError("KPI definition does not exist.")
+    filters = _dashboard_filters(db, actor, definition.domain, filters)
     projects, scope = _authorized_projects(db, actor, definition.domain, filters)
     result = _calculate(db, definition, projects, filters)
     return KpiDrilldownRead(projection=result.projection, scope=scope, period_start=filters.period_start, period_end=filters.period_end, rows=result.rows)

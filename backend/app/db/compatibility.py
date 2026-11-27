@@ -5,8 +5,9 @@ from dataclasses import dataclass
 from sqlalchemy import Engine, inspect, text
 from sqlalchemy.exc import SQLAlchemyError
 
-EXPECTED_DATABASE_REVISION = "0296_project_templates"
+EXPECTED_DATABASE_REVISION = "0297_project_wizard_drafts"
 REQUIRED_COLUMNS = {
+    "project_wizard_drafts": {"owner_user_id", "version", "checkpoint"},
     "project_templates": {"id", "owner_user_id", "name", "archived_at"},
     "project_template_versions": {
         "id", "template_id", "version_number", "plan", "created_at", "published_at",

@@ -8,7 +8,9 @@ import { ProjectManagementPage } from "./pages/ProjectManagementPage";
 import { ProjectSchedulePage } from "./pages/ProjectSchedulePage";
 import { ProjectRevisionQueue, ProjectWorkPackagesPage } from "./pages/ProjectWorkPackagesPage";
 import { ProjectRegisterPage } from "./pages/ProjectRegisterPage";
-import { projectMyWorkPath, projectWorkspacePath } from "./auth/projectWorkspaceAccess";
+import { ImplementationWorkspacePage } from "./pages/ImplementationWorkspacePage";
+import { SupportHandoverInboxPage } from "./pages/SupportHandoverInboxPage";
+import { implementationWorkspacePath, implementationWorkspacePermission, projectMyWorkPath, projectWorkspacePath, projectWorkspacePermission } from "./auth/projectWorkspaceAccess";
 import {
   ProjectWorkspaceCollaboration,
   ProjectWorkspaceHandover,
@@ -580,11 +582,11 @@ export function App() {
             </Route>
             <Route path="onboarding" element={<OnboardingPage />} />
             <Route element={<PermissionRoute anyOf={["project.portfolio.view"]} />}>
-              <Route path={projectWorkspacePath.slice(1)} element={<ProjectManagementPage key="overview" />} />
-              <Route element={<PermissionRoute anyOf={["project.manage.assigned", "project.manage"]} />}>
+              <Route element={<PermissionRoute anyOf={[projectWorkspacePermission]} />}>
+                <Route path={projectWorkspacePath.slice(1)} element={<ProjectManagementPage key="overview" />} />
                 <Route path={projectMyWorkPath.slice(1)} element={<ProjectManagementPage key="my-work" personal />} />
+                <Route path="project-management" element={<Navigate to={projectWorkspacePath} replace />} />
               </Route>
-              <Route path="project-management" element={<Navigate to={projectWorkspacePath} replace />} />
               <Route path="projects" element={<ProjectsPage />} />
               <Route path="projects/:id" element={<ProjectWorkspacePage />}>
                 <Route index element={<ProjectWorkspaceOverview />} />
@@ -604,8 +606,10 @@ export function App() {
                 </Route>
               </Route>
             </Route>
-            <Route element={<PermissionRoute anyOf={["project.create"]} />}>
-              <Route path="project-templates" element={<ProjectTemplatesPage />} />
+            <Route element={<PermissionRoute anyOf={[projectWorkspacePermission]} />}>
+              <Route element={<PermissionRoute anyOf={["project.create"]} />}>
+                <Route path="project-templates" element={<ProjectTemplatesPage />} />
+              </Route>
             </Route>
             <Route element={<PermissionRoute anyOf={["analytics.project.view"]} />}>
               <Route path="project-analytics" element={<ProjectAnalyticsPage />} />
@@ -613,8 +617,14 @@ export function App() {
             <Route element={<PermissionRoute anyOf={["analytics.implementation.view"]} />}>
               <Route path="implementation-analytics" element={<ImplementationAnalyticsPage />} />
             </Route>
-            <Route element={<PermissionRoute anyOf={["project.assignment.respond"]} />}>
-              <Route path="implementation-intake" element={<ImplementationIntakePage />} />
+            <Route element={<PermissionRoute anyOf={[implementationWorkspacePermission]} />}>
+              <Route path={implementationWorkspacePath.slice(1)} element={<ImplementationWorkspacePage />} />
+              <Route element={<PermissionRoute anyOf={["project.assignment.respond"]} />}>
+                <Route path="implementation-intake" element={<ImplementationIntakePage />} />
+              </Route>
+            </Route>
+            <Route element={<PermissionRoute anyOf={["handover.review"]} />}>
+              <Route path="support-handover-inbox" element={<SupportHandoverInboxPage />} />
             </Route>
             <Route element={<PermissionRoute anyOf={["analytics.support_readiness.view"]} />}>
               <Route path="support-readiness" element={<SupportReadinessAnalyticsPage />} />

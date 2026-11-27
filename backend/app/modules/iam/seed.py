@@ -194,6 +194,9 @@ PERMISSIONS = [
     "project.create",
     "project.manage",
     "project.manage.assigned",
+    "workspace.project_management.access",
+    "workspace.implementation.access",
+    "workspace.support.access",
     "project.assignment.request",
     "project.assignment.respond",
     "implementation.task.view",
@@ -651,6 +654,8 @@ PROFILE_MAP = {
         "project_handover.contract_template.apply",
     },
     "PROJECT_MANAGER": {
+        "workspace.project_management.access",
+        "analytics.project.view",
         "client.view",
         "client.profile.view",
         "implementation.task.view",
@@ -667,6 +672,8 @@ PROFILE_MAP = {
         "handover.submit",
     },
     "IMPLEMENTATION_MANAGER": {
+        "workspace.implementation.access",
+        "analytics.implementation.view",
         "project.portfolio.view",
         "project.assignment.respond",
         "implementation.task.view",
@@ -681,6 +688,8 @@ PROFILE_MAP = {
         "handover.view",
     },
     "IMPLEMENTATION_TEAM_LEADER": {
+        "workspace.implementation.access",
+        "analytics.implementation.view",
         "project.portfolio.view",
         "implementation.task.view",
         "implementation.task.assign",
@@ -692,6 +701,8 @@ PROFILE_MAP = {
         "handover.view",
     },
     "IMPLEMENTATION_ENGINEER": {
+        "workspace.implementation.access",
+        "analytics.implementation.view",
         "project.portfolio.view",
         "implementation.task.view",
         "implementation.task.execute",
@@ -789,6 +800,8 @@ for _profile_code in ("CALL_CENTER", "L1_SUPPORT", "L2_SUPPORT", "L3_SUPPORT", "
         {"support_assistant.queue.view", "support_assistant.mine.view", "support_assistant.sla_risk.view", "support_assistant.follow_up.view"}
     )
 for _profile_code, _profile_permissions in PROFILE_MAP.items():
+    if _profile_code in {"CALL_CENTER", "L1_SUPPORT", "L2_SUPPORT", "L3_SUPPORT", "SUPPORT_MANAGER"}:
+        _profile_permissions.add("workspace.support.access")
     if "ticket.create" in _profile_permissions:
         _profile_permissions.add("ticket.copy")
     _profile_permissions.add("news.view")
@@ -845,6 +858,8 @@ for _profile_code in (
         {"client_access.view", "client_access.manage", "client_access.reveal"}
     )
 
+PROFILE_MAP["IMPLEMENTATION"] = PROFILE_MAP["IMPLEMENTATION_MANAGER"] | PROFILE_MAP["IMPLEMENTATION_ENGINEER"]
+
 NAMES = {
     "CALL_CENTER": "Call Center",
     "L1_SUPPORT": "L1 Support",
@@ -859,6 +874,7 @@ NAMES = {
     "IMPLEMENTATION_MANAGER": "Implementation Manager",
     "IMPLEMENTATION_TEAM_LEADER": "Implementation Team Leader",
     "IMPLEMENTATION_ENGINEER": "Implementation Engineer",
+    "IMPLEMENTATION": "Impelemntation",
     "SUPPORT_HANDOVER_REVIEWER": "Support Handover Reviewer",
     "ADMINISTRATOR": "System Administrator",
     "CLIENT_PORTAL": "Client Portal",

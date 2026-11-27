@@ -30,6 +30,9 @@ class TemplateVersionWrite(BaseModel):
 class TemplateWrite(TemplateVersionWrite):
     name: str = Field(min_length=1, max_length=200, pattern=r"\S")
 
+class TemplateRevisionWrite(TemplateVersionWrite):
+    name: str | None = Field(default=None, min_length=1, max_length=200, pattern=r"\S")
+
 
 class TemplateRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -115,9 +118,11 @@ def list_versions(
 
 @router.post("/{template_id}/versions", response_model=TemplateVersionRead, status_code=201)
 def create_version(
-    template_id: int, data: TemplateVersionWrite, db: Database, actor: TemplateOwner
+    template_id: int, data: TemplateRevisionWrite, db: Database, actor: TemplateOwner
 ) -> ProjectTemplateVersion:
-    _owned_template(db, actor, template_id)
+    template = _owned_template(db, actor, template_id)
+    if data.name is not None:
+        template.name = data.name.strip()
     latest = db.scalar(
         select(func.max(ProjectTemplateVersion.version_number)).where(
             ProjectTemplateVersion.template_id == template_id

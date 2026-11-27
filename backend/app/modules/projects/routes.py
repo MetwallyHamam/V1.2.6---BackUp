@@ -3,12 +3,12 @@ from datetime import date, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, Query, status
-from sqlalchemy import delete, func, select, true, update
+from sqlalchemy import String, cast, delete, func, select, true, update
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 
 from app.api.dependencies import require_any_permission, require_permission
-from app.core.clock import server_now
+from app.core.clock import server_now, server_today
 from app.core.exceptions import ConflictError, NotFoundError
 from app.db.session import get_db
 from app.modules.clients.models import (
@@ -26,6 +26,7 @@ from app.modules.iam.models import AuditLog, Department, User
 from app.modules.iam.service import effective_permissions
 from app.modules.projects.access import authorized_project_ids, require_project_access
 from app.modules.projects.lifecycle import transition_project
+from app.modules.projects.numbering import format_task_number, lock_number_allocation
 from app.modules.projects.models import (
     CompanyProject,
     ProjectAssignmentRequest,
@@ -45,10 +46,12 @@ from app.modules.projects.models import (
     ProjectTeam,
     ProjectTemplate,
     ProjectTemplateVersion,
+    ProjectWizardDraft,
 )
 from app.modules.projects.schemas import (
     AssignmentRequestWrite,
     AssignmentResponseWrite,
+    AssignmentResubmitWrite,
     MilestoneRevisionDecision,
     MilestoneRevisionWrite,
     MilestoneScheduleWrite,
@@ -63,6 +66,7 @@ from app.modules.projects.schemas import (
     ProjectResumeWrite,
     ProjectTransitionWrite,
     ProjectUpdate,
+    ProjectWizardCheckpointWrite,
     ProjectWizardCreate,
     ProjectWizardResult,
     TaskDependenciesWrite,
@@ -71,6 +75,56 @@ from app.modules.projects.schemas import (
 )
 
 router = APIRouter(prefix="/projects", tags=["project portfolio"])
+
+
+@router.get("/wizard-draft")
+def get_wizard_draft(
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_permission("project.create")),
+) -> dict[str, Any] | None:
+    row = db.get(ProjectWizardDraft, actor.id)
+    return {"version": row.version, "checkpoint": row.checkpoint} if row else None
+
+
+@router.put("/wizard-draft")
+def save_wizard_draft(
+    data: ProjectWizardCheckpointWrite,
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_permission("project.create")),
+) -> dict[str, int]:
+    if len(json.dumps(data.checkpoint).encode("utf-8")) > 512_000:
+        raise ConflictError("WIZARD_DRAFT_TOO_LARGE", "The draft exceeds the storage limit.")
+    version = data.expected_version + 1
+    if data.expected_version == 0:
+        db.add(ProjectWizardDraft(owner_user_id=actor.id, version=version, checkpoint=data.checkpoint))
+    else:
+        result = db.connection().execute(update(ProjectWizardDraft).where(
+            ProjectWizardDraft.owner_user_id == actor.id,
+            ProjectWizardDraft.version == data.expected_version,
+        ).values(version=version, checkpoint=data.checkpoint))
+        if result.rowcount != 1:
+            raise ConflictError("WIZARD_DRAFT_CONFLICT", "Reopen the wizard to load the latest draft.")
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        raise ConflictError("WIZARD_DRAFT_CONFLICT", "Reopen the wizard to load the latest draft.") from exc
+    return {"version": version}
+
+
+@router.delete("/wizard-draft", status_code=204)
+def delete_wizard_draft(
+    expected_version: int = Query(ge=1),
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_permission("project.create")),
+) -> None:
+    result = db.connection().execute(delete(ProjectWizardDraft).where(
+        ProjectWizardDraft.owner_user_id == actor.id,
+        ProjectWizardDraft.version == expected_version,
+    ))
+    if result.rowcount != 1:
+        raise ConflictError("WIZARD_DRAFT_CONFLICT", "Reopen the wizard to load the latest draft.")
+    db.commit()
 
 
 def _row_values(row: Any) -> dict[str, Any]:
@@ -270,6 +324,21 @@ def wizard_coverage(
     return results
 
 
+def _next_wizard_project_number(db: Session) -> str:
+    year = server_today().year
+    lock_number_allocation(db, f"SupportHub.ProjectNumber.{year}")
+    prefix = f"{year}-"
+    existing = db.scalars(select(CompanyProject.project_number).where(
+        CompanyProject.project_number.startswith(prefix)
+    ))
+    suffixes = (number.removeprefix(prefix) for number in existing)
+    last = max((int(value) for value in suffixes if value.isascii() and value.isdecimal()), default=0)
+    number = f"{prefix}{last + 1:04d}"
+    if len(number) > 50:
+        raise ConflictError("PROJECT_NUMBER_EXHAUSTED", "Enter a manual project number.")
+    return number
+
+
 @router.post("/wizard", response_model=ProjectWizardResult, status_code=status.HTTP_201_CREATED)
 def create_project_from_wizard(
     data: ProjectWizardCreate,
@@ -292,7 +361,7 @@ def create_project_from_wizard(
     _validate_scope(
         db,
         ProjectCreate(
-            project_number=data.project_number,
+            project_number=data.project_number.strip() or "AUTO",
             name=data.name,
             description=data.description,
             account_id=data.account_id,
@@ -307,18 +376,23 @@ def create_project_from_wizard(
         ),
     )
     department = db.get(Department, data.requested_department_id)
-    intake_owner = db.get(User, data.intake_owner_user_id)
     if not department or not department.is_active:
         raise ConflictError(
             "INVALID_IMPLEMENTATION_DEPARTMENT", "Select an active delivery department."
         )
-    if not intake_owner or not intake_owner.is_active:
-        raise ConflictError("INVALID_INTAKE_OWNER", "Select an active intake owner.")
     team = db.get(SupportTeam, data.requested_team_id) if data.requested_team_id else None
-    if team and (not team.is_active or team.department_id != department.id):
+    if data.requested_team_id is not None and (
+        not team or not team.is_active or team.department_id != department.id
+    ):
         raise ConflictError(
             "INVALID_PROJECT_TEAM", "The selected team must be active in the requested department."
         )
+    if team and data.intake_owner_user_id is None:
+        raise ConflictError("INVALID_INTAKE_OWNER", "Select an intake owner for the requested team.")
+    if data.intake_owner_user_id is not None:
+        intake_owner = db.get(User, data.intake_owner_user_id)
+        if not intake_owner or not intake_owner.is_active:
+            raise ConflictError("INVALID_INTAKE_OWNER", "Select an active intake owner.")
     project_products = {
         x.id: x for x in db.scalars(select(Product).where(Product.id.in_(set(data.product_ids))))
     }
@@ -336,7 +410,18 @@ def create_project_from_wizard(
         raise ConflictError(
             "INVALID_PROJECT_MODULE", "Every module must belong to a selected product."
         )
-    all_user_ids = {data.project_manager_user_id, data.intake_owner_user_id}
+    for phase in data.phases:
+        if any(project_modules[module_id].product_id not in phase.product_ids for module_id in phase.module_ids):
+            raise ConflictError("INVALID_PHASE_MODULE", "Every phase module must belong to a phase product.")
+        if any(
+            task.product_module_id is not None
+            and project_modules[task.product_module_id].product_id != task.product_id
+            for task in phase.tasks
+        ):
+            raise ConflictError("INVALID_TASK_MODULE", "The task module must belong to its product.")
+    all_user_ids = {data.project_manager_user_id}
+    if data.intake_owner_user_id is not None:
+        all_user_ids.add(data.intake_owner_user_id)
     for phase_input in data.phases:
         for task_input in phase_input.tasks:
             all_user_ids.add(task_input.owner_user_id)
@@ -361,8 +446,19 @@ def create_project_from_wizard(
                 "Task assignees and intake owner must belong to the selected team.",
             )
 
+    project_number = data.project_number.strip().upper() or _next_wizard_project_number(db)
+    tasks = [task for phase in data.phases for task in phase.tasks]
+    used_numbers = {task.task_number.strip().upper() for task in tasks if task.task_number.strip()}
+    serial = 0
+    for task in tasks:
+        while not task.task_number.strip():
+            serial += 1
+            candidate = format_task_number(project_number, serial)
+            if candidate not in used_numbers:
+                task.task_number = candidate
+                used_numbers.add(candidate)
     row = CompanyProject(
-        project_number=data.project_number.strip().upper(),
+        project_number=project_number,
         name=data.name.strip(),
         description=data.description,
         account_id=data.account_id,
@@ -381,7 +477,11 @@ def create_project_from_wizard(
         created_by_user_id=actor.id,
     )
     db.add(row)
-    db.flush()
+    try:
+        db.flush()
+    except IntegrityError as exc:
+        db.rollback()
+        raise ConflictError("PROJECT_NUMBER_CONFLICT", "The project number is already in use. Check the number and try again.") from exc
     db.add(
         ProjectDepartment(
             project_id=row.id,
@@ -501,6 +601,13 @@ def create_project_from_wizard(
             "source_template_version_id": source_version.id if source_version else None,
         },
     )
+    if data.checkpoint_version is not None:
+        result = db.connection().execute(delete(ProjectWizardDraft).where(
+            ProjectWizardDraft.owner_user_id == actor.id,
+            ProjectWizardDraft.version == data.checkpoint_version,
+        ))
+        if result.rowcount != 1:
+            raise ConflictError("WIZARD_DRAFT_CONFLICT", "Reopen the wizard to load the latest draft.")
     _commit(db)
     return ProjectWizardResult(
         project_id=row.id,
@@ -509,6 +616,23 @@ def create_project_from_wizard(
         task_count=task_count,
         assignment_request_id=assignment_request_id,
     )
+
+
+@router.get("/portfolio-products")
+def portfolio_products(
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_permission("project.portfolio.view")),
+) -> list[dict[str, Any]]:
+    rows = db.execute(
+        select(ProjectProductScope.project_id, Product.id, Product.name)
+        .join(Product, Product.id == ProjectProductScope.product_id)
+        .where(ProjectProductScope.project_id.in_(authorized_project_ids(db, actor)))
+        .order_by(Product.name, Product.id, ProjectProductScope.project_id)
+    )
+    return [
+        {"project_id": project_id, "product_id": product_id, "name": name}
+        for project_id, product_id, name in rows
+    ]
 
 
 @router.get("/options")
@@ -611,17 +735,27 @@ def update_project(
     actor: User = Depends(require_project_manager),
 ) -> ProjectRead:
     row = _get_project(db, project_id)
-    changes = data.model_dump(exclude_unset=True)
-    if (
-        changes.get("planned_start_date")
-        and changes.get("planned_end_date")
-        and changes["planned_end_date"] < changes["planned_start_date"]
-    ):
+    changes = data.model_dump(exclude_unset=True, exclude={"expected_version"})
+    if "name" in changes:
+        if not changes["name"] or not changes["name"].strip():
+            raise ConflictError("INVALID_PROJECT_NAME", "Enter a project name.")
+        changes["name"] = changes["name"].strip()
+    start = changes.get("planned_start_date", row.planned_start_date)
+    end = changes.get("planned_end_date", row.planned_end_date)
+    if start and end and end < start:
         raise ConflictError(
             "INVALID_PROJECT_DATES", "Planned end date cannot precede planned start date."
         )
-    for key, value in changes.items():
-        setattr(row, key, value)
+    version = data.expected_version if data.expected_version is not None else row.row_version
+    if row.row_version != version:
+        raise ConflictError("PROJECT_VERSION_CONFLICT", "This project changed. Refresh before editing again.")
+    if not changes:
+        return _project_read(db, row)
+    result = db.connection().execute(update(CompanyProject).where(
+        CompanyProject.id == row.id, CompanyProject.row_version == version,
+    ).values(**changes, row_version=version + 1))
+    if result.rowcount != 1:
+        raise ConflictError("PROJECT_VERSION_CONFLICT", "This project changed. Refresh before editing again.")
     _audit(db, actor, row.id, "project.updated", changes)
     _commit(db)
     db.refresh(row)
@@ -866,6 +1000,71 @@ REVISION_REQUESTED = "project.milestone.revision_requested"
 TASK_REVISION_REQUESTED = "project.task.revision_requested"
 REVISION_DECIDED = "project.milestone.revision_decided"
 REVISION_STATES = {"AWAITING_IMPLEMENTATION_ACCEPTANCE", "READY_FOR_EXECUTION", "IN_EXECUTION", "ON_HOLD"}
+
+
+@router.get("/my-work/delivery-exceptions")
+def my_delivery_exceptions(
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_permission("project.portfolio.view")),
+) -> list[dict[str, Any]]:
+    assigned = select(CompanyProject.id).where(
+        CompanyProject.project_manager_user_id == actor.id,
+        CompanyProject.is_active == true(),
+        CompanyProject.status.notin_(["DRAFT", "COMPLETED", "CANCELLED", "ARCHIVED"]),
+    )
+    milestones = db.execute(select(
+        ProjectMilestone.id, ProjectMilestone.project_id, ProjectMilestone.name, ProjectMilestone.due_date,
+    ).where(
+        ProjectMilestone.project_id.in_(assigned), ProjectMilestone.due_date < server_today(),
+        ProjectMilestone.status.notin_(["DONE", "COMPLETED", "ACHIEVED", "CANCELLED"]),
+    )).all()
+    items = [
+        {"kind": "milestone", "id": item.id, "project_id": item.project_id,
+         "title": item.name, "due_date": item.due_date, "owner_user_id": actor.id}
+        for item in milestones
+    ]
+    if "implementation.task.view" in effective_permissions(db, actor).permissions:
+        tasks = db.execute(select(
+            ProjectTask.id, ProjectTask.project_id, ProjectTask.title,
+            ProjectTask.planned_end_date, ProjectTask.owner_user_id,
+        ).where(ProjectTask.project_id.in_(assigned), ProjectTask.status == "BLOCKED")).all()
+        items.extend(
+            {"kind": "task", "id": item.id, "project_id": item.project_id,
+             "title": item.title, "due_date": item.planned_end_date, "owner_user_id": item.owner_user_id}
+            for item in tasks
+        )
+    return items
+
+
+@router.get("/my-work/pending-schedule-decisions")
+def my_pending_schedule_decisions(
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_permission("project.portfolio.view")),
+) -> dict[int, int]:
+    proposal = aliased(AuditLog)
+    decision = aliased(AuditLog)
+    readable_actions = [REVISION_REQUESTED]
+    if "implementation.task.view" in effective_permissions(db, actor).permissions:
+        readable_actions.append(TASK_REVISION_REQUESTED)
+    decided = select(decision.id).where(
+        decision.entity_type == "project_milestone_revision",
+        decision.action == REVISION_DECIDED,
+        decision.entity_id == cast(proposal.id, String(100)),
+    ).exists()
+    rows = db.execute(
+        select(CompanyProject.id, func.count(proposal.id))
+        .join(proposal, proposal.entity_id == cast(CompanyProject.id, String(100)))
+        .where(
+            CompanyProject.project_manager_user_id == actor.id,
+            CompanyProject.is_active == true(),
+            CompanyProject.status.notin_(["COMPLETED", "CANCELLED"]),
+            proposal.entity_type == "company_project",
+            proposal.action.in_(readable_actions),
+            ~decided,
+        )
+        .group_by(CompanyProject.id)
+    )
+    return {project_id: count for project_id, count in rows}
 
 
 @router.get("/{project_id}/milestone-revisions")
@@ -1139,12 +1338,19 @@ def capture_schedule_baseline(
     project = require_project_access(db, actor, project_id)
     if project.status != "DRAFT":
         raise ConflictError("PROJECT_PLAN_PUBLISHED", "Capture the baseline while the project is a draft.")
+    _audit(db, actor, project_id, "project.schedule.baseline_captured", _schedule_snapshot(db, project_id))
+    _commit(db)
+    return {"captured": True}
+
+
+def _schedule_snapshot(db: Session, project_id: int) -> dict[str, object]:
     snapshot: dict[str, object] = {}
-    for kind, items in (
-        ("Phase", db.scalars(select(ProjectPhase).where(ProjectPhase.project_id == project_id))),
-        ("Task", db.scalars(select(ProjectTask).where(ProjectTask.project_id == project_id))),
-        ("Milestone", db.scalars(select(ProjectMilestone).where(ProjectMilestone.project_id == project_id))),
+    for kind, model in (
+        ("Phase", ProjectPhase),
+        ("Task", ProjectTask),
+        ("Milestone", ProjectMilestone),
     ):
+        items = db.scalars(select(model).where(model.project_id == project_id)).all()
         snapshot[kind] = {
             str(item.id): {
                 "start": getattr(item, "planned_start_at", None)
@@ -1154,9 +1360,7 @@ def capture_schedule_baseline(
             }
             for item in items
         }
-    _audit(db, actor, project_id, "project.schedule.baseline_captured", snapshot)
-    _commit(db)
-    return {"captured": True}
+    return snapshot
 
 
 @router.patch("/{project_id}/tasks/{task_id}/schedule")
@@ -1333,6 +1537,54 @@ def request_implementation(
     return _row_values(row)
 
 
+@router.post("/{project_id}/assignment-requests/{request_id}/resubmit", status_code=201)
+def resubmit_assignment(
+    project_id: int,
+    request_id: int,
+    data: AssignmentResubmitWrite,
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_permission("project.assignment.request")),
+) -> Any:
+    project = require_project_access(db, actor, project_id)
+    if project.project_manager_user_id != actor.id and "project.manage" not in effective_permissions(db, actor).permissions:
+        raise NotFoundError("Project does not exist.")
+    previous = db.get(ProjectAssignmentRequest, request_id)
+    if previous is None or previous.project_id != project_id:
+        raise NotFoundError("Assignment request does not exist.")
+    if project.status not in {"INTAKE_PROPOSED", "INTAKE_RETURNED"} or previous.status not in {"PROPOSED", "RETURNED"}:
+        raise ConflictError("INTAKE_NOT_RESUBMITTABLE", "Only proposed or returned intake can be resubmitted.")
+    if data.requested_end_date < data.requested_start_date or not data.notes.strip():
+        raise ConflictError("INVALID_INTAKE_REVISION", "Provide an ordered delivery window and a reason.")
+    result = db.connection().execute(update(CompanyProject).where(
+        CompanyProject.id == project_id, CompanyProject.row_version == data.expected_version,
+        CompanyProject.status == project.status,
+    ).values(row_version=data.expected_version))
+    if result.rowcount != 1:
+        raise ConflictError("PROJECT_VERSION_CONFLICT", "Refresh the project before resubmitting.")
+    latest = db.scalar(select(func.max(ProjectAssignmentRequest.id)).where(
+        ProjectAssignmentRequest.project_id == project_id,
+    ))
+    if latest != request_id:
+        raise ConflictError("INTAKE_REQUEST_SUPERSEDED", "A newer request already exists.")
+    request = ProjectAssignmentRequest(
+        project_id=project_id, requested_by_user_id=actor.id,
+        requested_department_id=previous.requested_department_id,
+        requested_team_id=previous.requested_team_id,
+        requested_start_date=data.requested_start_date, requested_end_date=data.requested_end_date,
+        capability_notes=data.notes.strip(),
+    )
+    db.add(request)
+    db.flush()
+    transition_project(db, project, actor, "AWAITING_IMPLEMENTATION_ACCEPTANCE",
+                       reason=data.notes.strip(), source="IMPLEMENTATION_INTAKE")
+    _audit(db, actor, project_id, "project.assignment.resubmitted", {
+        "previous_request_id": request_id, "new_request_id": request.id,
+    })
+    _commit(db)
+    db.refresh(request)
+    return _row_values(request)
+
+
 @router.get("/assignment-requests/inbox")
 def assignment_request_inbox(
     request_status: str | None = Query(default=None, alias="status"),
@@ -1407,6 +1659,15 @@ def respond_assignment(
         raise ConflictError(
             "ASSIGNMENT_ALREADY_DECIDED", "This assignment request has already been decided."
         )
+    lock = db.connection().execute(update(CompanyProject).where(
+        CompanyProject.id == project.id, CompanyProject.row_version == project.row_version,
+    ).values(row_version=project.row_version))
+    if lock.rowcount != 1:
+        raise ConflictError("PROJECT_VERSION_CONFLICT", "Refresh the project before responding.")
+    if row.status == "PROPOSED" and db.scalar(select(func.max(ProjectAssignmentRequest.id)).where(
+        ProjectAssignmentRequest.project_id == row.project_id,
+    )) != row.id:
+        raise ConflictError("INTAKE_REQUEST_SUPERSEDED", "A newer request already exists.")
     if data.requested_team_id:
         team = db.get(SupportTeam, data.requested_team_id)
         if not team or team.department_id != row.requested_department_id:
@@ -1436,6 +1697,22 @@ def respond_assignment(
         source="IMPLEMENTATION_INTAKE",
     )
     if decision == "ACCEPTED":
+        snapshot = _schedule_snapshot(db, project.id)
+        snapshot["Agreement"] = {
+            "request_id": row.id,
+            "department_id": row.requested_department_id,
+            "team_id": row.requested_team_id,
+            "start_date": row.requested_start_date or project.planned_start_date,
+            "end_date": row.requested_end_date or project.planned_end_date,
+            "project_version": project.row_version,
+            "branch_ids": list(db.scalars(select(ProjectBranchScope.branch_id).where(
+                ProjectBranchScope.project_id == project.id))),
+            "product_ids": list(db.scalars(select(ProjectProductScope.product_id).where(
+                ProjectProductScope.project_id == project.id))),
+            "module_ids": list(db.scalars(select(ProjectModuleScope.product_module_id).where(
+                ProjectModuleScope.project_id == project.id))),
+        }
+        _audit(db, actor, project.id, "project.schedule.baseline_captured", snapshot)
         existing_department = db.scalar(
             select(ProjectDepartment.id).where(
                 ProjectDepartment.project_id == row.project_id,

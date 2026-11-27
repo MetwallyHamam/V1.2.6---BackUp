@@ -33,12 +33,16 @@ def test_template_versions_preserve_published_plan_and_owner_scope(
     first = created.json()
     versions_url = f"{url}/{first['template_id']}/versions"
     plan["phases"][0]["tasks"][0]["title"] = "Install and configure"
-    revised = client.post(versions_url, headers=admin_headers, json={"plan": plan})
+    revised = client.post(versions_url, headers=admin_headers, json={"name": "Installation checklist", "plan": plan})
     assert revised.status_code == 201, revised.text
     versions = client.get(versions_url, headers=admin_headers).json()
     assert [version["version_number"] for version in versions] == [2, 1]
     assert versions[0]["published_at"] is None
     assert versions[1] == first
+    assert client.get(url, headers=admin_headers).json() == [
+        {"id": first["template_id"], "name": "Installation checklist"}
+    ]
+    assert versions[0]["plan"]["phases"][0]["tasks"][0]["title"] == "Install and configure"
 
     department = Department(code="TEMPLATE", name="Template Review", is_active=True)
     database.add(department)

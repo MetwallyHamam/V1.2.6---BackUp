@@ -1,30 +1,41 @@
 import json
+from datetime import date, timedelta
 from typing import Any
 
 from fastapi import APIRouter, Depends, Query, status
-from sqlalchemy import func, or_, select, true
+from sqlalchemy import func, or_, select, true, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import require_permission
+from app.api.dependencies import require_any_permission, require_permission
 from app.core.clock import server_now
 from app.core.exceptions import ConflictError, NotFoundError
 from app.db.session import get_db
+from app.modules.clients.models import SupportTeam, SupportTeamMember
 from app.modules.iam.models import AuditLog, User
-from app.modules.projects.access import require_project_access, require_task_access
+from app.modules.iam.service import effective_permissions
+from app.modules.projects.access import (
+    authorized_project_ids,
+    require_project_access,
+    require_task_access,
+)
 from app.modules.projects.execution_schemas import (
     ApprovalWrite,
     BlockerWrite,
+    DeliverySubmissionWrite,
     EvidenceWrite,
     ReviewWrite,
     TaskActionWrite,
     TaskCreate,
+    TaskOwnerWrite,
     UnplannedTaskCreate,
     WorkLogWrite,
 )
 from app.modules.projects.lifecycle import transition_project
 from app.modules.projects.models import (
     CompanyProject,
+    ProjectAssignmentRequest,
+    ProjectDepartment,
     ProjectEvidence,
     ProjectPhase,
     ProjectTask,
@@ -32,8 +43,10 @@ from app.modules.projects.models import (
     ProjectTaskBlocker,
     ProjectTaskDependency,
     ProjectTaskReview,
+    ProjectTeam,
     ProjectWorkLog,
 )
+from app.modules.projects.numbering import format_task_number, lock_number_allocation
 
 router = APIRouter(tags=["project execution"])
 
@@ -129,7 +142,7 @@ def _recalculate_project(db: Session, project_id: int) -> None:
 def _create_task(
     db: Session, project_id: int, data: TaskCreate, actor: User, classification: str
 ) -> ProjectTask:
-    require_project_access(db, actor, project_id)
+    project = require_project_access(db, actor, project_id)
     if not db.get(User, data.owner_user_id):
         raise NotFoundError("Task owner does not exist.")
     if data.phase_id:
@@ -146,6 +159,17 @@ def _create_task(
             "schedule_impact_minutes",
         }
     )
+    if classification == "UNPLANNED" and not data.task_number.strip():
+        lock_number_allocation(db, f"SupportHub.TaskNumber.{project_id}")
+        prefix = project.project_number.upper()
+        last_serial = 0
+        for number in db.scalars(select(ProjectTask.task_number).where(ProjectTask.project_id == project_id)):
+            suffix = number.rpartition("-")[2]
+            if suffix.isascii() and suffix.isdecimal():
+                serial = int(suffix)
+                if number.upper() == format_task_number(prefix, serial):
+                    last_serial = max(last_serial, serial)
+        values["task_number"] = format_task_number(prefix, last_serial + 1)
     row = ProjectTask(
         project_id=project_id,
         classification=classification,
@@ -161,7 +185,11 @@ def _create_task(
         row.impact_summary = data.impact_summary
         row.schedule_impact_minutes = data.schedule_impact_minutes
     db.add(row)
-    db.flush()
+    try:
+        db.flush()
+    except IntegrityError as exc:
+        db.rollback()
+        raise ConflictError("TASK_NUMBER_CONFLICT", "The task number is already in use. Try saving again.") from exc
     assignments = data.assignees or []
     for item in assignments:
         if not db.get(User, item.user_id):
@@ -270,9 +298,345 @@ def my_work(
         .join(ProjectTaskAssignee, ProjectTaskAssignee.task_id == ProjectTask.id)
         .where(
             ProjectTaskAssignee.user_id == actor.id,
+            ProjectTask.project_id.in_(authorized_project_ids(db, actor)),
             ProjectTask.status.in_(["READY", "IN_PROGRESS", "BLOCKED", "REVIEW"]),
         )
         .order_by(ProjectTask.planned_end_date, ProjectTask.priority)
+    )
+    return [_values(row) for row in db.scalars(statement)]
+
+
+@router.get("/project-tasks/team-delivery")
+def team_delivery(
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_any_permission("project.assignment.respond", "implementation.task.assign")),
+) -> list[dict[str, Any]]:
+    if actor.department_id is None:
+        return []
+    latest_accepted = (
+        select(func.max(ProjectAssignmentRequest.id))
+        .where(ProjectAssignmentRequest.status == "ACCEPTED",
+               ProjectAssignmentRequest.requested_department_id == actor.department_id)
+        .group_by(ProjectAssignmentRequest.project_id)
+    )
+    statement = (
+        select(CompanyProject, ProjectAssignmentRequest, SupportTeam)
+        .join(ProjectAssignmentRequest, ProjectAssignmentRequest.project_id == CompanyProject.id)
+        .outerjoin(SupportTeam, SupportTeam.id == ProjectAssignmentRequest.requested_team_id)
+        .where(
+            CompanyProject.id.in_(authorized_project_ids(db, actor)),
+            CompanyProject.status.notin_(["COMPLETED", "CANCELLED"]),
+            ProjectAssignmentRequest.id.in_(latest_accepted),
+        )
+        .order_by(ProjectAssignmentRequest.requested_end_date, CompanyProject.id)
+        .limit(50)
+    )
+    if "project.assignment.respond" not in effective_permissions(db, actor).permissions:
+        assigned_teams = select(SupportTeam.id).where(
+            SupportTeam.department_id == actor.department_id,
+            SupportTeam.is_active == true(),
+            or_(SupportTeam.leader_user_id == actor.id, SupportTeam.id.in_(
+                select(SupportTeamMember.team_id).where(SupportTeamMember.user_id == actor.id)
+            )),
+        )
+        statement = statement.where(CompanyProject.id.in_(select(ProjectTeam.project_id).where(
+            ProjectTeam.role == "IMPLEMENTATION", ProjectTeam.team_id.in_(assigned_teams),
+        )))
+    return [{
+        "project_id": project.id, "project_number": project.project_number, "name": project.name,
+        "status": project.status, "progress_percent": project.progress_percent,
+        "team_name": team.name if team else None,
+        "start_date": request.requested_start_date or project.planned_start_date,
+        "end_date": request.requested_end_date or project.planned_end_date,
+    } for project, request, team in db.execute(statement)]
+
+
+@router.get("/project-tasks/capacity-plan")
+def capacity_plan(
+    weeks: int = Query(default=8, ge=1, le=26),
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_any_permission("project.assignment.respond", "implementation.task.assign")),
+) -> dict[str, Any]:
+    """Return a department-scoped weekly workload forecast for accepted delivery work."""
+    if actor.department_id is None:
+        return {"week_starts": [], "teams": [], "unassigned_projects": []}
+    today = server_now().date()
+    first_week = today - timedelta(days=today.weekday())
+    week_starts = [first_week + timedelta(days=7 * index) for index in range(weeks)]
+    teams = list(db.scalars(select(SupportTeam).where(
+        SupportTeam.department_id == actor.department_id, SupportTeam.is_active == true(),
+    ).order_by(SupportTeam.name, SupportTeam.id)))
+    permitted_team_ids = {team.id for team in teams}
+    if "project.assignment.respond" not in effective_permissions(db, actor).permissions:
+        permitted_team_ids = {
+            team.id for team in teams if team.leader_user_id == actor.id or db.scalar(select(
+                SupportTeamMember.id
+            ).where(SupportTeamMember.team_id == team.id, SupportTeamMember.user_id == actor.id))
+        }
+        teams = [team for team in teams if team.id in permitted_team_ids]
+    member_counts = {
+        team_id: count
+        for team_id, count in db.execute(
+            select(SupportTeamMember.team_id, func.count(SupportTeamMember.user_id))
+            .where(SupportTeamMember.team_id.in_(permitted_team_ids))
+            .group_by(SupportTeamMember.team_id)
+        )
+    } if permitted_team_ids else {}
+    latest_accepted = (
+        select(func.max(ProjectAssignmentRequest.id))
+        .where(ProjectAssignmentRequest.status == "ACCEPTED",
+               ProjectAssignmentRequest.requested_department_id == actor.department_id)
+        .group_by(ProjectAssignmentRequest.project_id)
+    )
+    accepted = list(db.execute(
+        select(CompanyProject, ProjectAssignmentRequest)
+        .join(ProjectAssignmentRequest, ProjectAssignmentRequest.project_id == CompanyProject.id)
+        .where(CompanyProject.id.in_(authorized_project_ids(db, actor)),
+               CompanyProject.status.notin_(["COMPLETED", "CANCELLED"]),
+               ProjectAssignmentRequest.id.in_(latest_accepted))
+    ))
+    project_team = {project.id: request.requested_team_id for project, request in accepted}
+    unassigned = [{
+        "project_id": project.id, "project_number": project.project_number, "name": project.name,
+        "start_date": request.requested_start_date or project.planned_start_date,
+        "end_date": request.requested_end_date or project.planned_end_date,
+    } for project, request in accepted if request.requested_team_id is None]
+    project_ids = [project.id for project, _ in accepted if project_team[project.id] in permitted_team_ids]
+    loads: dict[tuple[int, date], int] = {}
+    if project_ids:
+        for task in db.scalars(select(ProjectTask).where(
+            ProjectTask.project_id.in_(project_ids),
+            ProjectTask.status.notin_(["DONE", "CANCELLED"]),
+        )):
+            team_id = project_team.get(task.project_id)
+            start = task.planned_start_date or first_week
+            finish = task.planned_end_date or start
+            active_weeks = [week for week in week_starts if week <= finish and week + timedelta(days=6) >= start]
+            if team_id and active_weeks:
+                minutes = max(task.estimate_minutes, 0)
+                per_week = (minutes + len(active_weeks) - 1) // len(active_weeks)
+                for week in active_weeks:
+                    loads[(team_id, week)] = loads.get((team_id, week), 0) + per_week
+    return {
+        "week_starts": week_starts,
+        "teams": [{
+            "team_id": team.id, "team_name": team.name,
+            "member_count": member_counts.get(team.id, 0),
+            "weeks": [{
+                "week_start": week, "planned_minutes": loads.get((team.id, week), 0),
+                "capacity_minutes": member_counts.get(team.id, 0) * 40 * 60,
+                "overbooked": loads.get((team.id, week), 0) > member_counts.get(team.id, 0) * 40 * 60,
+            } for week in week_starts],
+        } for team in teams],
+        "unassigned_projects": unassigned,
+    }
+
+
+def _delivery_owner_options(db: Session, actor: User, project_id: int) -> list[User]:
+    require_project_access(db, actor, project_id)
+    accepted = db.scalar(
+        select(ProjectAssignmentRequest).where(
+            ProjectAssignmentRequest.project_id == project_id,
+            ProjectAssignmentRequest.status == "ACCEPTED",
+            ProjectAssignmentRequest.requested_department_id == actor.department_id,
+        ).order_by(ProjectAssignmentRequest.id.desc()).limit(1)
+    )
+    if accepted is None:
+        raise NotFoundError("Project is outside your delivery scope.")
+    team = db.get(SupportTeam, accepted.requested_team_id) if accepted.requested_team_id else None
+    if team is not None and (not team.is_active or team.department_id != actor.department_id):
+        raise ConflictError("DELIVERY_TEAM_UNAVAILABLE", "The accepted delivery team is unavailable.")
+    coordinator = "project.assignment.respond" in effective_permissions(db, actor).permissions
+    if not coordinator and (team is None or team.leader_user_id != actor.id):
+        raise NotFoundError("Project is outside your delivery team.")
+    options = select(User).where(
+        User.is_active == true(), User.user_type == "EMPLOYEE", User.department_id == actor.department_id,
+    )
+    if team is not None:
+        options = options.where(or_(User.id == team.leader_user_id, User.id.in_(
+            select(SupportTeamMember.user_id).where(SupportTeamMember.team_id == team.id)
+        )))
+    return list(db.scalars(options.order_by(User.full_name, User.id)))
+
+
+@router.get("/projects/{project_id}/delivery-owner-options")
+def delivery_owner_options(
+    project_id: int,
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_permission("implementation.task.assign")),
+) -> list[dict[str, Any]]:
+    return [{"id": user.id, "name": user.full_name} for user in _delivery_owner_options(db, actor, project_id)]
+
+
+@router.put("/project-tasks/{task_id}/owner")
+def change_task_owner(
+    task_id: int,
+    data: TaskOwnerWrite,
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_permission("implementation.task.assign")),
+) -> dict[str, Any]:
+    task = _task(db, task_id, actor)
+    project = require_project_access(db, actor, task.project_id)
+    if project.status not in {"READY_FOR_EXECUTION", "IN_EXECUTION"}:
+        raise ConflictError("TASK_ASSIGNMENT_CLOSED", "Task planning is unavailable at this stage.")
+    options = _delivery_owner_options(db, actor, project.id)
+    if data.owner_user_id not in {user.id for user in options}:
+        raise NotFoundError("Engineer is outside the accepted delivery team.")
+    result = db.connection().execute(update(ProjectTask).where(
+        ProjectTask.id == task.id,
+        ProjectTask.owner_user_id == data.expected_owner_user_id,
+        ProjectTask.status.in_(["BACKLOG", "READY"]),
+    ).values(owner_user_id=data.owner_user_id))
+    if result.rowcount != 1:
+        raise ConflictError("TASK_ASSIGNMENT_CONFLICT", "Refresh the task. Only unstarted work can be reassigned.")
+    assignments = list(db.scalars(select(ProjectTaskAssignee).where(ProjectTaskAssignee.task_id == task.id)))
+    previous = next((entry for entry in assignments if entry.user_id == data.expected_owner_user_id), None)
+    current = next((entry for entry in assignments if entry.user_id == data.owner_user_id), None)
+    for entry in assignments:
+        entry.is_accountable = False
+    if current is None:
+        if previous is not None:
+            previous.user_id = data.owner_user_id
+            current = previous
+        else:
+            current = ProjectTaskAssignee(task_id=task.id, user_id=data.owner_user_id, planned_minutes=task.estimate_minutes)
+            db.add(current)
+    current.is_accountable = True
+    _audit(db, actor, task, "project.task.owner_changed", {
+        "previous_owner_user_id": data.expected_owner_user_id, "owner_user_id": data.owner_user_id,
+    })
+    _commit(db)
+    db.refresh(task)
+    return _values(task)
+
+
+DELIVERY_SUBMITTED = "project.delivery.submitted"
+
+
+def _latest_delivery_submission(db: Session, project_id: int) -> AuditLog | None:
+    return db.scalar(select(AuditLog).where(
+        AuditLog.entity_type == "company_project",
+        AuditLog.entity_id == str(project_id),
+        AuditLog.action == DELIVERY_SUBMITTED,
+    ).order_by(AuditLog.id.desc()).limit(1))
+
+
+@router.get("/projects/{project_id}/delivery-submission")
+def get_delivery_submission(
+    project_id: int,
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_permission("project.portfolio.view")),
+) -> dict[str, Any] | None:
+    project = require_project_access(db, actor, project_id)
+    row = _latest_delivery_submission(db, project_id)
+    if row is None:
+        return None
+    snapshot = json.loads(row.new_values_json or "{}")
+    return {
+        "submitted_at": row.created_at, "project_version": snapshot["project_version"],
+        "summary": snapshot["summary"], "task_count": len(snapshot["task_ids"]),
+        "evidence_count": len(snapshot["evidence_ids"]),
+        "is_current": project.row_version == snapshot["project_version"],
+    }
+
+
+def _delivery_inputs(db: Session, project_id: int) -> tuple[list[tuple[int, str]], list[int]]:
+    tasks = [(task_id, task_status) for task_id, task_status in db.execute(
+        select(ProjectTask.id, ProjectTask.status).where(
+            ProjectTask.project_id == project_id, ProjectTask.status != "CANCELLED",
+        )
+    ).all()]
+    evidence = list(db.scalars(select(ProjectEvidence.id).where(
+        ProjectEvidence.project_id == project_id, ProjectEvidence.visibility == "DEPARTMENT_SHARED",
+    )))
+    return tasks, evidence
+
+
+def _in_delivery_department(db: Session, project_id: int, actor: User) -> bool:
+    return bool(db.scalar(select(ProjectDepartment.id).where(
+        ProjectDepartment.project_id == project_id, ProjectDepartment.department_id == actor.department_id,
+        ProjectDepartment.role == "PRIMARY_IMPLEMENTATION",
+    ).limit(1)))
+
+
+@router.get("/projects/{project_id}/delivery-readiness")
+def delivery_readiness(
+    project_id: int,
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_permission("project.portfolio.view")),
+) -> dict[str, Any]:
+    project = require_project_access(db, actor, project_id)
+    permissions = set(effective_permissions(db, actor).permissions)
+    tasks, evidence = _delivery_inputs(db, project_id)
+    return {
+        "in_review": project.status == "DELIVERY_REVIEW",
+        "has_tasks": bool(tasks),
+        "open_tasks": sum(task_status != "DONE" for _, task_status in tasks),
+        "has_shared_evidence": bool(evidence),
+        "can_submit": "implementation.task.review" in permissions
+        and _in_delivery_department(db, project_id, actor),
+    }
+
+
+@router.post("/projects/{project_id}/delivery-submission", status_code=201)
+def submit_delivery(
+    project_id: int,
+    data: DeliverySubmissionWrite,
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_permission("implementation.task.review")),
+) -> dict[str, int]:
+    require_project_access(db, actor, project_id)
+    if not _in_delivery_department(db, project_id, actor):
+        raise NotFoundError("Project is outside your delivery scope.")
+    locked = db.connection().execute(update(CompanyProject).where(
+        CompanyProject.id == project_id,
+        CompanyProject.status == "DELIVERY_REVIEW",
+        CompanyProject.row_version == data.expected_version,
+    ).values(row_version=data.expected_version))
+    if locked.rowcount != 1:
+        raise ConflictError("DELIVERY_NOT_READY", "Refresh the project. Delivery must be ready for review.")
+    previous = _latest_delivery_submission(db, project_id)
+    if previous and json.loads(previous.new_values_json or "{}").get("project_version") == data.expected_version:
+        raise ConflictError("DELIVERY_ALREADY_SUBMITTED", "This project version already has a delivery submission.")
+    tasks, evidence_ids = _delivery_inputs(db, project_id)
+    if not tasks or any(task_status != "DONE" for _, task_status in tasks):
+        raise ConflictError("DELIVERY_TASKS_OPEN", "Complete all delivery tasks before submitting.")
+    if not evidence_ids or len(data.summary.strip()) < 3:
+        raise ConflictError("DELIVERY_EVIDENCE_REQUIRED", "Add shared project evidence and a delivery summary.")
+    record = AuditLog(
+        entity_type="company_project", entity_id=str(project_id), actor_user_id=actor.id,
+        action=DELIVERY_SUBMITTED,
+        new_values_json=json.dumps({
+            "project_version": data.expected_version, "summary": data.summary.strip(),
+            "task_ids": sorted(task_id for task_id, _ in tasks), "evidence_ids": sorted(evidence_ids),
+        }),
+    )
+    db.add(record)
+    _commit(db)
+    db.refresh(record)
+    return {"submission_id": record.id}
+
+
+@router.get("/project-tasks/delivery-attention")
+def delivery_attention(
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_permission("implementation.task.review")),
+) -> list[dict[str, Any]]:
+    if actor.department_id is None:
+        return []
+    delivery_projects = select(ProjectDepartment.project_id).where(
+        ProjectDepartment.department_id == actor.department_id,
+        ProjectDepartment.role == "PRIMARY_IMPLEMENTATION",
+    )
+    statement = (
+        select(ProjectTask)
+        .where(
+            ProjectTask.project_id.in_(authorized_project_ids(db, actor)),
+            ProjectTask.project_id.in_(delivery_projects),
+            ProjectTask.status.in_(["BLOCKED", "REVIEW"]),
+        )
+        .order_by(ProjectTask.planned_end_date, ProjectTask.id)
+        .limit(30)
     )
     return [_values(row) for row in db.scalars(statement)]
 

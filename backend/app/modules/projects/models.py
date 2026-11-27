@@ -21,6 +21,14 @@ from app.db.base import Base, utc_now
 IdType = BigInteger().with_variant(Integer, "sqlite")
 
 
+class ProjectWizardDraft(Base):
+    __tablename__ = "project_wizard_drafts"
+
+    owner_user_id: Mapped[int] = mapped_column(IdType, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    version: Mapped[int] = mapped_column(Integer)
+    checkpoint: Mapped[dict[str, object]] = mapped_column(JSON)
+
+
 class ProjectTemplate(Base):
     __tablename__ = "project_templates"
     __table_args__ = (Index("ix_project_templates_owner", "owner_user_id"),)

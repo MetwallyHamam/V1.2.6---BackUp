@@ -19,6 +19,7 @@ TRANSITIONS: dict[str, set[str]] = {
         "CANCELLED",
     },
     "INTAKE_PROPOSED": {
+        "AWAITING_IMPLEMENTATION_ACCEPTANCE",
         "READY_FOR_EXECUTION",
         "INTAKE_RETURNED",
         "INTAKE_REJECTED",

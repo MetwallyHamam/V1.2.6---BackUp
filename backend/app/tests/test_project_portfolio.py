@@ -1,3 +1,5 @@
+from datetime import date
+
 from sqlalchemy import select
 
 from app.modules.clients.models import (
@@ -158,6 +160,23 @@ def test_project_intake_plan_and_assignment_workflow(client, admin_headers, data
     assert len(plan["phases"]) == len(plan["milestones"]) == len(plan["assignment_requests"]) == 1
 
 
+def test_wizard_checkpoint_is_versioned_and_private(client, admin_headers, database):
+    url = "/api/v1/projects/wizard-draft"
+    checkpoint = {"step": 0, "form": {"name": "Unfinished rollout"}}
+    assert client.get(url, headers=admin_headers).json() is None
+    first = client.put(url, headers=admin_headers, json={"expected_version": 0, "checkpoint": checkpoint})
+    assert first.status_code == 200, first.text
+    assert client.get(url, headers=admin_headers).json() == {"version": 1, "checkpoint": checkpoint}
+    assert client.put(url, headers=admin_headers, json={"expected_version": 0, "checkpoint": {}}).status_code == 409
+    department = Department(code="DRAFT_TEST", name="Draft testing", is_active=True)
+    database.add(department)
+    database.flush()
+    _, other_headers = _scoped_user_headers(database, department, "project.create")
+    assert client.get(url, headers=other_headers).json() is None
+    assert client.delete(f"{url}?expected_version=1", headers=other_headers).status_code == 409
+    assert client.delete(f"{url}?expected_version=1", headers=admin_headers).status_code == 204
+
+
 def test_project_options_static_route_is_not_parsed_as_project_id(client, admin_headers, database):
     account, organization, customer = _scope(client, admin_headers, database)
     response = client.get("/api/v1/projects/options", headers=admin_headers)
@@ -246,7 +265,7 @@ def test_project_status_requires_governed_transition_and_version(
     assert resumed.json()["status"] == "READY_FOR_EXECUTION"
 
 
-def test_project_wizard_saves_draft_and_publishes_governed_plan(client, admin_headers, database):
+def test_project_wizard_saves_draft_and_publishes_governed_plan(client, admin_headers, database, monkeypatch):
     account, organization, customer = _scope(client, admin_headers, database)
     implementation = Department(code="IMP", name="Implementation", is_active=True)
     product = Product(code="PACS", name="PACS", is_active=True)
@@ -318,11 +337,59 @@ def test_project_wizard_saves_draft_and_publishes_governed_plan(client, admin_he
     assert draft.json()["status"] == "DRAFT"
     assert draft.json()["assignment_request_id"] is None
 
-    published_payload = {**payload, "project_number": "WIZ-002", "publish": True}
+    queue = client.post("/api/v1/projects/wizard", headers=admin_headers, json={
+        **payload, "project_number": "WIZ-QUEUE", "publish": True,
+        "requested_team_id": None, "intake_owner_user_id": None,
+    })
+    assert queue.status_code == 201, queue.text
+    queue_request = database.get(ProjectAssignmentRequest, queue.json()["assignment_request_id"])
+    assert queue_request.requested_department_id == implementation.id
+    assert queue_request.requested_team_id is None
+    assert database.get(CompanyProject, queue.json()["project_id"]).intake_owner_user_id is None
+
+    monkeypatch.setattr("app.modules.projects.routes.server_today", lambda: date(2030, 12, 31))
+    phase_payload = payload["phases"][0]
+    base_task = phase_payload["tasks"][0]
+    automatic = {
+        **payload, "project_number": "",
+        "phases": [{**phase_payload, "tasks": [
+            {**base_task, "task_number": ""},
+            {**base_task, "task_number": ""},
+            {**base_task, "task_number": "2030-0001-001"},
+        ]}],
+    }
+    for expected in ("2030-0001", "2030-0002", "2031-0001"):
+        if expected.startswith("2031"):
+            monkeypatch.setattr("app.modules.projects.routes.server_today", lambda: date(2031, 1, 1))
+        response = client.post("/api/v1/projects/wizard", headers=admin_headers, json=automatic)
+        assert response.status_code == 201, response.text
+        created_project = database.get(CompanyProject, response.json()["project_id"])
+        assert created_project.project_number == expected
+        task_numbers = list(database.scalars(select(ProjectTask.task_number).where(
+            ProjectTask.project_id == created_project.id
+        ).order_by(ProjectTask.id)))
+        suffixes = ("002", "003") if expected == "2030-0001" else ("001", "002")
+        assert task_numbers == [*(f"{expected}-{suffix}" for suffix in suffixes), "2030-0001-001"]
+
+    missing_team_owner = client.post("/api/v1/projects/wizard", headers=admin_headers, json={
+        **payload, "project_number": "WIZ-NO-OWNER", "intake_owner_user_id": None,
+    })
+    assert missing_team_owner.status_code == 409, missing_team_owner.text
+
+    checkpoint_url = "/api/v1/projects/wizard-draft"
+    checkpoint = client.put(checkpoint_url, headers=admin_headers, json={
+        "expected_version": 0, "checkpoint": {"step": 6},
+    })
+    assert checkpoint.status_code == 200, checkpoint.text
+    published_payload = {
+        **payload, "project_number": "WIZ-002", "publish": True,
+        "checkpoint_version": checkpoint.json()["version"],
+    }
     published = client.post(
         "/api/v1/projects/wizard", headers=admin_headers, json=published_payload
     )
     assert published.status_code == 201, published.text
+    assert client.get(checkpoint_url, headers=admin_headers).json() is None
     result = published.json()
     assert result["status"] == "AWAITING_IMPLEMENTATION_ACCEPTANCE"
     assert result["phase_count"] == result["task_count"] == 1
@@ -345,6 +412,64 @@ def test_project_wizard_saves_draft_and_publishes_governed_plan(client, admin_he
     task = database.scalar(select(ProjectTask).where(ProjectTask.project_id == project.id))
     assert task.product_id == product.id and task.product_module_id == module.id
     assert database.scalar(select(ProjectEvidence).where(ProjectEvidence.project_id == project.id))
+
+    original = result["assignment_request_id"]
+    original_decision = f"/api/v1/projects/assignment-requests/{original}/respond"
+    proposed = client.post(original_decision, headers=admin_headers, json={
+        "decision": "PROPOSED", "expected_version": 1, "response_notes": "Move to the next delivery window.",
+    })
+    assert proposed.status_code == 200, proposed.text
+    project_url = f"/api/v1/projects/{result['project_id']}"
+    revision = {
+        "expected_version": client.get(project_url, headers=admin_headers).json()["row_version"],
+        "requested_start_date": "2026-12-01", "requested_end_date": "2026-12-05",
+        "notes": "Revised delivery window confirmed.",
+    }
+    resubmit_url = f"{project_url}/assignment-requests/{original}/resubmit"
+    replacement = client.post(resubmit_url, headers=admin_headers, json=revision)
+    assert replacement.status_code == 201, replacement.text
+    assert replacement.json()["status"] == "PENDING"
+    assert client.post(resubmit_url, headers=admin_headers, json=revision).status_code == 409
+    assert client.post(original_decision, headers=admin_headers, json={
+        "decision": "ACCEPTED", "expected_version": proposed.json()["row_version"],
+    }).status_code == 409
+    decision = client.post(
+        f"/api/v1/projects/assignment-requests/{replacement.json()['id']}/respond",
+        headers=admin_headers, json={"decision": "ACCEPTED", "expected_version": 1},
+    )
+    assert decision.status_code == 200, decision.text
+    assert client.get(project_url, headers=admin_headers).json()["status"] == "READY_FOR_EXECUTION"
+    baseline = client.get(f"{project_url}/schedule-baseline", headers=admin_headers).json()
+    agreement = baseline["items"]["Agreement"]
+    assert agreement["request_id"] == replacement.json()["id"]
+    assert agreement["start_date"] == "2026-12-01"
+    assert agreement["end_date"] == "2026-12-05"
+    assert agreement["product_ids"] == [product.id]
+    assert agreement["module_ids"] == [module.id]
+    assert len(baseline["items"]["Task"]) == 1
+    delivery_url = "/api/v1/project-tasks/team-delivery"
+    delivery_user, delivery_manager = _scoped_user_headers(
+        database, implementation, "project.assignment.respond", "implementation.task.assign",
+    )
+    delivery = client.get(delivery_url, headers=delivery_manager)
+    assert delivery.status_code == 200, delivery.text
+    [accepted] = delivery.json()
+    assert accepted["project_id"] == result["project_id"]
+    assert accepted["end_date"] == "2026-12-05"
+    unrelated = Department(code="OTHER_DELIVERY", name="Outside delivery", is_active=True)
+    database.add(unrelated)
+    database.flush()
+    _, outside = _scoped_user_headers(database, unrelated, "project.assignment.respond")
+    assert client.get(delivery_url, headers=outside).json() == []
+    owner_url = f"/api/v1/project-tasks/{task.id}/owner"
+    change_owner = {"expected_owner_user_id": task.owner_user_id, "owner_user_id": delivery_user.id}
+    assert client.put(owner_url, headers=delivery_manager, json=change_owner).status_code == 404
+    database.add(SupportTeamMember(team_id=team.id, user_id=delivery_user.id))
+    database.commit()
+    reassigned = client.put(owner_url, headers=delivery_manager, json=change_owner)
+    assert reassigned.status_code == 200, reassigned.text
+    assert reassigned.json()["owner_user_id"] == delivery_user.id
+    assert client.put(owner_url, headers=delivery_manager, json=change_owner).status_code == 409
 
 
 def test_project_rejects_mixed_customer_hierarchy(client, admin_headers, database):
@@ -410,13 +535,28 @@ def test_assigned_project_manager_can_create_a_department_owned_client(
     created = client.post("/api/v1/clients", headers=headers, json=payload)
     assert created.status_code == 201, created.text
     assert created.json()["owner_department_id"] == department.id
+    branch_path = f"/api/v1/clients/{created.json()['id']}/branches"
+    branch = client.post(branch_path, headers=headers, json={"name": "Main branch"})
+    assert branch.status_code == 201, branch.text
+    assert [item["id"] for item in client.get(branch_path, headers=headers).json()] == [
+        branch.json()["id"]
+    ]
+    other_client = client.post("/api/v1/clients", headers=admin_headers, json={
+        **payload, "name": "Other customer", "owner_department_id": other.id,
+    })
+    assert other_client.status_code == 201, other_client.text
+    assert client.post(
+        f"/api/v1/clients/{other_client.json()['id']}/branches",
+        headers=headers,
+        json={"name": "Main branch"},
+    ).status_code == 403
     assert client.patch(
         f"/api/v1/clients/{created.json()['id']}", headers=headers, json={"name": "Renamed"}
     ).status_code == 403
 
 
 def test_project_detail_and_summary_use_the_same_department_scope(
-    client, admin_headers, database
+    client, admin_headers, database, monkeypatch
 ):
     account, organization, customer = _scope(client, admin_headers, database)
     implementation = Department(code="IMP", name="Implementation", is_active=True)
@@ -444,6 +584,14 @@ def test_project_detail_and_summary_use_the_same_department_scope(
 
     visible = create("SCOPE-VISIBLE", implementation.id)
     hidden = create("SCOPE-HIDDEN", unrelated.id)
+    product = Product(code="TIMELINE-PRODUCT", name="Timeline product", is_active=True)
+    database.add(product)
+    database.flush()
+    database.add_all([
+        ProjectProductScope(project_id=visible["id"], product_id=product.id),
+        ProjectProductScope(project_id=hidden["id"], product_id=product.id),
+    ])
+    database.commit()
     scoped_user, scoped_headers = _scoped_user_headers(
         database, implementation, "project.portfolio.view", "project.manage.assigned",
         "project.assignment.request",
@@ -451,6 +599,11 @@ def test_project_detail_and_summary_use_the_same_department_scope(
 
     portfolio = client.get("/api/v1/projects", headers=scoped_headers)
     assert [item["id"] for item in portfolio.json()] == [visible["id"]]
+    timeline = client.get("/api/v1/projects/portfolio-products", headers=scoped_headers)
+    assert timeline.status_code == 200, timeline.text
+    assert timeline.json() == [
+        {"project_id": visible["id"], "product_id": product.id, "name": product.name},
+    ]
     summary = client.get("/api/v1/projects/portfolio-summary", headers=scoped_headers)
     assert summary.status_code == 200
     assert summary.json()["total"] == 1
@@ -464,6 +617,19 @@ def test_project_detail_and_summary_use_the_same_department_scope(
         f"/api/v1/projects/{hidden['id']}/plan", headers=scoped_headers
     ).status_code == 404
     visible_url = f"/api/v1/projects/{visible['id']}"
+    changed = client.patch(visible_url, headers=admin_headers, json={
+        "name": "Edited project", "planned_end_date": "2027-01-31",
+        "expected_version": visible["row_version"],
+    })
+    assert changed.status_code == 200, changed.text
+    assert changed.json()["name"] == "Edited project"
+    assert changed.json()["row_version"] == visible["row_version"] + 1
+    stale = client.patch(visible_url, headers=admin_headers, json={
+        "name": "Stale edit", "expected_version": visible["row_version"],
+    })
+    assert stale.status_code == 409, stale.text
+    invalid = client.patch(visible_url, headers=admin_headers, json={"planned_start_date": "2027-02-01"})
+    assert invalid.status_code == 409, invalid.text
     request_body = {"requested_department_id": implementation.id}
     assert client.post(
         f"{visible_url}/request-implementation", headers=scoped_headers, json=request_body,
@@ -525,11 +691,22 @@ def test_project_detail_and_summary_use_the_same_department_scope(
     assert proposal.status_code == 201, proposal.text
     [revision] = client.get(revisions_url, headers=scoped_headers).json()
     assert revision["status"] == "PENDING"
+    pending_url = "/api/v1/projects/my-work/pending-schedule-decisions"
+    assert client.get(pending_url, headers=scoped_headers).json() == {str(visible["id"]): 1}
+    assert client.get(pending_url, headers=admin_headers).json() == {}
     decision_url = f"{revisions_url}/{revision['id']}/decision"
     approval = {"expected_version": published_version, "decision": "APPROVED"}
     assert client.post(decision_url, headers=scoped_headers, json=approval).status_code == 403
     approved = client.post(decision_url, headers=admin_headers, json=approval)
     assert approved.status_code == 200, approved.text
+    monkeypatch.setattr("app.modules.projects.routes.server_today", lambda: date(2026, 12, 4))
+    exceptions = client.get("/api/v1/projects/my-work/delivery-exceptions", headers=scoped_headers)
+    assert exceptions.status_code == 200, exceptions.text
+    assert exceptions.json() == [{
+        "kind": "milestone", "id": milestone.json()["id"], "project_id": visible["id"],
+        "title": "Delivery gate", "due_date": "2026-12-03", "owner_user_id": scoped_user.id,
+    }]
+    assert client.get(pending_url, headers=scoped_headers).json() == {}
     stale_approval = client.post(decision_url, headers=admin_headers, json=approval)
     assert stale_approval.status_code == 409
     assert stale_approval.json()["error"]["code"] == "PROJECT_VERSION_CONFLICT"

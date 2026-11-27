@@ -20,6 +20,7 @@ import { keyframes } from "@mui/material/styles";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useLocation, useNavigate } from "react-router-dom";
+import { preferredWorkspace } from "../auth/projectWorkspaceAccess";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { z } from "zod";
@@ -63,6 +64,7 @@ export function loginDestination(
   user: { require_password_change: boolean; default_page: string; user_type?: "EMPLOYEE" | "CLIENT_PORTAL" },
   state: LoginNavigationState | null,
   savedReturnPath: string | null,
+  preferredPath?: string,
 ) {
   if (user.require_password_change) return "/change-password";
   if (user.user_type === "CLIENT_PORTAL") return "/portal";
@@ -79,7 +81,7 @@ export function loginDestination(
     "internal-operations": "/internal-operations",
     portal: "/portal",
   };
-  if (state?.manualLogout) return landingPages[user.default_page] ?? "/home";
+  if (state?.manualLogout) return preferredPath ?? landingPages[user.default_page] ?? "/home";
   const requested = state?.from;
   const returnTo =
     requested?.pathname?.startsWith("/") && !requested.pathname.startsWith("//")
@@ -89,7 +91,7 @@ export function loginDestination(
     savedReturnPath?.startsWith("/") && !savedReturnPath.startsWith("//")
       ? savedReturnPath
       : null;
-  return returnTo ?? safeSaved ?? landingPages[user.default_page] ?? "/home";
+  return returnTo ?? safeSaved ?? preferredPath ?? landingPages[user.default_page] ?? "/home";
 }
 
 export function LoginPage() {
@@ -132,6 +134,9 @@ export function LoginPage() {
           user,
           location.state as LoginNavigationState | null,
           savedReturnPath,
+          user.user_type === "EMPLOYEE"
+            ? preferredWorkspace(user.id, (permission) => user.permissions.includes(permission))?.path
+            : undefined,
         ),
         { replace: true },
       );

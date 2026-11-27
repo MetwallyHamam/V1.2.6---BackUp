@@ -2,7 +2,7 @@ import json
 from typing import Any
 
 from fastapi import APIRouter, Depends, status
-from sqlalchemy import func, select
+from sqlalchemy import func, select, true, update
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import require_permission
@@ -13,10 +13,11 @@ from app.modules.clients.models import Client
 from app.modules.iam.models import AuditLog, Department, User
 from app.modules.iam.service import effective_permissions
 from app.modules.notifications.models import Notification
-from app.modules.projects.access import require_project_access
+from app.modules.projects.access import authorized_project_ids, require_project_access
 from app.modules.projects.handover_schemas import (
     HandoverDecisionWrite,
     HandoverItemUpdate,
+    HandoverRoutingWrite,
     ResidualCloseWrite,
     ResidualItemWrite,
     StabilizationCompleteWrite,
@@ -25,6 +26,7 @@ from app.modules.projects.handover_schemas import (
 from app.modules.projects.lifecycle import transition_project
 from app.modules.projects.models import (
     CompanyProject,
+    ProjectDepartment,
     ProjectEvidence,
     ProjectHandoverDecision,
     ProjectHandoverItem,
@@ -99,7 +101,7 @@ def _audit(
     )
 
 
-def _recalculate(db: Session, handover: ProjectSupportHandover) -> None:
+def _recalculate(db: Session, handover: ProjectSupportHandover) -> list[ProjectHandoverItem]:
     items = list(
         db.scalars(
             select(ProjectHandoverItem)
@@ -110,8 +112,9 @@ def _recalculate(db: Session, handover: ProjectSupportHandover) -> None:
         )
     )
     required = [item for item in items if item.is_required]
+    missing = [item for item in required if item.status != "READY"]
     handover.readiness_percent = (
-        round(sum(item.status == "READY" for item in required) * 100 / len(required))
+        (len(required) - len(missing)) * 100 // len(required)
         if required
         else 100
     )
@@ -134,6 +137,108 @@ def _recalculate(db: Session, handover: ProjectSupportHandover) -> None:
                 if any(item.status != "NOT_READY" for item in section_items)
                 else "NOT_STARTED"
             )
+    return missing
+
+
+def _receiving_departments(db: Session, project_id: int) -> list[ProjectDepartment]:
+    return list(db.scalars(select(ProjectDepartment).where(
+        ProjectDepartment.project_id == project_id, ProjectDepartment.role == "SUPPORT",
+    )))
+
+
+def _require_receiving_scope(db: Session, actor: User, project_id: int) -> None:
+    departments = _receiving_departments(db, project_id)
+    if departments and actor.department_id not in {row.department_id for row in departments} and (
+        "project.manage" not in effective_permissions(db, actor).permissions
+    ):
+        raise NotFoundError("Support handover is outside your receiving department.")
+
+@router.get("/projects/{project_id}/handover-routing")
+def get_handover_routing(
+    project_id: int,
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_permission("handover.view")),
+) -> dict[str, Any]:
+    project = require_project_access(db, actor, project_id)
+    permissions = effective_permissions(db, actor).permissions
+    can_edit = (
+        "handover.prepare" in permissions
+        and (project.project_manager_user_id == actor.id or "project.manage" in permissions)
+        and project.status in {"DELIVERY_REVIEW", "HANDOVER_PREPARATION"}
+    )
+    receivers = _receiving_departments(db, project_id)
+    receiver = db.get(Department, receivers[0].department_id) if len(receivers) == 1 else None
+    return {
+        "department": {"id": receiver.id, "name": receiver.name} if receiver else None,
+        "can_edit": can_edit and len(receivers) <= 1,
+        "options": [
+            {"id": department.id, "name": department.name}
+            for department in db.scalars(select(Department).where(Department.is_active == true()).order_by(Department.name))
+        ] if can_edit and len(receivers) <= 1 else [],
+    }
+
+
+@router.put("/projects/{project_id}/handover-routing")
+def set_handover_routing(
+    project_id: int,
+    data: HandoverRoutingWrite,
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_permission("handover.prepare")),
+) -> dict[str, int]:
+    project = require_project_access(db, actor, project_id)
+    if project.project_manager_user_id != actor.id and "project.manage" not in effective_permissions(db, actor).permissions:
+        raise NotFoundError("Project does not exist.")
+    result = db.connection().execute(update(CompanyProject).where(
+        CompanyProject.id == project_id,
+        CompanyProject.status.in_(["DELIVERY_REVIEW", "HANDOVER_PREPARATION"]),
+    ).values(row_version=CompanyProject.row_version))
+    if result.rowcount != 1:
+        raise ConflictError("HANDOVER_ROUTING_CLOSED", "Set the receiving department before Support review.")
+    receivers = _receiving_departments(db, project_id)
+    previous = receivers[0].department_id if len(receivers) == 1 else None
+    if len(receivers) > 1 or previous != data.expected_department_id:
+        raise ConflictError("HANDOVER_ROUTING_CONFLICT", "Refresh the project before changing routing.")
+    department = db.get(Department, data.department_id)
+    if department is None or not department.is_active:
+        raise NotFoundError("Receiving department does not exist.")
+    if receivers:
+        receivers[0].department_id = department.id
+    else:
+        db.add(ProjectDepartment(project_id=project_id, department_id=department.id, role="SUPPORT"))
+    _audit(db, actor, project_id, "project.handover.routed", {
+        "previous_department_id": previous, "department_id": department.id,
+    })
+    db.commit()
+    return {"department_id": department.id}
+
+
+@router.get("/project-handover-inbox")
+def handover_inbox(
+    db: Session = Depends(get_db),
+    actor: User = Depends(require_permission("handover.review")),
+) -> list[dict[str, Any]]:
+    statement = (
+        select(ProjectSupportHandover, CompanyProject)
+        .join(CompanyProject, CompanyProject.id == ProjectSupportHandover.project_id)
+        .where(
+            CompanyProject.id.in_(authorized_project_ids(db, actor)),
+            ProjectSupportHandover.status.in_(["SUBMITTED", "ACCEPTED", "CONDITIONALLY_ACCEPTED", "ACTIVE"]),
+        )
+        .order_by(ProjectSupportHandover.updated_at.desc(), ProjectSupportHandover.id.desc())
+        .limit(50)
+    )
+    if "project.manage" not in effective_permissions(db, actor).permissions:
+        if actor.department_id is None:
+            return []
+        statement = statement.where(CompanyProject.id.in_(select(ProjectDepartment.project_id).where(
+            ProjectDepartment.department_id == actor.department_id,
+            ProjectDepartment.role == "SUPPORT",
+        )))
+    return [{
+        "project_id": project.id, "project_number": project.project_number, "project_name": project.name,
+        "status": handover.status, "readiness_percent": handover.readiness_percent,
+        "submitted_at": handover.submitted_at,
+    } for handover, project in db.execute(statement)]
 
 
 @router.post("/projects/{project_id}/handover/initialize", status_code=status.HTTP_201_CREATED)
@@ -286,11 +391,11 @@ def submit(
     actor: User = Depends(require_permission("handover.submit")),
 ) -> dict[str, Any]:
     handover = _handover(db, project_id, actor)
-    _recalculate(db, handover)
-    if handover.readiness_percent < 100:
+    missing = _recalculate(db, handover)
+    if missing:
         raise ConflictError(
             "HANDOVER_NOT_READY",
-            f"Required readiness is {handover.readiness_percent}%; complete all mandatory items.",
+            f"Complete the {len(missing)} remaining mandatory handover item(s).",
         )
     handover.status = "SUBMITTED"
     handover.submitted_by_user_id = actor.id
@@ -303,6 +408,24 @@ def submit(
         "SUPPORT_REVIEW",
         source="SUPPORT_HANDOVER",
     )
+    receiver_ids = {row.department_id for row in _receiving_departments(db, project_id)}
+    if receiver_ids:
+        reviewers = db.scalars(select(User).where(
+            User.department_id.in_(receiver_ids), User.is_active == true(),
+            User.user_type == "EMPLOYEE", User.id != actor.id,
+        ))
+        for reviewer in reviewers:
+            if {"handover.review", "handover.view", "project.portfolio.view"} <= set(
+                effective_permissions(db, reviewer).permissions
+            ):
+                db.add(Notification(
+                    recipient_user_id=reviewer.id,
+                    notification_type="PROJECT_HANDOVER_SUBMITTED",
+                    title=f"Support review needed for {project.project_number}",
+                    message="A delivery handover is ready for your department to review.",
+                    deep_link=f"/projects/{project_id}/handover",
+                    deduplication_key=f"project-handover:{handover.id}:submitted:{project.row_version}:{reviewer.id}",
+                ))
     _audit(
         db,
         actor,
@@ -323,6 +446,7 @@ def support_decision(
     actor: User = Depends(require_permission("handover.review")),
 ) -> dict[str, Any]:
     handover = _handover(db, project_id, actor)
+    _require_receiving_scope(db, actor, project_id)
     decision = data.decision.upper()
     if decision in {"ACCEPT", "CONDITIONAL_ACCEPT"} and (
         "handover.accept" not in effective_permissions(db, actor).permissions
@@ -360,8 +484,8 @@ def support_decision(
             notification_type="PROJECT_HANDOVER_DECISION",
             severity="WARNING" if decision in {"REQUEST_CHANGES", "REJECT"} else "INFO",
             title=f"Support handover {handover.status.replace('_', ' ').lower()}",
-            message=data.notes,
-            deep_link=f"/projects/{project_id}/execution",
+            message=data.notes[:1000],
+            deep_link=f"/projects/{project_id}/handover",
             deduplication_key=f"project-handover:{handover.id}:decision:{row.id}",
         )
     )
@@ -457,6 +581,7 @@ def activate_support(
     actor: User = Depends(require_permission("handover.activate_support")),
 ) -> dict[str, Any]:
     handover = _handover(db, project_id, actor)
+    _require_receiving_scope(db, actor, project_id)
     if handover.status not in {"ACCEPTED", "CONDITIONALLY_ACCEPTED"}:
         raise ConflictError(
             "HANDOVER_ACCEPTANCE_REQUIRED", "Support must accept the handover before activation."
@@ -521,6 +646,7 @@ def complete_stabilization(
     actor: User = Depends(require_permission("handover.activate_support")),
 ) -> dict[str, Any]:
     handover = _handover(db, project_id, actor)
+    _require_receiving_scope(db, actor, project_id)
     project = _project(db, project_id, actor)
     if project.row_version != data.expected_project_version:
         raise ConflictError(

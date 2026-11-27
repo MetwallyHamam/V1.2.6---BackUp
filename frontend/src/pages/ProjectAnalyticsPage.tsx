@@ -34,6 +34,9 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, apiErrorMessage } from "../api/client";
+import { useAuth } from "../auth/AuthContext";
+import { projectMyWorkPath, projectWorkspacePermission } from "../auth/projectWorkspaceAccess";
+import { AnalyticsRateChart } from "../components/AnalyticsRateChart";
 
 type Option = { id: number; name: string; account_id?: number; organization_id?: number };
 type Options = {
@@ -165,6 +168,8 @@ function MetricCard({ metric, onOpen }: { metric: Metric; onOpen: (metric: Metri
 }
 
 export function ProjectAnalyticsPage() {
+  const { hasPermission } = useAuth();
+  const canViewExecutiveRisk = hasPermission("analytics.executive.view");
   const [filters, setFilters] = useState<Filters>(initialFilters);
   const [selectedMetric, setSelectedMetric] = useState<Metric | null>(null);
   const params = useMemo(() => projectAnalyticsParams(filters), [filters]);
@@ -183,11 +188,13 @@ export function ProjectAnalyticsPage() {
     queryFn: async () => (await api.get<Drilldown>(`/project-analytics/projections/kpi/${selectedMetric?.code}/drilldown`, { params })).data,
     enabled: Boolean(selectedMetric && !invalidPeriod),
   });
+  const attentionMetric = canViewExecutiveRisk ? "AT_RISK_PROJECT_COUNT" : "PROJECT_ON_TIME_RATE";
   const risk = useQuery({
-    queryKey: ["project-analytics-drilldown", "AT_RISK_PROJECT_COUNT", params],
-    queryFn: async () => (await api.get<Drilldown>("/project-analytics/projections/kpi/AT_RISK_PROJECT_COUNT/drilldown", { params })).data,
+    queryKey: ["project-analytics-drilldown", attentionMetric, params],
+    queryFn: async () => (await api.get<Drilldown>(`/project-analytics/projections/kpi/${attentionMetric}/drilldown`, { params })).data,
     enabled: !invalidPeriod,
   });
+  const attentionRows = (risk.data?.rows ?? []).filter((row) => canViewExecutiveRisk || row.status === "OVERDUE");
   const organizations = (options.data?.organizations ?? []).filter(
     (item) => !filters.account_id || String(item.account_id) === filters.account_id,
   );
@@ -197,7 +204,7 @@ export function ProjectAnalyticsPage() {
   const clearScope = () => setFilters((current) => ({ ...current, account_id: "", organization_id: "", client_id: "", department_id: "" }));
 
   return (
-    <Box sx={{ p: { xs: 1.25, md: 2.5 }, maxWidth: 1500, mx: "auto" }}>
+    <Box sx={{ width: "100%", minWidth: 0 }}>
       <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" gap={1.5} mb={2}>
         <Box>
           <Stack direction="row" gap={1} alignItems="center">
@@ -206,7 +213,11 @@ export function ProjectAnalyticsPage() {
           </Stack>
           <Typography color="text.secondary">Governed delivery health with permission-filtered totals and exact-record reconciliation.</Typography>
         </Box>
-        <Button component={Link} to="/projects" variant="outlined">Open portfolio</Button>
+        <Stack direction="row" gap={1} flexWrap="wrap">
+          {hasPermission(projectWorkspacePermission) && hasPermission("project.portfolio.view") &&
+            <Button component={Link} to={`${projectMyWorkPath}?action=Schedule`}>My schedule decisions</Button>}
+          <Button component={Link} to="/projects" variant="outlined">Open portfolio</Button>
+        </Stack>
       </Stack>
 
       <Paper variant="outlined" sx={{ p: 1.5, mb: 1.5 }}>
@@ -231,6 +242,7 @@ export function ProjectAnalyticsPage() {
             <Chip size="small" color={projection.data.scope.global_scope ? "secondary" : "primary"} variant="outlined" label={projection.data.scope.global_scope ? "Company-authorized scope" : `${projection.data.scope.effective_department_ids.length} effective department${projection.data.scope.effective_department_ids.length === 1 ? "" : "s"}`} />
             <Typography variant="caption" color="text.secondary" sx={{ ml: { sm: "auto" } }}>Generated {new Date(projection.data.generated_at).toLocaleString()}</Typography>
           </Stack>
+          <AnalyticsRateChart title="Schedule performance" metrics={projection.data.metrics} onOpen={setSelectedMetric} />
           <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", lg: "repeat(4, minmax(0, 1fr))" }, gap: 1.25 }}>
             {projection.data.metrics.map((metric) => <MetricCard key={metric.code} metric={metric} onOpen={setSelectedMetric} />)}
           </Box>
@@ -239,14 +251,20 @@ export function ProjectAnalyticsPage() {
 
       <Paper variant="outlined" sx={{ mt: 1.5, overflow: "hidden" }}>
         <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" gap={1} p={1.5} alignItems={{ sm: "center" }}>
-          <Box><Typography fontWeight={850}>Projects requiring attention</Typography><Typography variant="body2" color="text.secondary">Exact records behind the governed at-risk count.</Typography></Box>
-          <Chip size="small" color={(risk.data?.rows.length ?? 0) > 0 ? "error" : "success"} label={`${risk.data?.rows.length ?? 0} at risk`} />
+          <Box>
+            <Typography fontWeight={850}>{canViewExecutiveRisk ? "Projects requiring attention" : "Schedule exceptions"}</Typography>
+            <Typography variant="body2" color="text.secondary">{canViewExecutiveRisk
+              ? "Projects flagged at risk or critical."
+              : "Projects that finished late or were overdue at the reporting cutoff."}</Typography>
+          </Box>
+          {risk.data && <Chip size="small" color={attentionRows.length ? "error" : "default"}
+            label={`${attentionRows.length} ${canViewExecutiveRisk ? "at risk" : "late or overdue"}`} />}
         </Stack>
         <Divider />
         {risk.isLoading && <LinearProgress />}
         {risk.isError && <Alert severity="error" sx={{ m: 1.5 }}>{apiErrorMessage(risk.error)}</Alert>}
-        {risk.data && risk.data.rows.length === 0 && <Stack alignItems="center" py={4} gap={0.5}><CheckCircleOutline color="success" /><Typography fontWeight={750}>No at-risk projects in this scope</Typography><Typography variant="body2" color="text.secondary">The count reconciles to zero for the selected filters.</Typography></Stack>}
-        {risk.data && risk.data.rows.length > 0 && <TableContainer><Table size="small"><TableHead><TableRow><TableCell>Project</TableCell><TableCell>Status</TableCell><TableCell>Measured at</TableCell><TableCell align="right">Action</TableCell></TableRow></TableHead><TableBody>{risk.data.rows.map((row) => <TableRow key={row.record_id} hover><TableCell><Typography fontWeight={750}>{row.project_number}</Typography><Typography variant="caption" color="text.secondary">{row.label}</Typography></TableCell><TableCell><Chip size="small" color="error" variant="outlined" label={row.status?.replaceAll("_", " ") ?? "AT RISK"} /></TableCell><TableCell>{row.occurred_at ? new Date(row.occurred_at).toLocaleDateString() : "—"}</TableCell><TableCell align="right"><Button component={Link} to={`/projects/${row.project_id}/execution`} size="small">Open</Button></TableCell></TableRow>)}</TableBody></Table></TableContainer>}
+        {risk.data && attentionRows.length === 0 && <Stack alignItems="center" py={4} gap={0.5}><CheckCircleOutline color="success" /><Typography fontWeight={750}>{canViewExecutiveRisk ? "No at-risk projects in this scope" : "No schedule exceptions found"}</Typography></Stack>}
+        {attentionRows.length > 0 && <TableContainer><Table size="small"><TableHead><TableRow><TableCell>Project</TableCell><TableCell>Status</TableCell><TableCell>Measured at</TableCell><TableCell align="right">Action</TableCell></TableRow></TableHead><TableBody>{attentionRows.map((row) => <TableRow key={row.record_id} hover><TableCell><Typography fontWeight={750}>{row.project_number}</Typography><Typography variant="caption" color="text.secondary">{row.label}</Typography></TableCell><TableCell><Chip size="small" color="error" variant="outlined" label={row.status?.replaceAll("_", " ") ?? "AT RISK"} /></TableCell><TableCell>{row.occurred_at ? new Date(row.occurred_at).toLocaleDateString() : "—"}</TableCell><TableCell align="right"><Button component={Link} to={`/projects/${row.project_id}/schedule`} size="small">Open schedule</Button></TableCell></TableRow>)}</TableBody></Table></TableContainer>}
       </Paper>
 
       <Alert severity="info" icon={<InfoOutlined />} sx={{ mt: 1.5 }}>Metrics with missing authoritative evidence are shown as unavailable. The dashboard never substitutes record update time for completion evidence.</Alert>

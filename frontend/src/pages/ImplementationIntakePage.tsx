@@ -12,6 +12,8 @@ import {
   MenuItem,
   Paper,
   Stack,
+  Tab,
+  Tabs,
   TextField,
   Typography,
 } from "@mui/material";
@@ -62,9 +64,10 @@ function statusColor(status: string): "default" | "info" | "success" | "warning"
 
 export function ImplementationIntakePage() {
   const queryClient = useQueryClient();
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
   const projectFilter = params.get("project");
-  const [status, setStatus] = useState(projectFilter ? "ALL" : "PENDING");
+  const queueView = (params.get("view") ?? (projectFilter ? "history" : "queue")) !== "history";
+  const [status, setStatus] = useState("ALL");
   const [selected, setSelected] = useState<IntakeRequest | null>(null);
   const [decision, setDecision] = useState<Decision>("ACCEPTED");
   const [teamId, setTeamId] = useState("");
@@ -78,9 +81,18 @@ export function ImplementationIntakePage() {
     queryKey: ["project-options", "implementation-intake"],
     queryFn: async () => (await api.get<ProjectOptions>("/projects/options")).data,
   });
-  const visible = useMemo(() => filterIntakeRequests(inbox.data ?? [], status).filter(
-    (request) => !projectFilter || String(request.project_id) === projectFilter,
-  ), [inbox.data, projectFilter, status]);
+  const latestByProject = useMemo(() => {
+    const latest = new Map<number, number>();
+    for (const request of inbox.data ?? []) {
+      latest.set(request.project_id, Math.max(latest.get(request.project_id) ?? 0, request.id));
+    }
+    return latest;
+  }, [inbox.data]);
+  const visible = filterIntakeRequests(inbox.data ?? [], status).filter((request) =>
+    (!projectFilter || String(request.project_id) === projectFilter)
+    && (!queueView || (latestByProject.get(request.project_id) === request.id
+      && ["PENDING", "PROPOSED"].includes(request.status))),
+  );
   const teams = (options.data?.teams ?? []).filter(
     (team) => team.department_id === selected?.requested_department_id,
   );
@@ -102,6 +114,7 @@ export function ImplementationIntakePage() {
       setNotes("");
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["implementation-intake"] }),
+        queryClient.invalidateQueries({ queryKey: ["implementation-team-delivery"] }),
         queryClient.invalidateQueries({ queryKey: ["projects"] }),
         queryClient.invalidateQueries({ queryKey: ["project-summary"] }),
         ...(projectId ? [
@@ -121,7 +134,7 @@ export function ImplementationIntakePage() {
   };
 
   return (
-    <Box sx={{ p: { xs: 1.25, md: 2.5 }, maxWidth: 1400, mx: "auto" }}>
+    <Box sx={{ width: "100%", minWidth: 0 }}>
       <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" gap={1.5} mb={2}>
         <Box>
           <Stack direction="row" alignItems="center" gap={1}>
@@ -142,10 +155,24 @@ export function ImplementationIntakePage() {
         </Stack>
       </Stack>
 
-      <Paper variant="outlined" sx={{ p: 1.5, mb: 1.5 }}>
+      <Tabs value={queueView ? "queue" : "history"} aria-label="Implementation intake views"
+        sx={{ mb: 1.5, borderBottom: 1, borderColor: "divider", "& .MuiTab-root": { textTransform: "none" } }}
+        onChange={(_, view: string) => {
+          setStatus("ALL");
+          setParams((current) => {
+            const next = new URLSearchParams(current);
+            next.set("view", view);
+            return next;
+          });
+        }}>
+        <Tab value="queue" label="Queued projects" />
+        <Tab value="history" label="Request history" />
+      </Tabs>
+      <Box sx={{ mb: 1.5 }}>
         <Stack direction={{ xs: "column", sm: "row" }} gap={1} alignItems={{ sm: "center" }}>
           <TextField select size="small" label="Request status" value={status} onChange={(event) => setStatus(event.target.value)} sx={{ minWidth: 210 }}>
-            {['PENDING', 'PROPOSED', 'ACCEPTED', 'RETURNED', 'REJECTED', 'ALL'].map((value) => <MenuItem key={value} value={value}>{label(value)}</MenuItem>)}
+            {(queueView ? ["ALL", "PENDING", "PROPOSED"] : ["ALL", "PENDING", "PROPOSED", "ACCEPTED", "RETURNED", "REJECTED"])
+              .map((value) => <MenuItem key={value} value={value}>{label(value)}</MenuItem>)}
           </TextField>
           <Chip size="small" label={`${visible.length} request${visible.length === 1 ? "" : "s"}`} />
           {projectFilter && <Button component={Link} to="/implementation-intake">Show all projects</Button>}
@@ -153,12 +180,13 @@ export function ImplementationIntakePage() {
             Only requests addressed to your authorized department are shown.
           </Typography>
         </Stack>
-      </Paper>
+      </Box>
 
       {inbox.isLoading && <Stack alignItems="center" py={8}><CircularProgress /></Stack>}
       {inbox.isError && <Alert severity="error">{apiErrorMessage(inbox.error)}</Alert>}
       {!inbox.isLoading && !inbox.isError && visible.length === 0 && (
-        <Alert severity="info">No {status === "ALL" ? "" : `${label(status).toLowerCase()} `}implementation requests are in your scope.</Alert>
+        <Alert severity="info">{queueView && status === "ALL" ? "No projects are queued for review." :
+          `No ${status === "ALL" ? "" : `${label(status).toLowerCase()} `}implementation requests match this view.`}</Alert>
       )}
       <Stack gap={1.25}>
         {visible.map((request) => (
@@ -177,7 +205,9 @@ export function ImplementationIntakePage() {
                 {request.response_notes && <Alert severity="info" sx={{ mt: 1, py: 0 }}>Response: {request.response_notes}</Alert>}
               </Box>
               <Stack direction={{ xs: "row", md: "column" }} gap={1} minWidth={{ md: 170 }}>
-                {(request.status === "PENDING" || request.status === "PROPOSED") && (
+                {(request.status === "PENDING" || (
+                  request.status === "PROPOSED" && latestByProject.get(request.project_id) === request.id
+                )) && (
                   <Button variant="contained" onClick={() => openDecision(request)}>Review request</Button>
                 )}
                 <Button component={Link} to={`/projects/${request.project_id}/intake`} variant="outlined">Open project intake</Button>

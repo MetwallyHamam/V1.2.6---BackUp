@@ -9,7 +9,7 @@ from app.db.compatibility import EXPECTED_DATABASE_REVISION, REQUIRED_COLUMNS
 def test_release_compatibility_matches_current_migration_head() -> None:
     scripts = ScriptDirectory.from_config(Config("alembic.ini"))
     assert scripts.get_current_head() == EXPECTED_DATABASE_REVISION
-    assert EXPECTED_DATABASE_REVISION == "0295_project_lifecycle"
+    assert EXPECTED_DATABASE_REVISION == "0297_project_wizard_drafts"
     assert "row_version" in REQUIRED_COLUMNS["company_projects"]
     assert "row_version" in REQUIRED_COLUMNS["company_project_assignment_requests"]
     assert "project_status_transitions" in REQUIRED_COLUMNS

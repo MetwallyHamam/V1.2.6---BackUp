@@ -39,10 +39,21 @@ class TaskCreate(BaseModel):
 
 
 class UnplannedTaskCreate(TaskCreate):
+    task_number: str = Field(default="", max_length=50)
     unplanned_cause: str = Field(min_length=3, max_length=500)
     unplanned_source: str = Field(min_length=2, max_length=80)
     impact_summary: str = Field(min_length=3, max_length=4000)
     schedule_impact_minutes: int = Field(ge=0)
+
+
+class DeliverySubmissionWrite(BaseModel):
+    expected_version: int = Field(ge=1)
+    summary: str = Field(min_length=3, max_length=2000)
+
+
+class TaskOwnerWrite(BaseModel):
+    expected_owner_user_id: int = Field(gt=0)
+    owner_user_id: int = Field(gt=0)
 
 
 class TaskActionWrite(BaseModel):

@@ -1,7 +1,7 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { Box, CircularProgress, Stack, Typography } from '@mui/material'
 import { useAuth } from '../auth/AuthContext'
-import { isProjectWorkspaceRoute, projectWorkspacePath, usesProjectWorkspace } from '../auth/projectWorkspaceAccess'
+import { deliveryWorkspaceLanding, isAllowedDeliveryRoute, preferredWorkspace } from '../auth/projectWorkspaceAccess'
 
 export function ProtectedRoute() {
   const { user, hasPermission, initializing, reconnecting } = useAuth()
@@ -14,8 +14,13 @@ export function ProtectedRoute() {
   if (!user.require_password_change && location.pathname === '/change-password') {
     return <Navigate to={user.user_type === 'CLIENT_PORTAL' ? '/portal' : '/'} replace />
   }
-  if (usesProjectWorkspace(user.user_type, hasPermission) && !isProjectWorkspaceRoute(location.pathname)) {
-    return <Navigate to={projectWorkspacePath} replace />
+  const landing = deliveryWorkspaceLanding(user.user_type, hasPermission)
+  if (user.user_type === 'EMPLOYEE' && ['/', '/home'].includes(location.pathname)) {
+    const preferred = preferredWorkspace(user.id, hasPermission)
+    if (preferred) return <Navigate to={preferred.path} replace />
+  }
+  if (landing && !isAllowedDeliveryRoute(location.pathname, hasPermission)) {
+    return <Navigate to={landing} replace />
   }
   return <Outlet />
 }

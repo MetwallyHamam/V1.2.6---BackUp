@@ -3,6 +3,11 @@ from datetime import date, datetime
 from pydantic import BaseModel, Field, model_validator
 
 
+class HandoverRoutingWrite(BaseModel):
+    department_id: int = Field(gt=0)
+    expected_department_id: int | None = None
+
+
 class HandoverItemUpdate(BaseModel):
     status: str
     evidence_id: int | None = None

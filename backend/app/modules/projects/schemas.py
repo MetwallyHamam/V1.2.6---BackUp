@@ -31,6 +31,7 @@ class ProjectCreate(BaseModel):
 
 class ProjectUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
+    expected_version: int | None = Field(default=None, ge=1)
     name: str | None = Field(default=None, min_length=1, max_length=200)
     description: str | None = None
     priority: str | None = None
@@ -144,6 +145,13 @@ class TaskDependenciesWrite(BaseModel):
     predecessor_ids: list[int] = Field(max_length=200)
 
 
+class AssignmentResubmitWrite(BaseModel):
+    expected_version: int = Field(ge=1)
+    requested_start_date: date
+    requested_end_date: date
+    notes: str = Field(min_length=1, max_length=500)
+
+
 class AssignmentRequestWrite(BaseModel):
     requested_department_id: int
     requested_team_id: int | None = None
@@ -175,7 +183,7 @@ class ProjectResumeWrite(BaseModel):
 
 
 class ProjectWizardTaskWrite(BaseModel):
-    task_number: str = Field(min_length=1, max_length=50)
+    task_number: str = Field(default="", max_length=50)
     title: str = Field(min_length=1, max_length=250)
     description: str | None = Field(default=None, max_length=4000)
     product_id: int
@@ -230,9 +238,16 @@ class ProjectCoverageCheck(BaseModel):
     module_ids: list[int] = Field(max_length=500)
 
 
+class ProjectWizardCheckpointWrite(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    expected_version: int = Field(ge=0)
+    checkpoint: dict[str, object]
+
+
 class ProjectWizardCreate(BaseModel):
+    checkpoint_version: int | None = Field(default=None, ge=1)
     source_template_version_id: int | None = Field(default=None, gt=0)
-    project_number: str = Field(min_length=1, max_length=50)
+    project_number: str = Field(default="", max_length=50)
     name: str = Field(min_length=1, max_length=200)
     description: str | None = Field(default=None, max_length=4000)
     account_id: int
@@ -245,7 +260,7 @@ class ProjectWizardCreate(BaseModel):
     requested_department_id: int
     requested_team_id: int | None = None
     project_manager_user_id: int
-    intake_owner_user_id: int
+    intake_owner_user_id: int | None = None
     planned_start_date: date
     planned_end_date: date
     priority: str = Field(default="NORMAL", max_length=20)
@@ -261,6 +276,7 @@ class ProjectWizardCreate(BaseModel):
         product_ids = set(self.product_ids)
         module_ids = set(self.module_ids)
         tasks = {}
+        all_tasks = []
         for phase in self.phases:
             if not set(phase.product_ids).issubset(product_ids) or not set(
                 phase.module_ids
@@ -268,9 +284,11 @@ class ProjectWizardCreate(BaseModel):
                 raise ValueError("Phase product and module scope must belong to the project scope.")
             for task in phase.tasks:
                 number = task.task_number.strip().upper()
-                if not number or number in tasks:
-                    raise ValueError("Task numbers must be unique and nonblank.")
-                tasks[number] = task
+                if number:
+                    if number in tasks:
+                        raise ValueError("Manual task numbers must be unique.")
+                    tasks[number] = task
+                all_tasks.append(task)
                 if task.product_id not in phase.product_ids:
                     raise ValueError("Task product must belong to its phase.")
                 if (
@@ -278,7 +296,8 @@ class ProjectWizardCreate(BaseModel):
                     and task.product_module_id not in phase.module_ids
                 ):
                     raise ValueError("Task module must belong to its phase.")
-        for number, task in tasks.items():
+        for task in all_tasks:
+            number = task.task_number.strip().upper() or task.title
             for predecessor in task.predecessor_numbers:
                 previous = tasks.get(predecessor.strip().upper())
                 if previous is None:

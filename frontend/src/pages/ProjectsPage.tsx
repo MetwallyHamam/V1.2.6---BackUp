@@ -1,11 +1,12 @@
-import { Add, Search, Timeline } from "@mui/icons-material";
-import { Alert, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, InputAdornment, LinearProgress, MenuItem, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, TextField, Typography } from "@mui/material";
+import { Add, CalendarMonthOutlined, ListAlt, Search, Timeline, ViewListOutlined } from "@mui/icons-material";
+import { Alert, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, InputAdornment, LinearProgress, MenuItem, Stack, Tab, Table, TableBody, TableCell, TableContainer, TableHead, TablePagination, TableRow, Tabs, TextField, Typography } from "@mui/material";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { api, apiErrorMessage } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import { ProjectCreationWizard } from "../components/ProjectCreationWizard";
+import { ProjectPortfolioPlanning, type PortfolioProduct } from "../components/ProjectPortfolioPlanning";
 
 type Project = {
   id: number; project_number: string; name: string; status: string; health: string;
@@ -16,12 +17,16 @@ type Project = {
 type Option = { id: number; name: string };
 type Options = { clients: Option[]; managers: Option[]; accounts: Option[]; organizations: Option[]; departments: Option[] };
 const label = (value: string) => value.toLowerCase().replaceAll("_", " ");
+const backlogStatuses = new Set(["DRAFT", "AWAITING_IMPLEMENTATION_ACCEPTANCE", "INTAKE_RETURNED", "INTAKE_PROPOSED", "INTAKE_REJECTED"]);
 export const projectMatches = (project: Project, search: string, status: string) =>
   (!status || project.status === status) && `${project.project_number} ${project.name}`.toLowerCase().includes(search.trim().toLowerCase());
 
 export function ProjectsPage() {
   const { hasPermission, user } = useAuth();
   const queryClient = useQueryClient();
+  const [params, setParams] = useSearchParams();
+  const requestedView = params.get("view");
+  const view = requestedView === "backlog" || requestedView === "calendar" || requestedView === "timeline" ? requestedView : "portfolio";
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
   const [mine, setMine] = useState(false);
@@ -35,31 +40,52 @@ export function ProjectsPage() {
   const options = useQuery({
     queryKey: ["project-options"], queryFn: async () => (await api.get<Options>("/projects/options")).data,
   });
-  const all = projects.data ?? [];
+  const products = useQuery({
+    queryKey: ["project-portfolio-products"],
+    queryFn: async () => (await api.get<PortfolioProduct[]>("/projects/portfolio-products")).data,
+    enabled: view === "timeline",
+  });
+  const all = (projects.data ?? []).filter((project) => view !== "backlog" || backlogStatuses.has(project.status));
   const statuses = [...new Set(all.map((project) => project.status))].sort();
-  const visible = all.filter((project) => projectMatches(project, search, status)
+  const visible = all.filter((project) => projectMatches(project, search, statuses.includes(status) ? status : "")
     && (!mine || project.project_manager_user_id === user?.id));
   const pageIndex = Math.min(page, Math.max(0, Math.ceil(visible.length / pageSize) - 1));
   const names = new Map(options.data?.clients.map((item) => [item.id, item.name]));
   const managers = new Map(options.data?.managers.map((item) => [item.id, item.name]));
   return (
-    <Stack gap={2.5} sx={{ p: { xs: 2, md: 3, xl: 4 }, maxWidth: 1500, mx: "auto" }}>
+    <Stack gap={2} sx={{ width: "100%", minWidth: 0 }}>
       <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ sm: "center" }} gap={2}>
         <Box>
-          <Typography variant="h4" component="h1" fontWeight={800}>Projects</Typography>
-          <Typography color="text.secondary">Review project ownership, intake status, and delivery progress.</Typography>
+          <Typography variant="h4" component="h1" fontWeight={800}>Project Portfolio</Typography>
+          <Typography color="text.secondary">Track project ownership, intake decisions, and delivery dates.</Typography>
         </Box>
         {hasPermission("project.create") && <Button variant="contained" startIcon={<Add />} onClick={() => setOpen(true)}>New project</Button>}
       </Stack>
       {projects.isError && <Alert severity="error">{apiErrorMessage(projects.error)}</Alert>}
-      <Paper variant="outlined" sx={{ borderRadius: 3, overflow: "hidden" }}>
-        <Stack direction={{ xs: "column", md: "row" }} gap={1.5} sx={{ p: 2 }}>
+      <Tabs value={view} variant="scrollable" scrollButtons="auto" aria-label="Project portfolio views"
+        sx={{ borderBottom: 1, borderColor: "divider", "& .MuiTab-root": { minHeight: 46, textTransform: "none" } }}
+        onChange={(_, next: string) => {
+          setParams((current) => {
+            const updated = new URLSearchParams(current);
+            if (next === "portfolio") updated.delete("view");
+            else updated.set("view", next);
+            return updated;
+          });
+          setStatus(""); setPage(0);
+        }}>
+        <Tab value="portfolio" label="Portfolio" icon={<ViewListOutlined />} iconPosition="start" />
+        <Tab value="backlog" label="Backlog" icon={<ListAlt />} iconPosition="start" />
+        <Tab value="calendar" label="Calendar" icon={<CalendarMonthOutlined />} iconPosition="start" />
+        <Tab value="timeline" label="Product Timeline" icon={<Timeline />} iconPosition="start" />
+      </Tabs>
+      <Box role="tabpanel" aria-label={view === "timeline" ? "Product timeline" : view} sx={{ minWidth: 0 }}>
+        <Stack direction={{ xs: "column", md: "row" }} gap={1.5} sx={{ pb: 2 }}>
           <TextField size="small" fullWidth label="Search projects" placeholder="Project name or number" value={search}
             onChange={(event) => { setSearch(event.target.value); setPage(0); }}
             InputProps={{ startAdornment: <InputAdornment position="start"><Search fontSize="small" /></InputAdornment> }} />
-          <TextField select size="small" label="Status" value={status}
-            onChange={(event) => { setStatus(event.target.value); setPage(0); }} sx={{ minWidth: { md: 220 } }}>
-            <MenuItem value="">All statuses</MenuItem>
+          <TextField select size="small" label="Status" value={statuses.includes(status) ? status : "all"}
+            onChange={(event) => { setStatus(event.target.value === "all" ? "" : event.target.value); setPage(0); }} sx={{ minWidth: { md: 220 } }}>
+            <MenuItem value="all">All statuses</MenuItem>
             {statuses.map((item) => <MenuItem key={item} value={item} sx={{ textTransform: "capitalize" }}>{label(item)}</MenuItem>)}
           </TextField>
           <Button sx={{ flexShrink: 0 }} variant={mine ? "contained" : "outlined"} aria-pressed={mine}
@@ -68,13 +94,20 @@ export function ProjectsPage() {
         {projects.isPending && <LinearProgress />}
         {projects.isSuccess && !visible.length && (
           <Stack gap={1} alignItems="center" sx={{ p: 5, borderTop: 1, borderColor: "divider" }}>
-            <Typography fontWeight={700}>{all.length ? "No projects match these filters" : "No projects in your portfolio"}</Typography>
+            <Typography fontWeight={700}>{all.length ? "No projects match these filters" : view === "backlog" ? "No projects in the planning backlog" : "No projects in your portfolio"}</Typography>
             {!!all.length && <Button onClick={() => { setSearch(""); setStatus(""); setMine(false); setPage(0); }}>Clear filters</Button>}
           </Stack>
         )}
-        {!!visible.length && <>
+        {view === "timeline" && products.isFetching && <LinearProgress aria-label="Loading product timeline" />}
+        {view === "timeline" && products.isError && <Alert severity="error" action={<Button onClick={() => products.refetch()}>Retry</Button>}>{apiErrorMessage(products.error)}</Alert>}
+        {view === "timeline" && products.data && visible.length > 0 &&
+          <ProjectPortfolioPlanning key={view} view={view} projects={visible} products={products.data} />}
+        {view === "calendar" && projects.isSuccess &&
+          <ProjectPortfolioPlanning key={view} view={view} projects={visible} />}
+        {(view === "portfolio" || view === "backlog") && !!visible.length && <>
           <TableContainer>
-            <Table size="small" aria-label="Project portfolio" sx={{ minWidth: 840 }}>
+            <Table size="small" aria-label={view === "backlog" ? "Project backlog" : "Project portfolio"}
+              sx={{ display: "table", width: "100%", minWidth: 840, bgcolor: "background.paper" }}>
               <TableHead><TableRow sx={{ bgcolor: "action.hover" }}>
                 <TableCell>Project</TableCell><TableCell>Status</TableCell><TableCell>Manager</TableCell>
                 <TableCell>Due date</TableCell><TableCell>Progress</TableCell><TableCell align="right">Actions</TableCell>
@@ -115,7 +148,7 @@ export function ProjectsPage() {
             rowsPerPageOptions={[10, 25, 50]} onPageChange={(_, next) => setPage(next)}
             onRowsPerPageChange={(event) => { setPageSize(Number(event.target.value)); setPage(0); }} />
         </>}
-      </Paper>
+      </Box>
       <Dialog open={Boolean(selected)} onClose={() => setSelected(null)} fullWidth maxWidth="sm">
         {selected && <>
           <DialogTitle>{selected.project_number} · {selected.name}</DialogTitle>
@@ -146,6 +179,7 @@ export function ProjectsPage() {
         setSearch(""); setStatus(""); setMine(false); setPage(0);
         void queryClient.invalidateQueries({ queryKey: ["projects"] });
         void queryClient.invalidateQueries({ queryKey: ["project-summary"] });
+        void queryClient.invalidateQueries({ queryKey: ["project-portfolio-products"] });
       }} />}
     </Stack>
   );

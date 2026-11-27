@@ -3,13 +3,14 @@ import { Alert, Avatar, Box, Button, Chip, LinearProgress, Paper, Stack, Typogra
 import { alpha } from "@mui/material/styles";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { api, apiErrorMessage } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import { projectMyWorkPath, projectWorkspacePath } from "../auth/projectWorkspaceAccess";
 import { ProjectCreationWizard } from "../components/ProjectCreationWizard";
 
 type Summary = { total: number; at_risk: number; pending_assignment_requests: number };
+type DeliveryException = { id: number; project_id: number; kind: "task" | "milestone"; title: string; due_date: string | null; owner_user_id: number };
 type Project = {
   id: number; project_number: string; name: string; status: string; health: string;
   progress_percent: number; planned_end_date: string | null; project_manager_user_id: number;
@@ -22,12 +23,17 @@ const isIntake = (project: Project) =>
 const isHandover = (project: Project) =>
   ["DELIVERY_REVIEW", "HANDOVER_PREPARATION", "SUPPORT_REVIEW", "STABILIZATION"].includes(project.status);
 const isActive = (project: Project) => !["COMPLETED", "CANCELLED", "ARCHIVED"].includes(project.status);
+const actionTypes = ["All actions", "Draft", "Intake", "Schedule", "Blocked task", "Overdue milestone", "Handover"];
 
 export function ProjectManagementPage({ personal = false }: { personal?: boolean }) {
   const { user, hasPermission } = useAuth();
   const queryClient = useQueryClient();
   const [wizardOpen, setWizardOpen] = useState(false);
   const [view, setView] = useState("mine");
+  const [params, setParams] = useSearchParams();
+  const filterKey = `project-actions-filter-${user?.id ?? "anonymous"}`;
+  const requestedAction = params.get("action") ?? window.localStorage.getItem(filterKey);
+  const actionType = requestedAction && actionTypes.includes(requestedAction) ? requestedAction : actionTypes[0];
   const summary = useQuery({
     queryKey: ["project-summary"],
     queryFn: async () => (await api.get<Summary>("/projects/portfolio-summary")).data,
@@ -37,16 +43,53 @@ export function ProjectManagementPage({ personal = false }: { personal?: boolean
     queryKey: ["projects"],
     queryFn: async () => (await api.get<Project[]>("/projects")).data,
   });
+  const decisions = useQuery({
+    queryKey: ["my-pending-schedule-decisions", user?.id],
+    queryFn: async () => (await api.get<Record<string, number>>("/projects/my-work/pending-schedule-decisions")).data,
+    enabled: personal && Boolean(user),
+    refetchOnMount: "always",
+  });
+  const exceptions = useQuery({
+    queryKey: ["project-delivery-exceptions", user?.id],
+    queryFn: async () => (await api.get<DeliveryException[]>("/projects/my-work/delivery-exceptions")).data,
+    enabled: personal && Boolean(user),
+    refetchOnMount: "always",
+  });
+  const options = useQuery({
+    queryKey: ["project-options"],
+    queryFn: async () => (await api.get<{ managers: { id: number; name: string }[] }>("/projects/options")).data,
+    enabled: personal,
+  });
+  const pendingDecisions = (project: Project) => decisions.data?.[project.id] ?? 0;
   const assigned = (projects.data ?? []).filter((project) => project.project_manager_user_id === user?.id);
   const today = new Date().toLocaleDateString("sv-SE");
   const overdue = (project: Project) => isActive(project) && project.status !== "DRAFT"
     && Boolean(project.planned_end_date && project.planned_end_date < today);
   const needsAttention = (project: Project) => isActive(project) && (attention(project) || overdue(project));
+  const actions = assigned.filter(isActive).flatMap((project) => {
+    const root = `/projects/${project.id}`;
+    const item = (kind: string, title: string, path: string, due = project.planned_end_date, owner = project.project_manager_user_id) => ({
+      key: `${project.id}-${kind}-${path}`, kind, title, path, due, owner, project,
+    });
+    return [
+      ...(project.status === "DRAFT" ? [item("Draft", "Continue project planning", root)] : []),
+      ...(["INTAKE_RETURNED", "INTAKE_PROPOSED", "INTAKE_REJECTED"].includes(project.status)
+        ? [item("Intake", "Review Implementation response", `${root}/intake`)] : []),
+      ...(pendingDecisions(project) ? [item("Schedule", `${pendingDecisions(project)} pending schedule decisions`, `${root}/revisions`)] : []),
+      ...(isHandover(project) && hasPermission("handover.view") ? [item("Handover", "Review handover readiness", `${root}/handover`)] : []),
+      ...(exceptions.data ?? []).filter((entry) => entry.project_id === project.id).map((entry) =>
+        item(entry.kind === "task" ? "Blocked task" : "Overdue milestone", entry.title,
+          `${root}/work-packages?item=${entry.kind}-${entry.id}`, entry.due_date, entry.owner_user_id)),
+    ];
+  }).sort((left, right) => (left.due ?? "9999").localeCompare(right.due ?? "9999"));
   const personalFilters = [
     { key: "mine", label: "All assigned", matches: () => true },
     { key: "attention", label: "Needs attention", matches: needsAttention },
     { key: "draft", label: "Drafts", matches: (project: Project) => project.status === "DRAFT" },
     { key: "intake", label: "Implementation intake", matches: isIntake },
+    { key: "returned", label: "Returned intake", matches: (project: Project) => ["INTAKE_RETURNED", "INTAKE_PROPOSED", "INTAKE_REJECTED"].includes(project.status) },
+    { key: "decisions", label: "Schedule decisions", matches: (project: Project) => pendingDecisions(project) > 0 },
+    { key: "risk", label: "Delivery risk", matches: (project: Project) => isActive(project) && (overdue(project) || ["AT_RISK", "CRITICAL"].includes(project.health)) },
     { key: "handover", label: "Support handover", matches: isHandover },
   ];
   const visible = personal
@@ -67,7 +110,7 @@ export function ProjectManagementPage({ personal = false }: { personal?: boolean
   ];
 
   return (
-    <Stack gap={3} sx={{ p: { xs: 2, md: 3, xl: 4 }, maxWidth: 1440, mx: "auto" }}>
+    <Stack gap={3} sx={{ width: "100%", minWidth: 0 }}>
       <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ md: "center" }} gap={2}
         sx={personal ? (theme) => ({
           p: { xs: 2.5, md: 4 }, borderRadius: 4, border: 1, borderColor: "divider",
@@ -80,6 +123,9 @@ export function ProjectManagementPage({ personal = false }: { personal?: boolean
             : "Track delivery, intake decisions, and projects that need your attention."}</Typography>
         </Box>
         <Stack direction="row" gap={1} flexWrap="wrap">
+          {hasPermission("analytics.project.view") && (
+            <Button component={Link} to="/project-analytics" variant="outlined">Project dashboard</Button>
+          )}
           {(hasPermission("project.manage.assigned") || hasPermission("project.manage")) && <Button component={Link} to={personal ? projectWorkspacePath : projectMyWorkPath}>
             {personal ? "Project Workspace" : "My Project Work"}
           </Button>}
@@ -91,6 +137,42 @@ export function ProjectManagementPage({ personal = false }: { personal?: boolean
         </Stack>
       </Stack>
       {(summary.isError || projects.isError) && <Alert severity="error">{apiErrorMessage(summary.error ?? projects.error)}</Alert>}
+      {personal && <Stack gap={1.25} component="section" aria-label="Project Action Center">
+        <Typography variant="h6" component="h2" fontWeight={800}>Project Action Center</Typography>
+        <Stack direction="row" gap={0.75} flexWrap="wrap">
+          {actionTypes.map((kind) =>
+            <Button key={kind} size="small" variant={kind === actionType ? "contained" : "outlined"}
+              aria-pressed={kind === actionType} onClick={() => {
+                window.localStorage.setItem(filterKey, kind);
+                setParams((current) => {
+                  const next = new URLSearchParams(current);
+                  next.set("action", kind);
+                  return next;
+                }, { replace: true });
+              }}>{kind}</Button>)}
+        </Stack>
+        {(projects.isPending || exceptions.isPending || decisions.isPending) && <LinearProgress aria-label="Loading project actions" />}
+        {(exceptions.isError || decisions.isError) && <Alert severity="warning" action={<Button onClick={() => {
+          void exceptions.refetch(); void decisions.refetch();
+        }}>Retry</Button>}>Some project actions could not be loaded.</Alert>}
+        {projects.isSuccess && exceptions.isSuccess && decisions.isSuccess
+          && !actions.some((action) => actionType === "All actions" || action.kind === actionType)
+          && <Typography color="text.secondary">No actions in this view.</Typography>}
+        {actions.filter((action) => actionType === "All actions" || action.kind === actionType).map((action) =>
+          <Stack key={action.key} direction={{ xs: "column", md: "row" }} alignItems={{ md: "center" }} gap={1}
+            sx={{ py: 1, borderBottom: 1, borderColor: "divider" }}>
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Typography fontWeight={700}>{action.title}</Typography>
+              <Typography variant="body2" color="text.secondary">
+                {action.project.project_number} · {action.project.name}
+              </Typography>
+            </Box>
+            <Chip size="small" variant="outlined" label={action.kind} sx={{ alignSelf: { xs: "start", md: "center" } }} />
+            <Typography variant="body2">{options.data?.managers.find((manager) => manager.id === action.owner)?.name ?? `User #${action.owner}`}</Typography>
+            <Typography variant="body2">{action.due ? `Due ${action.due}` : "No due date"}</Typography>
+            <Button component={Link} to={action.path} endIcon={<ArrowForward />} size="small">Open</Button>
+          </Stack>)}
+      </Stack>}
       <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(3, minmax(0, 1fr))" }, gap: 2 }}>
         {metrics.map((metric) => {
           const { title, value, icon, color } = metric;
@@ -123,7 +205,13 @@ export function ProjectManagementPage({ personal = false }: { personal?: boolean
           ))}
         </Stack>
         {projects.isPending && <LinearProgress />}
-        {projects.isSuccess && !visible.length && (
+        {personal && view === "decisions" && decisions.isPending && <LinearProgress aria-label="Loading schedule decisions" />}
+        {personal && decisions.isError && (
+          <Alert severity="warning" action={<Button onClick={() => decisions.refetch()}>Retry</Button>}>
+            Schedule decision counts are unavailable.
+          </Alert>
+        )}
+        {projects.isSuccess && !visible.length && (view !== "decisions" || decisions.isSuccess) && (
           <Typography color="text.secondary" sx={{ borderTop: 1, borderColor: "divider", p: 3 }}>
             {view === "attention" ? "No projects need attention right now." : "There are no projects in this view."}
           </Typography>
@@ -132,7 +220,9 @@ export function ProjectManagementPage({ personal = false }: { personal?: boolean
           <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", lg: "repeat(2, minmax(0, 1fr))" }, gap: 1.5, p: 2, bgcolor: "action.hover" }}>
             {visible.map((project) => {
               const path = `/projects/${project.id}`;
-              const action = isIntake(project) ? { label: "Review intake", path: `${path}/intake` }
+              const action = view === "decisions" ? { label: "Open schedule decisions", path: `${path}/revisions` }
+                : view === "risk" ? { label: "Review delivery risk", path: `${path}/register` }
+                : isIntake(project) ? { label: "Review intake", path: `${path}/intake` }
                 : isHandover(project) && hasPermission("handover.view") ? { label: "Open handover", path: `${path}/handover` }
                 : overdue(project) ? { label: "Review schedule", path: `${path}/schedule` }
                 : { label: "Open project", path };
@@ -149,6 +239,7 @@ export function ProjectManagementPage({ personal = false }: { personal?: boolean
                     </Stack>
                     <Stack direction="row" gap={1} flexWrap="wrap" alignItems="center">
                       <Chip size="small" variant="outlined" label={project.status.replaceAll("_", " ")} />
+                      {pendingDecisions(project) > 0 && <Chip size="small" variant="outlined" color="info" label={`${pendingDecisions(project)} pending schedule decisions`} />}
                       {project.planned_end_date && <Stack direction="row" gap={0.5} alignItems="center" color="text.secondary">
                         <CalendarTodayOutlined sx={{ fontSize: 14 }} />
                         <Typography variant="caption">Due {project.planned_end_date}</Typography>
